@@ -1,0 +1,255 @@
+name: Auto Release & Version Backup
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'package.json'
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: read
+
+jobs:
+  detect-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      previous-version: ${{ steps.version.outputs.previous-version }}
+      version-changed: ${{ steps.version.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for version detection
+
+      - name: Detect version changes
+        id: version
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(jq -r '.version' package.json)
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Get previous version from last tag or git log
+          PREVIOUS_VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
+          PREVIOUS_VERSION=${PREVIOUS_VERSION#v}  # Remove v prefix if present
+          echo "previous-version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
+          echo "Previous version: $PREVIOUS_VERSION"
+          
+          # Check if version changed
+          if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "⏭️  Version unchanged ($CURRENT_VERSION)"
+          fi
+
+  generate-changelog:
+    needs: detect-version
+    if: needs.detect-version.outputs.version-changed == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.body }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog with diffs
+        id: changelog
+        run: |
+          VERSION=${{ needs.detect-version.outputs.version }}
+          PREV_VERSION=${{ needs.detect-version.outputs.previous-version }}
+          
+          # Start changelog
+          {
+            echo "## 📝 Changes in WiFi Sentry v$VERSION"
+            echo ""
+            echo "**Previous version:** v$PREV_VERSION"
+            echo ""
+            
+            # Get commits and diffs
+            if git rev-list "v$PREV_VERSION..HEAD" >/dev/null 2>&1; then
+              COMMIT_RANGE="v$PREV_VERSION..HEAD"
+            else
+              COMMIT_RANGE="--max-count=50"
+            fi
+            
+            echo "### 📋 Commits"
+            echo ""
+            git log $COMMIT_RANGE --pretty=format:"- %h - %s (%an)" --no-merges
+            echo ""
+            echo ""
+            
+            # File changes summary
+            echo "### 📁 Files Changed"
+            echo ""
+            git diff --stat $(git rev-list -n 1 v$PREV_VERSION 2>/dev/null || git rev-list --max-count=1)..HEAD 2>/dev/null || git diff --stat HEAD~50..HEAD
+            echo ""
+            echo ""
+            
+            # Categorize commits
+            echo "### 🔀 Commit Categories"
+            echo ""
+            
+            FEATURES=$(git log $COMMIT_RANGE --grep="^feat" --pretty=format:"- %s" --no-merges || echo "")
+            if [ ! -z "$FEATURES" ]; then
+              echo "#### ✨ Features"
+              echo "$FEATURES"
+              echo ""
+            fi
+            
+            FIXES=$(git log $COMMIT_RANGE --grep="^fix" --pretty=format:"- %s" --no-merges || echo "")
+            if [ ! -z "$FIXES" ]; then
+              echo "#### 🐛 Bug Fixes"
+              echo "$FIXES"
+              echo ""
+            fi
+            
+            DOCS=$(git log $COMMIT_RANGE --grep="^docs" --pretty=format:"- %s" --no-merges || echo "")
+            if [ ! -z "$DOCS" ]; then
+              echo "#### 📚 Documentation"
+              echo "$DOCS"
+              echo ""
+            fi
+            
+            # Installation & deployment info
+            echo "### 🚀 Deployment"
+            echo ""
+            echo "**Supported Platforms:** Windows, macOS, Linux, WSL2, Termux"
+            echo ""
+            echo "**Installation:** See [README.md](README.md) for instructions"
+            echo ""
+            
+          } > changelog.md
+          
+          # Output markdown (escape for GitHub output)
+          CHANGELOG=$(cat changelog.md)
+          CHANGELOG="${CHANGELOG//'%'/'%25'}"
+          CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+          CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+          echo "body=$CHANGELOG" >> $GITHUB_OUTPUT
+
+      - name: Upload changelog
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog
+          path: changelog.md
+
+  create-backup-branch:
+    needs: detect-version
+    if: needs.detect-version.outputs.version-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Create version backup branch
+        run: |
+          VERSION=${{ needs.detect-version.outputs.version }}
+          BRANCH_NAME="release/v$VERSION"
+          
+          echo "📦 Creating backup branch: $BRANCH_NAME"
+          
+          # Create branch from current HEAD
+          git branch $BRANCH_NAME HEAD
+          
+          # Push branch
+          git push origin $BRANCH_NAME
+          
+          echo "✅ Backup branch created: $BRANCH_NAME"
+
+      - name: Create git tag
+        run: |
+          VERSION=${{ needs.detect-version.outputs.version }}
+          TAG_NAME="v$VERSION"
+          
+          echo "🏷️  Creating version tag: $TAG_NAME"
+          
+          # Create annotated tag with message
+          git tag -a $TAG_NAME -m "Release version $VERSION" HEAD
+          
+          # Push tag
+          git push origin $TAG_NAME
+          
+          echo "✅ Git tag created: $TAG_NAME"
+
+  publish-release:
+    needs: [detect-version, generate-changelog, create-backup-branch]
+    if: needs.detect-version.outputs.version-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download changelog
+        uses: actions/download-artifact@v4
+        with:
+          name: changelog
+
+      - name: Get release notes
+        id: notes
+        run: |
+          # Read generated changelog
+          BODY=$(cat changelog.md)
+          
+          # Escape for GitHub API
+          BODY="${BODY//'%'/'%25'}"
+          BODY="${BODY//$'\n'/'%0A'}"
+          BODY="${BODY//$'\r'/'%0D'}"
+          echo "body=$BODY" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.detect-version.outputs.version }}
+          release_name: WiFi Sentry v${{ needs.detect-version.outputs.version }}
+          body: | 
+            ${{ steps.notes.outputs.body }}
+          draft: false
+          prerelease: false
+
+      - name: Publish release assets
+        run: |
+          echo "📦 Release v${{ needs.detect-version.outputs.version }} published!"
+          echo ""
+          echo "📍 Release URL: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.detect-version.outputs.version }}"
+          echo "🔗 Backup branch: release/v${{ needs.detect-version.outputs.version }}"
+          echo "🏷️  Tag: v${{ needs.detect-version.outputs.version }}"
+
+  notify-release:
+    needs: [detect-version, publish-release]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Release Summary
+        run: |
+          echo "═════════════════════════════════════════════════════════"
+          echo "🎉 RELEASE AUTOMATION COMPLETE"
+          echo "═════════════════════════════════════════════════════════"
+          echo ""
+          echo "📦 Version: v${{ needs.detect-version.outputs.version }}"
+          echo "📍 Status: ✅ Published"
+          echo ""
+          echo "📂 Available at:"
+          echo "   • Release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.detect-version.outputs.version }}"
+          echo "   • Backup Branch: release/v${{ needs.detect-version.outputs.version }}"
+          echo "   • Main Branch: Always latest code"
+          echo ""
+          echo "⏮️  Previous Version: v${{ needs.detect-version.outputs.previous-version }}"
+          echo ""
+          echo "═════════════════════════════════════════════════════════"
