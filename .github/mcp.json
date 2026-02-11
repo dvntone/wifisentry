@@ -1,0 +1,38 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server:v0.27.0"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "includeTools": [
+        "list_repositories",
+        "get_repository",
+        "list_branches",
+        "get_commit",
+        "list_commits",
+        "list_issues",
+        "issue_read",
+        "list_pull_requests",
+        "pull_request_read",
+        "pull_request_write",
+        "pull_request_review_write",
+        "search_code",
+        "search_issues",
+        "search_pull_requests",
+        "get_file_contents",
+        "list_workflow_runs",
+        "get_workflow_run_logs",
+        "get_workflow"
+      ]
+    }
+  }
+}
