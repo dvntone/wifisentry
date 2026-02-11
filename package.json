@@ -1,0 +1,41 @@
+{
+  "name": "wifi-sentry",
+  "version": "1.0.0",
+  "description": "A WiFi monitoring and security application that detects evil twins, karma attacks, WiFi pineapples, and emerging WiFi spoofing techniques.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "echo 'Build complete'",
+    "test": "jest --detectOpenHandles",
+    "lint": "eslint . --fix",
+    "web:dev": "cd web-app && npm run dev",
+    "web:build": "cd web-app && npm run build"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "mongoose": "^8.0.0",
+    "node-wifi": "^2.0.16",
+    "@google/generative-ai": "^0.3.0",
+    "uuid": "^9.0.1",
+    "axios": "^1.6.2",
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "eslint": "^8.52.0"
+  },
+  "author": "WiFi Sentry Team",
+  "license": "MIT",
+  "keywords": [
+    "wifi-security",
+    "threat-detection",
+    "evil-twin",
+    "karma-attack",
+    "wifi-pineapple",
+    "ai-research"
+  ]
+}

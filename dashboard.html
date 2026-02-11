@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WiFi Sentry - Threat Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-bottom: 30px;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Threat Intelligence Dashboard</h1>
+        <div class="controls">
+            <a href="/" class="button">Back to Monitor</a>
+            <button id="refresh-data">Refresh Data</button>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div>
+                <h2>Threats by Type</h2>
+                <div class="chart-container">
+                    <canvas id="threatTypeChart"></canvas>
+                </div>
+            </div>
+            <div>
+                <h2>Threats by Severity</h2>
+                <div class="chart-container">
+                    <canvas id="severityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <h2>Recent Detections</h2>
+        <div id="recent-logs"></div>
+    </div>
+    <script src="dashboard.js"></script>
+</body>
+</html>
