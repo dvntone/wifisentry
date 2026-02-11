@@ -7,6 +7,7 @@ yarn.lock
 .env
 .env.local
 .env.*.local
+.env.production.local
 
 # Logs
 npm-debug.log*
@@ -49,3 +50,7 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Secret scan results
+gitleaks-report.json
+.gitleaks-report.json

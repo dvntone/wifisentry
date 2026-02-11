@@ -1,6 +1,8 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
@@ -23,8 +25,48 @@ let monitoringInterval = null;
 let clients = [];
 let locationTrackingConsent = false;
 
-// Middleware
-app.use(cors());
+// Security Middleware
+// Add security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'","'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+    },
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true }
+}));
+
+// Configure CORS (restrict to known origins in production)
+const corsOptions = {
+  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*',
+  credentials: true,
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+};
+app.use(cors(corsOptions));
+
+// Rate limiting: general limiter (100 requests per 15 minutes)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// Rate limiting: stricter for auth endpoints (5 requests per 15 minutes)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  skipSuccessfulRequests: true,
+  message: 'Too many login attempts, please try again later.',
+});
+
+// Body parsing middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -418,7 +460,7 @@ app.post('/api/auth/2fa/enable', isAuthenticated, (req, res) => {
     }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', authLimiter, (req, res) => {
     const { username, password } = req.body;
     if (username === config.auth.adminUsername && password === config.auth.adminPassword) {
         // Check if 2FA is configured for the admin user
