@@ -5,11 +5,12 @@ module.exports = {
   environment: process.env.NODE_ENV || 'development',
 
   // Session and Auth configuration
+  // Do NOT hardcode secrets; prefer env vars. In production missing critical
+  // secrets will cause startup to fail (see bottom of this file).
   auth: {
-    sessionSecret: process.env.SESSION_SECRET || 'super-secret-key-for-dev',
-    // In a real app, use a secure way to store and manage users, not hardcoded credentials.
+    sessionSecret: process.env.SESSION_SECRET || null,
     adminUsername: process.env.ADMIN_USERNAME || 'admin',
-    adminPassword: process.env.ADMIN_PASSWORD || 'password',
+    adminPassword: process.env.ADMIN_PASSWORD || null,
     adminTwoFactorSecret: process.env.ADMIN_2FA_SECRET || null,
   },
 
@@ -36,13 +37,13 @@ module.exports = {
 
   // Google Gemini API configuration
   gemini: {
-    apiKey: process.env.GOOGLE_GEMINI_API_KEY || 'your-gemini-api-key',
+    apiKey: process.env.GOOGLE_GEMINI_API_KEY || null,
     model: process.env.GEMINI_MODEL || 'gemini-pro',
   },
 
   // Google Maps SDK configuration
   maps: {
-    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || 'your-maps-api-key',
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || null,
   },
 
   // WiGLE.net configuration for wardriving database integration
@@ -60,3 +61,16 @@ module.exports = {
     locations: 'locations',
   },
 };
+
+// Enforce secure configuration in production: fail fast if critical secrets are missing.
+if ((process.env.NODE_ENV || 'development') === 'production') {
+  const missing = [];
+  if (!process.env.SESSION_SECRET) missing.push('SESSION_SECRET');
+  if (!process.env.MONGO_URI) missing.push('MONGO_URI');
+  if (!process.env.ADMIN_PASSWORD) missing.push('ADMIN_PASSWORD');
+  if (missing.length) {
+    /* eslint-disable no-console */
+    console.error('Missing required environment variables in production:', missing.join(', '));
+    throw new Error('Missing required environment variables: ' + missing.join(', '));
+  }
+}

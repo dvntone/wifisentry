@@ -1,0 +1,22 @@
+title = "gitleaks config for wifisentry"
+
+# Minimal rules to catch common secrets; expand as needed.
+[[rules]]
+description = "Generic API key-ish"
+regex = '''(?i)(api[_-]?key|secret|access[_-]?token|private[_-]?key)["'\s:=]{1,20}[A-Za-z0-9\-_=]{16,}'''
+tags = ["apikey", "secret"]
+
+[[rules]]
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws"]
+
+[[rules]]
+description = "Possible MongoDB connection string (SRV)"
+regex = '''mongodb\+srv:\/\/[A-Za-z0-9_\-]+:[^\s@]+@[^\s]+'''
+tags = ["mongodb", "db"]
+
+[[rules]]
+description = "Google API key pattern"
+regex = '''AIza[0-9A-Za-z\-_]{35}'''
+tags = ["google"]

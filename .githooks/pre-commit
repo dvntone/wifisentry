@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Local pre-commit hook to run a quick gitleaks scan if available.
+set -e
+
+if command -v gitleaks >/dev/null 2>&1; then
+  echo "Running local gitleaks scan..."
+  gitleaks detect --source . --redact || {
+    echo "gitleaks found potential secrets. Aborting commit."
+    exit 1
+  }
+else
+  echo "gitleaks not installed. To enable local scanning install it and enable hooks:"
+  echo "  brew install gitleaks"
+  echo "  or: go install github.com/zricethezav/gitleaks/v8@latest"
+  echo "To enable this repo hook: git config core.hooksPath .githooks"
+fi
+
+exit 0
