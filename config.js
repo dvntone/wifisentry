@@ -4,6 +4,14 @@ module.exports = {
   port: process.env.PORT || 3000,
   environment: process.env.NODE_ENV || 'development',
 
+  // Session and Auth configuration
+  auth: {
+    sessionSecret: process.env.SESSION_SECRET || 'super-secret-key-for-dev',
+    // In a real app, use a secure way to store and manage users, not hardcoded credentials.
+    adminUsername: process.env.ADMIN_USERNAME || 'admin',
+    adminPassword: process.env.ADMIN_PASSWORD || 'password',
+  },
+
   // MongoDB configuration (primary database)
   mongo: {
     uri: process.env.MONGO_URI || 'mongodb://localhost:27017/wifi-sentry',

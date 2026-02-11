@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
+const session = require('express-session');
 const config = require('./config');
 
 const aiService = require('./aiService');
@@ -20,12 +21,45 @@ let locationTrackingConsent = false;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Session Middleware Setup
+app.use(session({
+    secret: config.auth.sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: config.environment === 'production', httpOnly: true, maxAge: 1000 * 60 * 60 * 24 } // 24 hours
+}));
+
+// Authentication Middleware
+const isAuthenticated = (req, res, next) => {
+    if (req.session.user) {
+        return next();
+    }
+    // For API requests, send a 401 Unauthorized status.
+    if (req.path.startsWith('/api/')) {
+        return res.status(401).json({ error: 'Unauthorized: Please log in.' });
+    }
+    // For page requests, redirect to the login page.
+    res.redirect('/login.html');
+};
+
 // Serve static files from the 'public' directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve the main HTML file
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve login page publicly
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Protect the dashboard page
+app.get('/dashboard.html', isAuthenticated, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 // SSE Endpoint for real-time updates
@@ -139,7 +173,7 @@ app.get('/api/cataloged-threats', async (req, res) => {
 });
 
 // API endpoint to get threat logs for dashboard
-app.get('/api/threat-logs', async (req, res) => {
+app.get('/api/threat-logs', isAuthenticated, async (req, res) => {
     try {
         const logs = await database.threatLogs.getAll();
         res.json(logs);
@@ -306,6 +340,28 @@ app.get('/api/nearby-networks', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Failed to retrieve nearby networks', details: error.message });
     }
+});
+
+// ============ AUTHENTICATION API ============
+
+app.post('/api/auth/login', (req, res) => {
+    const { username, password } = req.body;
+    if (username === config.auth.adminUsername && password === config.auth.adminPassword) {
+        req.session.user = { username: username, loggedInAt: Date.now() };
+        res.json({ success: true, message: 'Login successful.' });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid username or password.' });
+    }
+});
+
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ message: 'Could not log out.' });
+        }
+        res.clearCookie('connect.sid'); // Default session cookie name
+        res.json({ success: true, message: 'Successfully logged out.' });
+    });
 });
 
 // ============ USER SUBMISSIONS API ============

@@ -3,16 +3,29 @@
   "version": "1.0.0",
   "description": "A WiFi monitoring and security application that detects evil twins, karma attacks, WiFi pineapples, and emerging WiFi spoofing techniques.",
   "main": "server.js",
+  "homepage": "./",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "echo 'Build complete'",
+    "build": "npm run build:all",
+    "build:all": "npm run web:build && npm run desktop:build-web && npm run mobile:build",
     "test": "jest --detectOpenHandles",
     "lint": "eslint . --fix",
     "web:dev": "cd web-app && npm run dev",
-    "web:build": "cd web-app && npm run build"
+    "web:build": "cd web-app && npm run build && npm run build",
+    "desktop:dev": "electron desktop/main.js",
+    "desktop:build-web": "cd web-app && npm run build && cd ..",
+    "desktop:build": "npm run desktop:build-web && electron-builder --publish never",
+    "desktop:build-win": "npm run desktop:build",
+    "mobile:setup": "npx @capacitor/cli@latest init wifi-sentry wifi.sentry && npx @capacitor/cli add android",
+    "mobile:sync": "npx @capacitor/cli sync",
+    "mobile:build": "cd web-app && npm run build && cd .. && npx @capacitor/cli sync",
+    "mobile:open": "npx @capacitor/cli open android",
+    "mobile:run": "npx @capacitor/cli run android",
+    "mobile:compile": "cd android && ./gradlew assembleRelease && cd .."
   },
   "dependencies": {
+    "express-session": "^1.18.0",
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
@@ -26,7 +39,56 @@
   "devDependencies": {
     "nodemon": "^3.0.2",
     "jest": "^29.7.0",
-    "eslint": "^8.52.0"
+    "eslint": "^8.52.0",
+    "electron": "^latest",
+    "electron-builder": "^latest",
+    "electron-updater": "^latest",
+    "@capacitor/core": "^latest",
+    "@capacitor/cli": "^latest"
+  },
+  "electron-builder": {
+    "appId": "com.wifisentry.app",
+    "productName": "WiFi Sentry",
+    "files": [
+      "desktop/main.js",
+      "desktop/preload.js",
+      "desktop/assets/**/*",
+      "node_modules/**/*",
+      "server.js",
+      "*.js",
+      "config.js",
+      "database.js",
+      "aiService.js",
+      "wifi-scanner.js",
+      "location-tracker.js",
+      "*.json",
+      "web-app/out/**/*"
+    ],
+    "directories": {
+      "buildResources": "desktop/assets",
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "certificateFile": null,
+      "certificatePassword": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WiFi Sentry"
+    }
   },
   "author": "WiFi Sentry Team",
   "license": "MIT",
@@ -36,6 +98,10 @@
     "evil-twin",
     "karma-attack",
     "wifi-pineapple",
-    "ai-research"
+    "ai-research",
+    "cross-platform",
+    "electron",
+    "capacitor",
+    "pwa"
   ]
 }

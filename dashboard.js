@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     const refreshButton = document.getElementById('refresh-data');
+    const logoutButton = document.getElementById('logout-button');
     const recentLogsContainer = document.getElementById('recent-logs');
     
     let typeChart = null;
@@ -8,6 +9,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchData() {
         try {
             const response = await fetch('/api/threat-logs');
+            if (response.status === 401) {
+                // Not authenticated, redirect to login
+                window.location.href = '/login.html';
+                return;
+            }
             const logs = await response.json();
             updateCharts(logs);
             updateRecentLogs(logs);
@@ -89,6 +95,19 @@ document.addEventListener('DOMContentLoaded', () => {
             recentLogsContainer.appendChild(div);
         });
     }
+
+    logoutButton.addEventListener('click', async () => {
+        try {
+            const response = await fetch('/api/auth/logout', { method: 'POST' });
+            if (response.ok) {
+                window.location.href = '/login.html';
+            } else {
+                alert('Logout failed.');
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    });
 
     refreshButton.addEventListener('click', fetchData);
     fetchData(); // Initial load
