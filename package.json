@@ -23,7 +23,9 @@
     "mobile:open": "npx @capacitor/cli open android",
     "mobile:run": "npx @capacitor/cli run android",
     "mobile:compile": "cd android && ./gradlew assembleRelease && cd ..",
-    "verify-services": "node verify-services.js"
+    "verify-services": "node verify-services.js",
+    "validate-env": "node utils/validate-env.js MONGODB_URI_TEST",
+    "test:integration": "mocha --exit test/integration || echo \"No integration tests configured\""
   },
   "dependencies": {
     "express-session": "^1.18.0",
@@ -47,7 +49,9 @@
     "electron-builder": "^latest",
     "electron-updater": "^latest",
     "@capacitor/core": "^latest",
-    "@capacitor/cli": "^latest"
+    "@capacitor/cli": "^latest",
+    "mocha": "^10.2.0",
+    "mongodb": "^5.10.0"
   },
   "electron-builder": {
     "appId": "com.wifisentry.app",

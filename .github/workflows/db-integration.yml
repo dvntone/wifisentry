@@ -1,0 +1,67 @@
+name: DB Integration Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: --max_old_space_size=4096
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Validate required secrets
+        run: |
+          node utils/validate-env.js MONGODB_URI_TEST
+        env:
+          MONGODB_URI_TEST: ${{ secrets.MONGODB_URI_TEST }}
+
+      - name: Run DB migrations (if present)
+        run: |
+          if npm run | grep -q "migrate"; then
+            echo "Running migrations"
+            npm run migrate --if-present
+          else
+            echo "No migrate script defined, skipping"
+          fi
+
+      - name: Run integration tests
+        run: |
+          if npm run | grep -q "test:integration"; then
+            npm run test:integration --if-present
+          else
+            echo "No 'test:integration' script found. Running 'npm test' as fallback"
+            npm test --if-present
+          fi
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI_TEST }}
+          MONGODB_URI_TEST: ${{ secrets.MONGODB_URI_TEST }}
+
+      - name: Upload test results (if any)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-logs
+          path: |
+            test-results || echo 'no-results'
