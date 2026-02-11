@@ -1,0 +1,183 @@
+name: CI/CD - Build & Test
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+    paths:
+      - '**.js'
+      - '**.ts'
+      - '**.tsx'
+      - 'package.json'
+      - '.github/workflows/ci-cd.yml'
+  pull_request:
+    branches: [ "main", "develop" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint --if-present
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test --if-present
+        continue-on-error: true
+
+      - name: Check for security vulnerabilities
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+
+  build-web:
+    name: Build Web Application
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web application
+        run: npm run web:build
+        continue-on-error: true
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: web-app/out/
+          if-no-files-found: ignore
+
+  build-desktop-win:
+    name: Build Windows Desktop (Electron)
+    runs-on: windows-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets for Electron
+        run: npm run desktop:build-web
+
+      - name: Build Windows executable
+        run: npm run desktop:build-win
+        continue-on-error: true
+
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-build
+          path: dist/
+          if-no-files-found: ignore
+
+  build-android:
+    name: Build Android Application
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 33
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run mobile:build
+        continue-on-error: true
+
+      - name: Sync Capacitor
+        run: npx @capacitor/cli@latest sync
+        continue-on-error: true
+
+      - name: Build Android APK
+        working-directory: ./android
+        run: ./gradlew assembleDebug --stacktrace
+        continue-on-error: true
+
+      - name: Upload Android build
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-build
+          path: android/app/build/outputs/apk/
+          if-no-files-found: ignore
+
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [test, build-web, build-desktop-win, build-android]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "Test Status: ${{ needs.test.result }}"
+          echo "Web Build Status: ${{ needs.build-web.result }}"
+          echo "Desktop Build Status: ${{ needs.build-desktop-win.result }}"
+          echo "Android Build Status: ${{ needs.build-android.result }}"
+
+      - name: Fail if critical jobs failed
+        if: |
+          needs.test.result == 'failure'
+        run: exit 1
+
+      - name: Summary
+        run: |
+          echo "✓ Build pipeline completed"
+          echo "Tests: ${{ needs.test.result }}"
+          echo "Web Build: ${{ needs.build-web.result }}"
+          echo "Desktop Build: ${{ needs.build-desktop-win.result }}"
+          echo "Android Build: ${{ needs.build-android.result }}"

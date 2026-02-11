@@ -1,0 +1,90 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    # Run every Monday at 9 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update-dependencies:
+    name: Check & Update Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Check for outdated packages
+        id: outdated
+        run: |
+          npm outdated > outdated.txt || true
+          cat outdated.txt
+
+      - name: Update packages
+        run: |
+          npm update --save
+          cd web-app && npm update --save && cd ..
+
+      - name: Verify builds still work
+        run: |
+          npm install
+          npm run lint --if-present || true
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: 'chore: update dependencies'
+          title: 'chore: update dependencies'
+          body: |
+            Automated dependency updates from scheduled check.
+            
+            Please review the changes and run tests before merging.
+            
+            ## Updated packages:
+            
+            - Core dependencies
+            - Dev dependencies
+            - Workspace dependencies
+            
+            See: https://docs.npmjs.com/cli/v8/commands/npm-update
+          branch: chore/update-dependencies
+          delete-branch: true
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security audit
+        id: audit
+        run: |
+          npm audit --json > audit-report.json || echo "Audit complete"
+          cat audit-report.json
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-audit
+          path: audit-report.json
+
+      - name: Comment on vulnerabilities
+        if: failure()
+        run: |
+          echo "⚠️ Security vulnerabilities detected"
+          echo "See audit report for details"

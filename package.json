@@ -22,11 +22,14 @@
     "mobile:build": "cd web-app && npm run build && cd .. && npx @capacitor/cli sync",
     "mobile:open": "npx @capacitor/cli open android",
     "mobile:run": "npx @capacitor/cli run android",
-    "mobile:compile": "cd android && ./gradlew assembleRelease && cd .."
+    "mobile:compile": "cd android && ./gradlew assembleRelease && cd ..",
+    "verify-services": "node verify-services.js"
   },
   "dependencies": {
     "express-session": "^1.18.0",
     "express": "^4.18.2",
+    "speakeasy": "^2.0.0",
+    "qrcode": "^1.5.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "mongoose": "^8.0.0",

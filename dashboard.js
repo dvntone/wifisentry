@@ -2,6 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshButton = document.getElementById('refresh-data');
     const logoutButton = document.getElementById('logout-button');
     const recentLogsContainer = document.getElementById('recent-logs');
+    const twoFactorStatusContainer = document.getElementById('2fa-status');
+    const twoFactorSetupModal = document.getElementById('2fa-setup-modal');
+    const twoFactorQrCode = document.getElementById('2fa-qr-code');
+    const twoFactorVerifyTokenInput = document.getElementById('2fa-verify-token');
+    const twoFactorVerifyButton = document.getElementById('2fa-verify-button');
+    const twoFactorSetupMessage = document.getElementById('2fa-setup-message');
     
     let typeChart = null;
     let severityChart = null;
@@ -20,6 +26,33 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
             recentLogsContainer.innerHTML = '<p style="color:red">Failed to load data.</p>';
+        }
+    }
+
+    async function check2FAStatus() {
+        // This is a mock check. In a real app, you'd have an endpoint to get user settings.
+        // For now, we just show the enable button.
+        twoFactorStatusContainer.innerHTML = `
+            <p>Two-Factor Authentication (2FA) adds an extra layer of security to your account.</p>
+            <button id="2fa-enable-start-button">Enable 2FA</button>
+        `;
+        document.getElementById('2fa-enable-start-button').addEventListener('click', start2FASetup);
+    }
+
+    async function start2FASetup() {
+        try {
+            const response = await fetch('/api/auth/2fa/generate');
+            const data = await response.json();
+            if (response.ok) {
+                twoFactorQrCode.src = data.qrCodeUrl;
+                twoFactorSetupModal.style.display = 'block';
+                twoFactorSetupMessage.textContent = `Your secret key: ${data.secret}`;
+                twoFactorSetupMessage.style.color = 'black';
+            } else {
+                twoFactorStatusContainer.innerHTML = `<p style="color:red">Error: ${data.message}</p>`;
+            }
+        } catch (error) {
+            console.error('Error starting 2FA setup:', error);
         }
     }
 
@@ -96,6 +129,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    twoFactorVerifyButton.addEventListener('click', async () => {
+        const token = twoFactorVerifyTokenInput.value;
+        if (!token || token.length !== 6) {
+            twoFactorSetupMessage.textContent = 'Please enter a valid 6-digit token.';
+            twoFactorSetupMessage.style.color = 'red';
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/2fa/enable', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token }),
+            });
+            const data = await response.json();
+            twoFactorSetupMessage.textContent = data.message;
+            if (response.ok) {
+                twoFactorSetupMessage.style.color = 'green';
+                twoFactorVerifyButton.disabled = true;
+                twoFactorVerifyTokenInput.disabled = true;
+            } else {
+                twoFactorSetupMessage.style.color = 'red';
+            }
+        } catch (error) {
+            console.error('Error verifying 2FA token:', error);
+            twoFactorSetupMessage.textContent = 'An error occurred during verification.';
+        }
+    });
+
     logoutButton.addEventListener('click', async () => {
         try {
             const response = await fetch('/api/auth/logout', { method: 'POST' });
@@ -110,5 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     refreshButton.addEventListener('click', fetchData);
+    check2FAStatus();
     fetchData(); // Initial load
 });

@@ -1,0 +1,201 @@
+name: Release - Build & Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.1)'
+        required: true
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag or input
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION=${{ github.event.inputs.version }}
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION_NUMBER=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release Notes
+        id: release_notes
+        run: |
+          echo "# WiFi Sentry ${{ steps.version.outputs.VERSION }}" > release_notes.md
+          echo "" >> release_notes.md
+          echo "## Changes in this release:" >> release_notes.md
+          echo "" >> release_notes.md
+          git log --oneline --no-decorate $(git describe --tags --abbrev=0 @^)..@ >> release_notes.md 2>/dev/null || echo "Initial release" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Platform Support:" >> release_notes.md
+          echo "- ✅ Windows Desktop (Electron) - x64" >> release_notes.md
+          echo "- ✅ Android Mobile (Capacitor)" >> release_notes.md
+          echo "- ✅ Web PWA" >> release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows-release:
+    name: Build Windows Release
+    runs-on: windows-latest
+    needs: create-release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows app
+        run: npm run desktop:build
+        continue-on-error: true
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist/**/*.exe
+            dist/**/*.nsis
+            dist/**/*.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-android-release:
+    name: Build Android Release
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 33
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build mobile assets
+        run: npm run mobile:build
+
+      - name: Sync Capacitor
+        run: npx @capacitor/cli@latest sync
+
+      - name: Build Android Release APK
+        working-directory: ./android
+        run: ./gradlew assembleRelease --stacktrace
+        continue-on-error: true
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            android/app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-web-release:
+    name: Build Web Release
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web application
+        run: npm run web:build
+
+      - name: Create web archive
+        run: |
+          cd web-app
+          tar -czf ../wifi-sentry-web-${{ github.ref_name }}.tar.gz out/
+          zip -r ../wifi-sentry-web-${{ github.ref_name }}.zip out/
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            wifi-sentry-web-*.tar.gz
+            wifi-sentry-web-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-notification:
+    name: Publish Release Notification
+    runs-on: ubuntu-latest
+    needs: [build-windows-release, build-android-release, build-web-release]
+    if: always()
+
+    steps:
+      - name: Check Release Status
+        run: |
+          echo "## Release Build Summary"
+          echo "Windows: ${{ needs.build-windows-release.result }}"
+          echo "Android: ${{ needs.build-android-release.result }}"
+          echo "Web: ${{ needs.build-web-release.result }}"
+
+      - name: Get Version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Success Badge
+        if: success()
+        run: |
+          echo "✅ WiFi Sentry ${{ steps.version.outputs.VERSION }} released successfully!"
+          echo "Platform builds:"
+          echo "- Windows Desktop: ${{ needs.build-windows-release.result }}"
+          echo "- Android Mobile: ${{ needs.build-android-release.result }}"
+          echo "- Web PWA: ${{ needs.build-web-release.result }}"

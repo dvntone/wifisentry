@@ -10,6 +10,7 @@ module.exports = {
     // In a real app, use a secure way to store and manage users, not hardcoded credentials.
     adminUsername: process.env.ADMIN_USERNAME || 'admin',
     adminPassword: process.env.ADMIN_PASSWORD || 'password',
+    adminTwoFactorSecret: process.env.ADMIN_2FA_SECRET || null,
   },
 
   // MongoDB configuration (primary database)

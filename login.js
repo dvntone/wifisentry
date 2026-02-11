@@ -18,10 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ username, password }),
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                window.location.href = '/dashboard.html';
+                if (data.twoFactorRequired) {
+                    window.location.href = '/2fa-verify.html';
+                } else {
+                    window.location.href = '/dashboard.html';
+                }
             } else {
-                const data = await response.json();
                 errorMessageDiv.textContent = data.message || 'Login failed. Please try again.';
             }
         } catch (error) {

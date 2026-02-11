@@ -26,7 +26,7 @@ An advanced WiFi monitoring and security application designed to detect and log 
 
 ### Data Export & Integration
 - **WiGLE.net Compatibility** - Export scans to wardriving database
-- **CSV/JSON Export** - Export cataloged threats and scan data in multiple formats
+, - **CSV/JSON Export** - Export cataloged threats and scan data in multiple formats
 - **Historical Tracking** - Query networks scanned during specific date ranges
 - **Batch Operations** - Process thousands of networks efficiently
 

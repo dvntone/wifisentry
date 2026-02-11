@@ -45,6 +45,10 @@ const networkSchema = new mongoose.Schema({
   security: String,
   signal: Number,
   frequency: Number,
+  channel: Number,
+  beaconInterval: Number,
+  stations: [String],
+  aiAnalysis: mongoose.Schema.Types.Mixed,
   scanId: String,
   detectedAt: { type: Date, default: Date.now },
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
@@ -192,6 +196,18 @@ const networks = {
       return await network.save();
     } catch (error) {
       console.error('Error logging network:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Log a batch of networks
+   */
+  async logBatch(networksData) {
+    try {
+      return await Network.insertMany(networksData);
+    } catch (error) {
+      console.error('Error logging network batch:', error);
       throw error;
     }
   },

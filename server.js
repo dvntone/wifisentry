@@ -2,7 +2,10 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const session = require('express-session');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
 const config = require('./config');
+const { v4: uuidv4 } = require('uuid');
 
 const aiService = require('./aiService');
 const wifiScanner = require('./wifi-scanner');
@@ -10,6 +13,8 @@ const locationTracker = require('./location-tracker');
 const database = require('./database');
 const { detectKarmaAttack } = require('./karma-attack');
 const { detectEvilTwin } = require('./evil-twin-detector');
+const dependencyChecker = require('./dependency-checker');
+const platformInstaller = require('./platform-installer');
 
 const app = express();
 const port = config.port || 3000;
@@ -86,6 +91,16 @@ async function runScan(techniques) {
     try {
         console.log('Performing background WiFi scan...');
         const scannedNetworks = await wifiScanner.scan();
+        const scanId = uuidv4();
+
+        // 1. Real-time AI Analysis of the scan results
+        let aiAnalysisResult = {};
+        try {
+            // Analyze the batch of networks for anomalies
+            aiAnalysisResult = await aiService.analyzeDetectionResults(scannedNetworks);
+        } catch (aiError) {
+            console.error('AI Analysis failed:', aiError.message);
+        }
         
         let findings = [];
         if (techniques.includes('karma')) {
@@ -97,7 +112,27 @@ async function runScan(techniques) {
             findings = findings.concat(evilTwinFindings);
         }
 
-        // Save findings to MongoDB
+        // 2. Store SSID, BSSID, AP, Station, Beacon, and AI results to Database
+        const networksToLog = scannedNetworks.map(net => ({
+            ssid: net.ssid,
+            bssid: net.bssid,
+            security: net.security,
+            signal: net.signal_level || net.signal,
+            frequency: net.frequency,
+            channel: net.channel,
+            beaconInterval: net.beaconInterval || 100, // Default if not provided by driver
+            stations: [], // Requires Monitor Mode to populate
+            scanId: scanId,
+            // Attach specific AI insights if this network was flagged
+            aiAnalysis: aiAnalysisResult.suspicious_networks?.find(s => s.bssid === net.bssid) 
+                ? { risk: 'High', details: 'Flagged by AI as suspicious' } 
+                : { risk: 'Low' }
+        }));
+
+        // Bulk save network logs
+        await database.networks.logBatch(networksToLog);
+
+        // Save specific threat findings
         if (findings.length > 0) {
             await database.threatLogs.logBatch(findings);
         }
@@ -106,7 +141,8 @@ async function runScan(techniques) {
             type: 'scan-result', 
             timestamp: new Date().toLocaleTimeString(),
             networkCount: scannedNetworks.length, 
-            findings 
+            findings,
+            networks: networksToLog
         });
     } catch (error) {
         console.error('Scan error:', error);
@@ -344,13 +380,80 @@ app.get('/api/nearby-networks', async (req, res) => {
 
 // ============ AUTHENTICATION API ============
 
+app.get('/api/auth/2fa/generate', isAuthenticated, (req, res) => {
+    const secret = speakeasy.generateSecret({
+        name: `WiFi Sentry (${config.auth.adminUsername})`
+    });
+    req.session.temp2faSecret = secret.base32;
+
+    qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
+        if (err) {
+            return res.status(500).json({ message: 'Could not generate QR code.' });
+        }
+        res.json({ qrCodeUrl: data_url, secret: secret.base32 });
+    });
+});
+
+app.post('/api/auth/2fa/enable', isAuthenticated, (req, res) => {
+    const { token } = req.body;
+    const secret = req.session.temp2faSecret;
+
+    if (!secret) {
+        return res.status(400).json({ success: false, message: '2FA setup not started. Please generate a QR code first.' });
+    }
+
+    const verified = speakeasy.totp.verify({
+        secret: secret,
+        encoding: 'base32',
+        token: token,
+    });
+
+    if (verified) {
+        // In a real app with a DB, you'd save the secret to the user record here.
+        // For this setup, we instruct the user to manually update their .env file.
+        delete req.session.temp2faSecret;
+        res.json({ success: true, message: 'Verification successful! To complete setup, add the secret to your .env file as ADMIN_2FA_SECRET and restart the server.' });
+    } else {
+        res.status(400).json({ success: false, message: 'Invalid token. Please try again.' });
+    }
+});
+
 app.post('/api/auth/login', (req, res) => {
     const { username, password } = req.body;
     if (username === config.auth.adminUsername && password === config.auth.adminPassword) {
-        req.session.user = { username: username, loggedInAt: Date.now() };
-        res.json({ success: true, message: 'Login successful.' });
+        // Check if 2FA is configured for the admin user
+        if (config.auth.adminTwoFactorSecret) {
+            req.session.awaiting2fa = true; // Mark session as awaiting 2FA verification
+            res.json({ success: true, twoFactorRequired: true });
+        } else {
+            // No 2FA configured, log in directly
+            req.session.user = { username: username, loggedInAt: Date.now() };
+            res.json({ success: true, message: 'Login successful.' });
+        }
     } else {
         res.status(401).json({ success: false, message: 'Invalid username or password.' });
+    }
+});
+
+app.post('/api/auth/2fa/verify', (req, res) => {
+    const { token } = req.body;
+
+    if (!req.session.awaiting2fa) {
+        return res.status(401).json({ success: false, message: 'Please log in with your password first.' });
+    }
+
+    const verified = speakeasy.totp.verify({
+        secret: config.auth.adminTwoFactorSecret,
+        encoding: 'base32',
+        token: token,
+    });
+
+    if (verified) {
+        delete req.session.awaiting2fa;
+        req.session.user = { username: config.auth.adminUsername, loggedInAt: Date.now() };
+        res.json({ success: true, message: 'Verification successful.' });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid 2FA token.' });
     }
 });
 
@@ -389,6 +492,129 @@ app.get('/api/submissions/:id', async (req, res) => {
     }
 });
 
+// ============ WIFI ADAPTER MANAGEMENT API ============
+
+try {
+    const adapterRoutes = require('./api/adapters');
+    app.use('/api', adapterRoutes);
+    console.log('✓ WiFi Adapter Management API loaded');
+} catch (error) {
+    console.warn('⚠ WiFi Adapter Management API not available:', error.message);
+}
+
+// ============ DEPENDENCY CHECKER API ============
+
+// Get dependency check report
+app.get('/api/dependencies/check', (req, res) => {
+    try {
+        const report = dependencyChecker.checkAllDependencies();
+        res.json(report);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to check dependencies', 
+            details: error.message 
+        });
+    }
+});
+
+// Get critical missing dependencies
+app.get('/api/dependencies/critical', (req, res) => {
+    try {
+        const critical = dependencyChecker.getCriticalMissingDependencies();
+        res.json({
+            hasCriticalMissing: critical.length > 0,
+            count: critical.length,
+            dependencies: critical
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to check critical dependencies', 
+            details: error.message 
+        });
+    }
+});
+
+// Get installation instructions for a specific tool
+app.get('/api/dependencies/:toolId/install', (req, res) => {
+    try {
+        const instructions = dependencyChecker.getInstallationInstructions(req.params.toolId);
+        if (!instructions) {
+            return res.status(404).json({ error: 'Tool not found' });
+        }
+        res.json(instructions);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to get installation instructions', 
+            details: error.message 
+        });
+    }
+});
+
+// Install a dependency (runs installation command)
+app.post('/api/dependencies/:toolId/install', (req, res) => {
+    try {
+        const options = req.body || {};
+        dependencyChecker.installDependency(req.params.toolId, options)
+            .then(result => {
+                res.json(result);
+            })
+            .catch(error => {
+                res.status(500).json({
+                    success: false,
+                    error: typeof error === 'string' ? error : error.error || 'Installation failed',
+                    details: error.details || error.message
+                });
+            });
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to install dependency', 
+            details: error.message 
+        });
+    }
+});
+
+// ============ PLATFORM SETUP GUIDE API ============
+
+// Get environment detection and setup guide
+app.get('/api/setup/environment', (req, res) => {
+    try {
+        const guide = platformInstaller.getSetupGuide();
+        res.json(guide);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to get setup guide', 
+            details: error.message 
+        });
+    }
+});
+
+// Get installation script for specific tools
+app.post('/api/setup/install-script', (req, res) => {
+    try {
+        const { toolIds = [], update = true } = req.body;
+        const script = platformInstaller.generateInstallScript(toolIds, { update });
+        res.json(script);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to generate installation script', 
+            details: error.message 
+        });
+    }
+});
+
+// Check critical tools
+app.get('/api/setup/check-critical', (req, res) => {
+    try {
+        const result = platformInstaller.checkCriticalTools();
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to check critical tools', 
+            details: error.message 
+        });
+    }
+});
+
 // ============ HEALTH CHECK ============
 
 app.get('/api/health', (req, res) => {
@@ -396,6 +622,12 @@ app.get('/api/health', (req, res) => {
         status: 'healthy',
         timestamp: new Date().toISOString(),
         version: '1.0.0',
+        features: {
+            adapterManagement: true,
+            locationTracking: true,
+            threatDetection: true,
+            twoFactorAuth: true
+        }
     });
 });
 

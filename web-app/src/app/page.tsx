@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import LiveScanResults from '../components/LiveScanResults';
+import DependencyChecker from '../components/DependencyChecker';
 
 export default function Home() {
   const [techniques, setTechniques] = useState<string[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
-  const [findings, setFindings] = useState<any[]>([]);
   const [threats, setThreats] = useState<any[]>([]);
   const [locationConsent, setLocationConsent] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const API_BASE = 'http://localhost:3000/api';
 
@@ -45,39 +44,6 @@ export default function Home() {
     );
   };
 
-  const handleStartMonitoring = async () => {
-    if (techniques.length === 0) {
-      alert('Please select at least one technique');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/start-monitoring`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ techniques }),
-      });
-      const data = await res.json();
-      setFindings(data.findings || []);
-      setIsMonitoring(true);
-    } catch (error) {
-      console.error('Failed to start monitoring:', error);
-      alert('Failed to start monitoring');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStopMonitoring = async () => {
-    try {
-      await fetch(`${API_BASE}/stop-monitoring`, { method: 'POST' });
-      setIsMonitoring(false);
-    } catch (error) {
-      console.error('Failed to stop monitoring:', error);
-    }
-  };
-
   const handleLocationConsent = async (consent: boolean) => {
     try {
       const res = await fetch(`${API_BASE}/location-consent`, {
@@ -101,6 +67,11 @@ export default function Home() {
           <p className="text-slate-300">Advanced WiFi Monitoring & Threat Detection</p>
         </div>
 
+        {/* Dependency Checker */}
+        <div className="mb-8">
+          <DependencyChecker apiBase={API_BASE} />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Control Panel */}
           <div className="lg:col-span-1">
@@ -118,25 +89,12 @@ export default function Home() {
                       type="checkbox"
                       checked={techniques.includes(tech.id)}
                       onChange={() => handleTechniqueChange(tech.id)}
-                      className="w-4 h-4 rounded"
-                      disabled={isMonitoring}
+                      className="w-4 h-4 rounded text-blue-500 bg-slate-600 border-slate-500 focus:ring-blue-500"
                     />
                     <span className="ml-3">{tech.label}</span>
                   </label>
                 ))}
               </div>
-
-              <button
-                onClick={isMonitoring ? handleStopMonitoring : handleStartMonitoring}
-                disabled={loading || (techniques.length === 0 && !isMonitoring)}
-                className={`w-full py-2 rounded font-semibold transition ${
-                  isMonitoring
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-blue-600 hover:bg-blue-700'
-                } disabled:opacity-50`}
-              >
-                {loading ? 'Processing...' : isMonitoring ? 'Stop Monitoring' : 'Start Monitoring'}
-              </button>
 
               {/* Location Consent */}
               <div className="mt-6 pt-6 border-t border-slate-600">
@@ -162,30 +120,8 @@ export default function Home() {
 
           {/* Results Panel */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Threats Summary */}
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-              <h2 className="text-xl font-bold mb-4">Detected Threats</h2>
-              {findings.length === 0 ? (
-                <p className="text-slate-400">No threats detected yet. Start monitoring to see results.</p>
-              ) : (
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {findings.map((finding, idx) => (
-                    <div key={idx} className="bg-slate-700 rounded p-3 border-l-4 border-red-500">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-semibold">{finding.ssid || 'Unknown SSID'}</p>
-                          <p className="text-sm text-slate-300">{finding.type} - {finding.threat || finding.reason}</p>
-                          <p className="text-xs text-slate-400">BSSID: {finding.bssid}</p>
-                        </div>
-                        <span className="text-xs bg-red-600/20 text-red-300 px-2 py-1 rounded">
-                          {finding.severity || 'Alert'}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Live AI Scan Results */}
+            <LiveScanResults techniques={techniques} />
 
             {/* Threat Catalog */}
             <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
@@ -231,4 +167,3 @@ export default function Home() {
     </div>
   );
 }
-

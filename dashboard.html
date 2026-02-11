@@ -49,6 +49,22 @@
 
         <h2>Recent Detections</h2>
         <div id="recent-logs"></div>
+
+        <div class="security-section" style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <h2>Security Settings</h2>
+            <div id="2fa-status">
+                <p>Loading 2FA status...</p>
+            </div>
+            <div id="2fa-setup-modal" style="display:none; margin-top: 20px; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                <h3>Enable Two-Factor Authentication</h3>
+                <p>1. Scan the QR code below with your authenticator app (e.g., Google Authenticator, Authy).</p>
+                <img id="2fa-qr-code" src="" alt="QR Code" style="max-width: 200px; margin: 10px auto; display: block;">
+                <p>2. Enter the 6-digit code from your app to verify and complete setup.</p>
+                <input type="text" id="2fa-verify-token" placeholder="123456" maxlength="6" style="text-align: center; font-size: 1.2em; padding: 8px; margin-right: 10px;">
+                <button id="2fa-verify-button">Verify & Enable</button>
+                <p id="2fa-setup-message" style="margin-top: 10px;"></p>
+            </div>
+        </div>
     </div>
     <script src="dashboard.js"></script>
 </body>
