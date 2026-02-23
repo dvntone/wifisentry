@@ -212,16 +212,15 @@ jobs:
           echo "body=$BODY" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.detect-version.outputs.version }}
-          release_name: WiFi Sentry v${{ needs.detect-version.outputs.version }}
-          body: | 
-            ${{ steps.notes.outputs.body }}
+          name: WiFi Sentry v${{ needs.detect-version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish release assets
         run: |

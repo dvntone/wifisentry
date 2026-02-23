@@ -112,12 +112,10 @@ Rollback to: $ROLLBACK_COMMIT"
           echo "commit=$ROLLBACK_COMMIT" >> $GITHUB_OUTPUT
 
       - name: Create rollback release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.event.inputs.rollback-version }}-hotfix
-          release_name: 🚨 Emergency Rollback to v${{ github.event.inputs.rollback-version }}
+          name: 🚨 Emergency Rollback to v${{ github.event.inputs.rollback-version }}
           body: |
             ## 🚨 Emergency Rollback
             
@@ -139,6 +137,8 @@ Rollback to: $ROLLBACK_COMMIT"
             4. Create a new patch/minor/major version
           draft: false
           prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notification
         run: |

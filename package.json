@@ -12,7 +12,7 @@
     "test": "jest --detectOpenHandles",
     "lint": "eslint . --fix",
     "web:dev": "cd web-app && npm run dev",
-    "web:build": "cd web-app && npm run build && npm run build",
+    "web:build": "cd web-app && npm run build",
     "desktop:dev": "electron desktop/main.js",
     "desktop:build-web": "cd web-app && npm run build && cd ..",
     "desktop:build": "npm run desktop:build-web && electron-builder --publish never",
