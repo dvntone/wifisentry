@@ -24,3 +24,12 @@ id = "google-api-key"
 description = "Google API key pattern"
 regex = '''AIza[0-9A-Za-z\-_]{35}'''
 tags = ["google"]
+
+[[allowlists]]
+id = "documentation-files"
+description = "Skip placeholder values in documentation and example files"
+paths = [
+    '''(?i)\.(md|txt|rst)$''',
+    '''(?i)\.env\.example$''',
+    '''(?i)\.env\.sample$''',
+]
