@@ -1,7 +1,7 @@
 package com.wifisentry.core
 
 /**
- * Heuristic threat analyser for Wi-Fi networks.
+ * Heuristic threat analyzer for Wi-Fi networks.
  *
  * All analysis is purely local; no network calls are made.
  */
