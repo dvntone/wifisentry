@@ -31,10 +31,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run linter
         run: npm run lint --if-present
@@ -60,10 +59,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build web application
         run: npm run web:build
@@ -88,10 +86,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build web assets for Electron
         run: npm run desktop:build-web
@@ -119,7 +116,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: 'npm'
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -133,7 +129,7 @@ jobs:
           api-level: 33
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build web assets
         run: npm run mobile:build
