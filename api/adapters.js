@@ -426,7 +426,7 @@ async function getAndroidAdapterStats(id) {
     id,
     signalStrength: 70,
     packetsSniffed: 10000,
-    threats detected: 3,
+    threatsDetected: 3,
   };
 }
 
