@@ -45,7 +45,6 @@ jobs:
 
       - name: Run tests
         run: npm test --if-present
-        continue-on-error: true
 
       - name: Check for security vulnerabilities
         run: npm audit --audit-level=moderate
@@ -79,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: web-app/out/
+          path: web-app/.next/
           if-no-files-found: warn
 
   build-desktop-win:

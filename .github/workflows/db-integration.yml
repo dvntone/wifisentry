@@ -7,20 +7,35 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# No secrets required: MongoDB runs as a local service container.
 permissions:
   contents: read
-  actions: read
 
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:6
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1}).ok' --quiet"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
+      # Point both env vars to the local service container so tests pass
+      # without any repository secrets.
+      MONGODB_URI_TEST: mongodb://localhost:27017/wifi-sentry-test
+      MONGODB_URI: mongodb://localhost:27017/wifi-sentry-test
       NODE_OPTIONS: --max_old_space_size=4096
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -28,40 +43,34 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: |
-          npm install
+        run: npm install
 
-      - name: Validate required secrets
+      - name: Wait for MongoDB to be ready
+        # Belt-and-suspenders: service health check above should be sufficient,
+        # but this step confirms connectivity from the job runner.
         run: |
-          node utils/validate-env.js MONGODB_URI_TEST
-        env:
-          MONGODB_URI_TEST: ${{ secrets.MONGODB_URI_TEST }}
-
-      - name: Run DB migrations (if present)
-        run: |
-          if npm run | grep -q "migrate"; then
-            echo "Running migrations"
-            npm run migrate --if-present
-          else
-            echo "No migrate script defined, skipping"
-          fi
+          echo "Verifying MongoDB connectivity..."
+          for i in $(seq 1 10); do
+            if node -e "
+              const {MongoClient}=require('mongodb');
+              MongoClient.connect(process.env.MONGODB_URI_TEST)
+                .then(c=>{c.close();process.exit(0)})
+                .catch(err=>{console.error(err.message);process.exit(1)});
+            "; then
+              echo "MongoDB is ready"
+              break
+            fi
+            echo "  attempt $i/10, retrying in 3s..."
+            sleep 3
+          done
 
       - name: Run integration tests
-        run: |
-          if npm run | grep -q "test:integration"; then
-            npm run test:integration --if-present
-          else
-            echo "No 'test:integration' script found. Running 'npm test' as fallback"
-            npm test --if-present
-          fi
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI_TEST }}
-          MONGODB_URI_TEST: ${{ secrets.MONGODB_URI_TEST }}
+        run: npm run test:integration
 
       - name: Upload test results (if any)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: integration-test-logs
-          path: |
-            test-results
+          path: test-results
+          if-no-files-found: ignore
