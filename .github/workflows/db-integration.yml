@@ -64,4 +64,4 @@ jobs:
         with:
           name: integration-test-logs
           path: |
-            test-results || echo 'no-results'
+            test-results
