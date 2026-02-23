@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Wi-Fi Sentry</string>
+    <string name="title_history">Scan History</string>
+
+    <!-- Buttons -->
+    <string name="button_scan">Scan Networks</string>
+    <string name="button_history">History</string>
+    <string name="action_settings">Settings</string>
+
+    <!-- Status labels -->
+    <string name="label_device_status">Device Status</string>
+    <string name="status_wifi_on">✓ Wi-Fi is enabled</string>
+    <string name="status_wifi_off">✗ Wi-Fi is disabled (tap to enable)</string>
+    <string name="status_permission_granted">✓ Location permission granted</string>
+    <string name="status_permission_missing">✗ Location permission not granted</string>
+    <string name="status_location_on">✓ Location services enabled</string>
+    <string name="status_location_off">✗ Location services disabled (tap to enable)</string>
+
+    <!-- Messages -->
+    <string name="empty_state_message">Tap \"Scan Networks\" to discover nearby Wi-Fi access points.</string>
+    <string name="wifi_disabled_message">Wi-Fi is disabled. Please enable it to scan.</string>
+    <string name="location_disabled_message">Location services are disabled. Enable them to allow scanning.</string>
+    <string name="permission_denied_message">Location permission is required to scan Wi-Fi networks.</string>
+
+    <!-- Network item -->
+    <string name="hidden_ssid">(Hidden network)</string>
+    <string name="security_open">Open (no encryption)</string>
+    <string name="signal_format">%d dBm</string>
+
+    <!-- Threats -->
+    <string name="threat_open">Open network</string>
+    <string name="threat_suspicious_ssid">Suspicious SSID</string>
+    <string name="threat_multiple_bssids">Multiple BSSIDs</string>
+    <string name="threat_security_change">Security changed</string>
+
+    <!-- History -->
+    <string name="history_empty">No scan history yet.</string>
+    <string name="history_summary">%1$d networks scanned · %2$d flagged</string>
+</resources>

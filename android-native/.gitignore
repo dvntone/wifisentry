@@ -1,0 +1,31 @@
+# Android build outputs
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Files for the ART/Dalvik runtime
+*.dex
+
+# Java class files
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (SDK path, etc)
+local.properties
+
+# Android Studio / IntelliJ IDEA
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
