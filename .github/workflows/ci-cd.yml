@@ -8,10 +8,14 @@ on:
       - '**.ts'
       - '**.tsx'
       - 'package.json'
+      - 'web-app/package.json'
       - '.github/workflows/ci-cd.yml'
   pull_request:
     branches: [ "main", "develop" ]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -32,7 +36,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
+      - name: Install root dependencies
         run: npm install
 
       - name: Run linter
@@ -48,7 +52,7 @@ jobs:
         continue-on-error: true
 
   build-web:
-    name: Build Web Application
+    name: Build Web Application (Next.js)
     runs-on: ubuntu-latest
     needs: test
 
@@ -60,19 +64,23 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Install dependencies
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install web-app dependencies
+        working-directory: web-app
         run: npm install
 
       - name: Build web application
-        run: npm run web:build
-        continue-on-error: true
+        working-directory: web-app
+        run: npm run build
 
-      - name: Upload build artifacts
+      - name: Upload web build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: web-app/out/
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   build-desktop-win:
     name: Build Windows Desktop (Electron)
@@ -87,25 +95,29 @@ jobs:
         with:
           node-version: '20.x'
 
-      - name: Install dependencies
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install web-app dependencies
+        working-directory: web-app
         run: npm install
 
       - name: Build web assets for Electron
-        run: npm run desktop:build-web
+        working-directory: web-app
+        run: npm run build
 
       - name: Build Windows executable
         run: npm run desktop:build-win
-        continue-on-error: true
 
       - name: Upload Windows build
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: dist/
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   build-android:
-    name: Build Android Application
+    name: Build Android Application (Capacitor/Gradle)
     runs-on: ubuntu-latest
     needs: test
 
@@ -128,28 +140,30 @@ jobs:
         with:
           api-level: 33
 
-      - name: Install Node dependencies
+      - name: Install root dependencies
+        run: npm install
+
+      - name: Install web-app dependencies
+        working-directory: web-app
         run: npm install
 
       - name: Build web assets
-        run: npm run mobile:build
-        continue-on-error: true
+        working-directory: web-app
+        run: npm run build
 
       - name: Sync Capacitor
         run: npx @capacitor/cli@latest sync
-        continue-on-error: true
 
       - name: Build Android APK
         working-directory: ./android
         run: ./gradlew assembleDebug --stacktrace
-        continue-on-error: true
 
       - name: Upload Android build
         uses: actions/upload-artifact@v4
         with:
           name: android-build
           path: android/app/build/outputs/apk/
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
   quality-gate:
     name: Quality Gate
@@ -158,22 +172,25 @@ jobs:
     if: always()
 
     steps:
-      - name: Check test results
+      - name: Check build results
         run: |
-          echo "Test Status: ${{ needs.test.result }}"
-          echo "Web Build Status: ${{ needs.build-web.result }}"
-          echo "Desktop Build Status: ${{ needs.build-desktop-win.result }}"
-          echo "Android Build Status: ${{ needs.build-android.result }}"
+          echo "Test Status:            ${{ needs.test.result }}"
+          echo "Web Build Status:       ${{ needs.build-web.result }}"
+          echo "Desktop Build Status:   ${{ needs.build-desktop-win.result }}"
+          echo "Android Build Status:   ${{ needs.build-android.result }}"
 
       - name: Fail if critical jobs failed
         if: |
-          needs.test.result == 'failure'
+          needs.test.result == 'failure' ||
+          needs.build-web.result == 'failure' ||
+          needs.build-desktop-win.result == 'failure' ||
+          needs.build-android.result == 'failure'
         run: exit 1
 
       - name: Summary
         run: |
           echo "✓ Build pipeline completed"
-          echo "Tests: ${{ needs.test.result }}"
-          echo "Web Build: ${{ needs.build-web.result }}"
-          echo "Desktop Build: ${{ needs.build-desktop-win.result }}"
-          echo "Android Build: ${{ needs.build-android.result }}"
+          echo "Tests:          ${{ needs.test.result }}"
+          echo "Web Build:      ${{ needs.build-web.result }}"
+          echo "Desktop Build:  ${{ needs.build-desktop-win.result }}"
+          echo "Android Build:  ${{ needs.build-android.result }}"
