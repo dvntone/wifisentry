@@ -14,6 +14,7 @@ import com.wifisentry.core.ScannedNetwork
 import com.wifisentry.core.ThreatAnalyzer
 import com.wifisentry.core.WifiScanner
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -50,8 +51,8 @@ class MainViewModel(
                     }
                     return@withContext
                 }
-                // Small wait to allow the system scan to complete before reading cached results
-                Thread.sleep(2000)
+                // Allow the system to complete the scan before reading cached results
+                delay(2000)
 
                 val raw = wifiScanner.getLatestResults()
                 val history = storage.loadHistory()

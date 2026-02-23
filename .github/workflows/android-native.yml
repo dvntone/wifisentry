@@ -47,6 +47,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Run unit tests
+        working-directory: android-native
+        run: ./gradlew :core:test
+
       - name: Build debug APK
         working-directory: android-native
         run: ./gradlew :app:assembleDebug --stacktrace
