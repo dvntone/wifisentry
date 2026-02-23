@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
+const mongoose = require('mongoose');
 const config = require('./config');
 const { v4: uuidv4 } = require('uuid');
 
@@ -670,6 +671,33 @@ app.get('/api/health', (req, res) => {
             threatDetection: true,
             twoFactorAuth: true
         }
+    });
+});
+
+// ============ SYSTEM STATUS ============
+
+app.get('/api/system-status', (req, res) => {
+    const dbState = mongoose.connection.readyState;
+    const dbStateMap = { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' };
+
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        version: require('./package.json').version,
+        monitoring: {
+            active: monitoringInterval !== null,
+        },
+        database: {
+            status: dbStateMap[dbState] || 'unknown',
+        },
+        services: {
+            // aiService and threatDetection are always available as in-process modules;
+            // locationTracking reflects the user's consent state.
+            aiService: true,
+            locationTracking: locationTrackingConsent,
+            threatDetection: true,
+        },
     });
 });
 
