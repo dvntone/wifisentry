@@ -78,7 +78,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: web-app/.next/
+          path: web-app/out/
           if-no-files-found: warn
 
   build-desktop-win:

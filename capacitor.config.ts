@@ -8,7 +8,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.wifisentry.app',
   appName: 'WiFi Sentry',
-  webDir: 'web-app/.next/standalone/public',
+  webDir: 'web-app/out',
   bundledWebRuntime: false,
   backgroundColor: '#000000',
   
