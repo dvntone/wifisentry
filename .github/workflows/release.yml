@@ -168,8 +168,8 @@ jobs:
       - name: Create web archive
         run: |
           cd web-app
-          tar -czf ../wifi-sentry-web-${{ github.ref_name }}.tar.gz .next/
-          zip -r ../wifi-sentry-web-${{ github.ref_name }}.zip .next/
+          tar -czf ../wifi-sentry-web-${{ github.ref_name }}.tar.gz out/
+          zip -r ../wifi-sentry-web-${{ github.ref_name }}.zip out/
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
