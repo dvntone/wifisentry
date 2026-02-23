@@ -10,10 +10,17 @@ import java.io.File
  *
  * Keeps at most [maxRecords] scan records on disk; older records are dropped
  * when the limit is exceeded.
+ *
+ * @param storageDir Directory in which the history file is stored.
+ * @param maxRecords Maximum number of scan records to retain.
  */
-class ScanStorage(context: Context, private val maxRecords: Int = MAX_RECORDS) {
+class ScanStorage(storageDir: File, private val maxRecords: Int = MAX_RECORDS) {
 
-    private val file: File = File(context.filesDir, FILE_NAME)
+    /** Convenience constructor that uses [Context.getFilesDir] as the storage directory. */
+    constructor(context: Context, maxRecords: Int = MAX_RECORDS) :
+            this(context.filesDir, maxRecords)
+
+    private val file: File = File(storageDir, FILE_NAME)
     private val gson = Gson()
 
     /** Load the persisted scan history, newest first. */
