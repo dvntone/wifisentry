@@ -54,7 +54,7 @@
     "@capacitor/core": "^6.0.0",
     "@capacitor/cli": "^6.0.0",
     "mocha": "^10.2.0",
-    "mongodb": "^5.10.0"
+    "mongodb": "^5.9.2"
   },
   "electron-builder": {
     "appId": "com.wifisentry.app",
