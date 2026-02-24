@@ -32,14 +32,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** User-selectable sort order for the All Networks list. */
-enum class SortOrder {
-    /** Flagged networks first, then by descending signal strength (default). */
-    BY_THREAT,
-    /** Strongest signal first regardless of flags. */
-    BY_SIGNAL,
-    /** Alphabetical by SSID. */
-    BY_SSID,
-}
+// NOTE: SortColumn and NetworkColumn are defined in NetworkColumn.kt
 
 class MainViewModel(
     private val wifiScanner: WifiScanner,
@@ -74,9 +67,20 @@ class MainViewModel(
     private val _distanceInFeet = MutableLiveData(false)
     val distanceInFeet: LiveData<Boolean> = _distanceInFeet
 
-    /** Current sort order for the All Networks list. */
-    private val _sortOrder = MutableLiveData(SortOrder.BY_THREAT)
-    val sortOrder: LiveData<SortOrder> = _sortOrder
+    /** Column by which the network list is currently sorted. */
+    private val _sortColumn = MutableLiveData(SortColumn.THREAT)
+    val sortColumn: LiveData<SortColumn> = _sortColumn
+
+    /** True = sort in the column's natural "ascending" direction (▲). */
+    private val _sortAscending = MutableLiveData(true)
+    val sortAscending: LiveData<Boolean> = _sortAscending
+
+    /**
+     * Which optional columns are currently visible.  SSID and Signal are always
+     * shown and are not in this set.  Both adapters observe this value.
+     */
+    private val _visibleColumns = MutableLiveData<Set<NetworkColumn>>(ALL_COLUMNS)
+    val visibleColumns: LiveData<Set<NetworkColumn>> = _visibleColumns
 
     /**
      * BSSID → manufacturer name resolved via [OuiLookup] after each scan.
@@ -90,14 +94,30 @@ class MainViewModel(
         _distanceInFeet.value = _distanceInFeet.value != true
     }
 
-    /** Cycle through the three sort orders in order. */
-    fun cycleSortOrder() {
-        val entries = SortOrder.entries
-        val next = entries[((_sortOrder.value?.ordinal ?: 0) + 1) % entries.size]
-        _sortOrder.value = next
-        // Re-sort existing list without a new scan
+    /**
+     * Set the sort column.  Tapping the same column reverses direction;
+     * tapping a new column resets to its [SortColumn.defaultAscending] direction.
+     * Mirrors WiGLE's NetworkListSorter approach but driven from column-header taps.
+     */
+    fun setSort(col: SortColumn) {
+        if (_sortColumn.value == col) {
+            _sortAscending.value = _sortAscending.value != true
+        } else {
+            _sortColumn.value  = col
+            _sortAscending.value = col.defaultAscending
+        }
+        // Re-sort existing list immediately, no new scan needed
         val current = sessionNetworks.values.toList()
         if (current.isNotEmpty()) _networks.value = sortNetworks(current)
+    }
+
+    /**
+     * Toggle the visibility of an optional column.
+     * Both adapters observe [visibleColumns] and update their item views.
+     */
+    fun toggleColumn(col: NetworkColumn) {
+        val current = _visibleColumns.value ?: ALL_COLUMNS
+        _visibleColumns.value = if (col in current) current - col else current + col
     }
 
     private val rootShellScanner = RootShellScanner()

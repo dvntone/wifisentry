@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Landscape variant of activity_main.
-  Left panel: controls (scrollable).  Right panel: stats card + two scroll boxes.
+  Left panel: controls (scrollable).  Right panel: two data panels.
   All View IDs are identical to the portrait layout so MainActivity needs no
   orientation-specific code.
 -->
@@ -133,7 +133,7 @@
                 android:ellipsize="end"
                 android:textColor="?attr/colorPrimary" />
 
-            <!-- Stats card (in left panel for landscape) -->
+            <!-- Stats card (left panel in landscape) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_stats"
                 android:layout_width="match_parent"
@@ -162,18 +162,6 @@
                             android:text="@string/label_stats_title"
                             android:textStyle="bold"
                             android:textSize="12sp" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/button_sort"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:minHeight="0dp"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="3dp"
-                            android:textSize="10sp"
-                            android:layout_marginEnd="4dp"
-                            android:text="@string/button_sort_threat" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/button_distance_unit"
@@ -219,31 +207,121 @@
         android:layout_height="match_parent"
         android:background="?android:attr/listDivider" />
 
-    <!-- ── RIGHT PANEL: two scroll boxes (fills remaining width) ─────────── -->
+    <!-- ── RIGHT PANEL: two data panels ─────────────────────────────────── -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="6"
         android:orientation="vertical">
 
-        <!-- All Networks section (weight = 1) -->
+        <!-- All Networks section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/text_all_networks_header"
+            <!-- Compound section header: title + ⋮ -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="10dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="10dp"
+                android:paddingEnd="4dp"
                 android:paddingTop="6dp"
-                android:paddingBottom="2dp"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:textColor="?attr/colorPrimary"
-                android:text="@string/label_all_networks_header_zero" />
+                android:paddingBottom="2dp">
+
+                <TextView
+                    android:id="@+id/text_all_networks_header"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary"
+                    android:text="@string/label_all_networks_header_zero" />
+
+                <ImageButton
+                    android:id="@+id/button_all_columns_menu"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_more_vert"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/col_menu_content_desc"
+                    android:tint="?attr/colorPrimary" />
+            </LinearLayout>
+
+            <!-- Sticky column-header bar -->
+            <LinearLayout
+                android:id="@+id/layout_col_headers"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="4dp"
+                android:background="?attr/colorSurfaceVariant">
+
+                <TextView
+                    android:id="@+id/text_col_threat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:minWidth="48dp"
+                    android:gravity="center_vertical"
+                    android:paddingEnd="4dp"
+                    android:text="@string/col_threat"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground" />
+
+                <TextView
+                    android:id="@+id/text_col_ssid"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center_vertical"
+                    android:text="@string/col_ssid"
+                    android:textSize="10sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground" />
+
+                <TextView
+                    android:id="@+id/text_col_signal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:minWidth="48dp"
+                    android:gravity="center"
+                    android:text="@string/col_signal"
+                    android:textSize="10sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground" />
+
+                <TextView
+                    android:id="@+id/text_col_channel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:minWidth="40dp"
+                    android:gravity="center"
+                    android:text="@string/col_channel"
+                    android:textSize="10sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_networks"
@@ -261,24 +339,43 @@
             android:layout_marginHorizontal="8dp"
             android:background="?android:attr/listDivider" />
 
-        <!-- Threats Detected section (weight = 1) -->
+        <!-- Threats Detected section -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/text_threats_header"
+            <!-- Compound section header: title + ⋮ -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="10dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="10dp"
+                android:paddingEnd="4dp"
                 android:paddingTop="6dp"
-                android:paddingBottom="2dp"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:textColor="@color/status_error"
-                android:text="@string/label_threats_header_zero" />
+                android:paddingBottom="2dp">
+
+                <TextView
+                    android:id="@+id/text_threats_header"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/status_error"
+                    android:text="@string/label_threats_header_zero" />
+
+                <ImageButton
+                    android:id="@+id/button_threats_columns_menu"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_more_vert"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/col_menu_content_desc"
+                    android:tint="@color/status_error" />
+            </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_threats"

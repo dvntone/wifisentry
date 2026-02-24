@@ -111,6 +111,23 @@ object WifiDisplayUtils {
         }
     }
 
+    // ── Channel label ─────────────────────────────────────────────────────
+
+    /**
+     * Compact channel label combining channel number and band, e.g. "ch6 · 2.4 GHz".
+     * Mirrors WiGLE's `chan_freq_string` column which shows e.g. "2437MHz".
+     * Returns an empty string when the frequency is outside known Wi-Fi bands.
+     */
+    fun channelLabel(freqMhz: Int): String {
+        val ch   = frequencyToChannel(freqMhz)
+        val band = frequencyToBand(freqMhz)
+        return when {
+            ch > 0 && band.isNotEmpty() -> "ch$ch · $band"
+            ch > 0                      -> "ch$ch"
+            else                        -> ""
+        }
+    }
+
     // ── Distance estimation ───────────────────────────────────────────────
 
     /**
