@@ -51,6 +51,12 @@ class ThreatAnalyzer(
             if (isBeaconFlood(network, networks, knownBssids)) {
                 threats += ThreatType.BEACON_FLOOD
             }
+            if (isInconsistentCapabilities(network)) {
+                threats += ThreatType.INCONSISTENT_CAPABILITIES
+            }
+            if (isBssidNearClone(network, networks, knownBssids)) {
+                threats += ThreatType.BSSID_NEAR_CLONE
+            }
 
             network.copy(threats = threats)
         }
@@ -270,6 +276,108 @@ class ThreatAnalyzer(
         return "${parts[0]}:${parts[1]}:${parts[2]}"
     }
 
+    /**
+     * True when the AP's advertised Wi-Fi standard is physically incompatible
+     * with its operating frequency.  Only two combinations are physically
+     * impossible on real hardware — everything else is left unflagged:
+     *
+     * 1. 2.4 GHz band + Wi-Fi 5 (802.11ac): 802.11ac is a 5 GHz–only
+     *    specification.  An AP beacon on 2.4 GHz cannot legitimately claim it.
+     * 2. 6 GHz band (5925–7125 MHz) + any standard older than Wi-Fi 6: the
+     *    6 GHz band was introduced exclusively for 802.11ax (Wi-Fi 6E) and
+     *    802.11be (Wi-Fi 7); older standards cannot operate there.
+     *
+     * These mismatches indicate a software-defined rogue AP fabricating its
+     * capability advertisement (Pineapple, Marauder, hostapd-wpe).
+     */
+    private fun isInconsistentCapabilities(network: ScannedNetwork): Boolean {
+        val std  = network.wifiStandard
+        val freq = network.frequency
+        if (std == WIFI_STANDARD_UNKNOWN) return false   // no data — do not flag
+
+        // Rule 1: Wi-Fi 5 (802.11ac) is 5 GHz–only; impossible on 2.4 GHz.
+        if (freq in 2400..2499 && std == WIFI_STANDARD_11AC) return true
+
+        // Rule 2: 6 GHz band is Wi-Fi 6E/7 only; pre–Wi-Fi 6 standards cannot appear here.
+        if (freq in 5925..7125 && std != WIFI_STANDARD_11AX && std != WIFI_STANDARD_11BE) return true
+
+        return false
+    }
+
+    /**
+     * True when this AP's BSSID shares the same first four octets as another
+     * AP in the scan with the same SSID, yet the last two octets differ — a
+     * near-clone BSSID.
+     *
+     * Legitimate dual-band routers do use sequential MACs across bands (e.g.
+     * 5f:5f:f4:66:aa on 2.4 GHz, 5f:5f:f4:66:ab on 5 GHz), so the near-clone
+     * pattern alone is NOT flagged.  Flagging only occurs when one of these
+     * unambiguously threat-indicative conditions is true:
+     *
+     * 1. Same frequency band: two near-identical BSSIDs on the SAME band for
+     *    the same SSID.  A real dual-band router always places its radios on
+     *    different bands; same-band near-clones are physically impossible for
+     *    legitimate hardware and indicate a rogue copy.
+     *
+     * 2. Cross-band + new BSSID: the near-clone BSSID is brand-new (absent
+     *    from all prior scan history) while the matching peer BSSID WAS already
+     *    known.  This is the rogue-insertion pattern — an attacker introduces
+     *    a spoofed "other-band" entry alongside an established legitimate AP.
+     *    NOT triggered on the first scan (no history → no baseline) to avoid
+     *    false-positives for legitimate dual-band routers seen for the first time.
+     */
+    private fun isBssidNearClone(
+        network: ScannedNetwork,
+        currentScan: List<ScannedNetwork>,
+        knownBssids: Set<String>
+    ): Boolean {
+        if (network.ssid.isBlank() || network.bssid.isBlank()) return false
+        val myPrefix = first4Octets(network.bssid) ?: return false
+        val myBand   = bandOf(network.frequency)
+
+        val peers = currentScan.filter { other ->
+            other.bssid != network.bssid &&
+            other.ssid  == network.ssid  &&
+            first4Octets(other.bssid) == myPrefix
+        }
+        if (peers.isEmpty()) return false
+
+        for (peer in peers) {
+            // Condition 1: same-band near-clone — always a threat.
+            if (myBand != 0 && bandOf(peer.frequency) == myBand) return true
+
+            // Condition 2: cross-band, but this BSSID is new while the peer was known.
+            // Both new (first scan) and both known (stable router) are NOT flagged.
+            if (knownBssids.isNotEmpty() &&
+                peer.bssid in knownBssids &&
+                network.bssid !in knownBssids) return true
+        }
+        return false
+    }
+
+    /**
+     * Returns the first four colon-separated octets of a BSSID as a prefix
+     * string, or null if the BSSID is malformed.  Used for near-clone detection.
+     */
+    private fun first4Octets(bssid: String): String? {
+        val parts = bssid.split(":")
+        if (parts.size != 6) return null
+        val hexOctet = Regex("^[0-9A-Fa-f]{2}$")
+        if (parts.any { !it.matches(hexOctet) }) return null
+        return "${parts[0]}:${parts[1]}:${parts[2]}:${parts[3]}"
+    }
+
+    /**
+     * Returns the nominal frequency band for a channel centre frequency in MHz:
+     * 2 = 2.4 GHz, 5 = 5 GHz, 6 = 6 GHz (Wi-Fi 6E/7), 0 = unknown / other.
+     */
+    private fun bandOf(frequency: Int): Int = when {
+        frequency in 2400..2499 -> 2
+        frequency in 4900..5924 -> 5
+        frequency in 5925..7125 -> 6
+        else                    -> 0
+    }
+
     companion object {
         private const val DEFAULT_RECENT_WINDOW_MS = 10L * 60 * 1000 // 10 minutes
 
@@ -282,6 +390,9 @@ class ThreatAnalyzer(
         /** Minimum new BSSIDs from one OUI in a single scan to flag as a beacon flood. */
         private const val BEACON_FLOOD_THRESHOLD = 4
 
+        // "test" and "probe" were intentionally excluded: as substrings they match far too many
+        // legitimate SSIDs ("TestNetwork", "ContestWifi", "ProbeStreet") with no meaningful
+        // signal gain for Marauder/Pineapple detection.
         val DEFAULT_SUSPICIOUS_KEYWORDS = listOf(
             "free", "guest", "public", "open", "hack", "evil", "pineapple",
             "starbucks", "airport", "hotel", "setup",

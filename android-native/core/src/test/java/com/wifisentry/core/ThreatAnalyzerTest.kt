@@ -24,14 +24,17 @@ class ThreatAnalyzerTest {
         bssid: String = "00:11:22:33:44:55",  // globally-administered by default
         capabilities: String = "[WPA2-PSK-CCMP][ESS]",
         rssi: Int = -60,
+        frequency: Int = 2412,                // 2.4 GHz by default
+        wifiStandard: Int = WIFI_STANDARD_UNKNOWN,
         threats: List<ThreatType> = emptyList()
     ) = ScannedNetwork(
         ssid = ssid,
         bssid = bssid,
         capabilities = capabilities,
         rssi = rssi,
-        frequency = 2412,
+        frequency = frequency,
         timestamp = System.currentTimeMillis(),
+        wifiStandard = wifiStandard,
         threats = threats
     )
 
@@ -440,5 +443,110 @@ class ThreatAnalyzerTest {
         val scan = bssids.mapIndexed { i, b -> network(ssid = "Known${i + 1}", bssid = b) }
         val result = analyzer.analyze(scan, history)
         assertFalse(result.any { it.threats.contains(ThreatType.BEACON_FLOOD) })
+    }
+
+    // ── INCONSISTENT_CAPABILITIES ─────────────────────────────────────────
+    // Only physically impossible combinations are flagged — nothing plausible.
+
+    @Test
+    fun `2dot4 GHz + Wi-Fi 5 (11ac) flagged as inconsistent (11ac is 5 GHz-only)`() {
+        val n = network(frequency = 2412, wifiStandard = WIFI_STANDARD_11AC)
+        val result = analyzer.analyze(listOf(n), emptyList())
+        assertTrue(result.first().threats.contains(ThreatType.INCONSISTENT_CAPABILITIES))
+    }
+
+    @Test
+    fun `5 GHz + Wi-Fi 5 (11ac) NOT flagged (valid combination)`() {
+        val n = network(frequency = 5180, wifiStandard = WIFI_STANDARD_11AC)
+        val result = analyzer.analyze(listOf(n), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.INCONSISTENT_CAPABILITIES))
+    }
+
+    @Test
+    fun `2dot4 GHz + Wi-Fi 6 (11ax) NOT flagged (Wi-Fi 6 is valid on 2dot4 GHz)`() {
+        val n = network(frequency = 2412, wifiStandard = WIFI_STANDARD_11AX)
+        val result = analyzer.analyze(listOf(n), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.INCONSISTENT_CAPABILITIES))
+    }
+
+    @Test
+    fun `6 GHz band + Wi-Fi 4 (11n) flagged as inconsistent (6 GHz is Wi-Fi 6E or 7 only)`() {
+        val n = network(frequency = 5955, wifiStandard = WIFI_STANDARD_11N)
+        val result = analyzer.analyze(listOf(n), emptyList())
+        assertTrue(result.first().threats.contains(ThreatType.INCONSISTENT_CAPABILITIES))
+    }
+
+    @Test
+    fun `6 GHz band + Wi-Fi 6 (11ax) NOT flagged (valid combination)`() {
+        val n = network(frequency = 5955, wifiStandard = WIFI_STANDARD_11AX)
+        val result = analyzer.analyze(listOf(n), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.INCONSISTENT_CAPABILITIES))
+    }
+
+    // ── BSSID_NEAR_CLONE ──────────────────────────────────────────────────
+    // Flagged ONLY on unambiguous threat patterns; legitimate dual-band routers
+    // are explicitly NOT flagged.
+
+    @Test
+    fun `same SSID, same first-4 octets, same band flagged as near-clone (rogue copy)`() {
+        // Both on 2.4 GHz — a real dual-band router would use different bands.
+        val scan = listOf(
+            network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AA:00", frequency = 2412),
+            network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AB:00", frequency = 2437)
+        )
+        val result = analyzer.analyze(scan, emptyList())
+        assertTrue(result.all { it.threats.contains(ThreatType.BSSID_NEAR_CLONE) })
+    }
+
+    @Test
+    fun `same SSID, same first-4 octets, different bands, both new — NOT flagged (legitimate dual-band router, first scan)`() {
+        // Normal router first seen: 2.4 GHz + 5 GHz, sequential MACs. Must not flag.
+        val scan = listOf(
+            network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AA:00", frequency = 2412),
+            network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AB:00", frequency = 5180)
+        )
+        val result = analyzer.analyze(scan, emptyList())
+        assertFalse(result.any { it.threats.contains(ThreatType.BSSID_NEAR_CLONE) })
+    }
+
+    @Test
+    fun `same SSID, same first-4 octets, different bands, both already known — NOT flagged (stable dual-band router)`() {
+        // Router seen many times — both BSSIDs in history. Suppress false positive.
+        val legit24 = network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AA:00", frequency = 2412)
+        val legit5  = network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AB:00", frequency = 5180)
+        val result = analyzer.analyze(listOf(legit24, legit5), recentHistory(legit24, legit5))
+        assertFalse(result.any { it.threats.contains(ThreatType.BSSID_NEAR_CLONE) })
+    }
+
+    @Test
+    fun `same SSID, same first-4 octets, different bands, peer known but this BSSID new — flagged (rogue insertion)`() {
+        // Attacker sees existing 2.4 GHz BSSID :AA and creates rogue :AB on 5 GHz.
+        val known24 = network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AA:00", frequency = 2412)
+        val rogue5  = network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AB:00", frequency = 5180)
+        // Only the 2.4 GHz BSSID is in history; the 5 GHz one is brand new.
+        val result = analyzer.analyze(listOf(known24, rogue5), recentHistory(known24))
+        assertTrue(result.find { it.bssid == rogue5.bssid }!!.threats.contains(ThreatType.BSSID_NEAR_CLONE))
+    }
+
+    @Test
+    fun `different SSIDs with same first-4 BSSID octets NOT flagged`() {
+        // ISP AP and neighbour AP that share the same vendor OUI prefix — not a threat.
+        val scan = listOf(
+            network(ssid = "Net1", bssid = "5F:5F:F4:66:AA:00", frequency = 2412),
+            network(ssid = "Net2", bssid = "5F:5F:F4:66:AB:00", frequency = 2412)
+        )
+        val result = analyzer.analyze(scan, emptyList())
+        assertFalse(result.any { it.threats.contains(ThreatType.BSSID_NEAR_CLONE) })
+    }
+
+    @Test
+    fun `same SSID, completely different BSSID prefixes NOT flagged`() {
+        // Two APs for same SSID (mesh extenders) with totally different MACs — normal.
+        val scan = listOf(
+            network(ssid = "HomeNet", bssid = "5F:5F:F4:66:AA:00", frequency = 2412),
+            network(ssid = "HomeNet", bssid = "AA:BB:CC:DD:EE:FF", frequency = 5180)
+        )
+        val result = analyzer.analyze(scan, emptyList())
+        assertFalse(result.any { it.threats.contains(ThreatType.BSSID_NEAR_CLONE) })
     }
 }

@@ -78,4 +78,6 @@ private fun ThreatType.displayName(ctx: Context): String = when (this) {
     ThreatType.SUSPICIOUS_SIGNAL_STRENGTH -> ctx.getString(R.string.threat_suspicious_signal)
     ThreatType.MULTI_SSID_SAME_OUI -> ctx.getString(R.string.threat_multi_ssid_same_oui)
     ThreatType.BEACON_FLOOD -> ctx.getString(R.string.threat_beacon_flood)
+    ThreatType.INCONSISTENT_CAPABILITIES -> ctx.getString(R.string.threat_inconsistent_capabilities)
+    ThreatType.BSSID_NEAR_CLONE -> ctx.getString(R.string.threat_bssid_near_clone)
 }

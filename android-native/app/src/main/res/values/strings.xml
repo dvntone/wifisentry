@@ -38,6 +38,8 @@
     <string name="threat_suspicious_signal">Suspiciously strong signal</string>
     <string name="threat_multi_ssid_same_oui">Beacon spam (multi-SSID same radio)</string>
     <string name="threat_beacon_flood">Beacon flood (AP list spam)</string>
+    <string name="threat_inconsistent_capabilities">Impossible protocol/band combo</string>
+    <string name="threat_bssid_near_clone">BSSID near-clone (same-band or rogue insertion)</string>
 
     <!-- History -->
     <string name="history_empty">No scan history yet.</string>
