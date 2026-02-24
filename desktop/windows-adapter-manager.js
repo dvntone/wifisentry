@@ -9,7 +9,7 @@ const os = require('os');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const execAsync = promisify(exec);
-const WindowsWSL2AdapterManager = require('./windows-wsl2-adapter-manager');
+const WindowsCaptureManager = require('./windows-capture-manager');
 
 class WindowsAdapterManager {
   constructor() {
@@ -17,7 +17,7 @@ class WindowsAdapterManager {
     this.selectedAdapter = null;
     this.refreshInterval = null;
     this.lastRefresh = null;
-    this.wsl2Manager = new WindowsWSL2AdapterManager();
+    this.captureManager = new WindowsCaptureManager();
     this.supportsAdvancedModes = false;
     this.monitorMode = false;
     this.promiscuousMode = false;
@@ -382,23 +382,13 @@ class WindowsAdapterManager {
   }
 
   /**
-   * Enable Monitor Mode via WSL2 (advanced packet sniffing)
-   * Requires WSL2 with aircrack-ng or similar tools installed
-   * @param {string} interfaceName - Network interface to enable monitor mode on
-   * @param {string} method - Method to use: 'aircrack', 'iw', 'iwconfig'
+   * Enable Monitor Mode via the unified capture manager (Npcap, WSL2, or vendor driver)
+   * @param {string} interfaceName - Network interface name
+   * @param {string} [method] - Optional WSL2 sub-method: 'aircrack' | 'iw' | 'iwconfig'
    */
   async enableMonitorMode(interfaceName, method = 'aircrack') {
     try {
-      if (!this.wsl2Manager.wsl2Available) {
-        throw new Error(
-          'WSL2 not available. Please install WSL2 and required tools (aircrack-ng, tcpdump)'
-        );
-      }
-
-      const result = await this.wsl2Manager.enableMonitorMode(
-        interfaceName,
-        method
-      );
+      const result = await this.captureManager.enableMonitorMode(interfaceName, method);
       this.monitorMode = true;
       return result;
     } catch (error) {
@@ -408,16 +398,13 @@ class WindowsAdapterManager {
   }
 
   /**
-   * Disable Monitor Mode via WSL2
-   * @param {string} interfaceName - Network interface to disable monitor mode on
-   * @param {string} method - Method used to enable monitor mode
+   * Disable Monitor Mode via the unified capture manager
+   * @param {string} interfaceName - Network interface name
+   * @param {string} [method] - WSL2 sub-method used during enable
    */
   async disableMonitorMode(interfaceName, method = 'aircrack') {
     try {
-      const result = await this.wsl2Manager.disableMonitorMode(
-        interfaceName,
-        method
-      );
+      const result = await this.captureManager.disableMonitorMode(interfaceName, method);
       this.monitorMode = false;
       return result;
     } catch (error) {
@@ -427,23 +414,13 @@ class WindowsAdapterManager {
   }
 
   /**
-   * Start Promiscuous Mode Packet Capture via WSL2
-   * Used for capturing unencrypted WiFi traffic
-   * @param {string} interfaceName - Network interface to capture on
+   * Start packet capture via the unified capture manager
+   * @param {string} interfaceName - Network interface name
    * @param {object} options - Capture options
    */
   async startPromiscuousCapture(interfaceName, options = {}) {
     try {
-      if (!this.wsl2Manager.wsl2Available) {
-        throw new Error(
-          'WSL2 not available. Please install WSL2 and tcpdump or tshark'
-        );
-      }
-
-      const result = await this.wsl2Manager.startPromiscuousCapture(
-        interfaceName,
-        options
-      );
+      const result = await this.captureManager.startCapture(interfaceName, options);
       this.promiscuousMode = true;
       return result;
     } catch (error) {
@@ -453,12 +430,12 @@ class WindowsAdapterManager {
   }
 
   /**
-   * Stop Promiscuous Mode Capture
+   * Stop packet capture
    * @param {string} processId - Process identifier from startPromiscuousCapture
    */
   async stopPromiscuousCapture(processId) {
     try {
-      const result = await this.wsl2Manager.stopPromiscuousCapture(processId);
+      const result = await this.captureManager.stopCapture(processId);
       this.promiscuousMode = false;
       return result;
     } catch (error) {
@@ -468,12 +445,12 @@ class WindowsAdapterManager {
   }
 
   /**
-   * Analyze captured packet file
+   * Analyse a captured packet file
    * @param {string} captureFile - Path to PCAP capture file
    */
   async analyzeCaptureFile(captureFile) {
     try {
-      return await this.wsl2Manager.analyzeCaptureFile(captureFile);
+      return await this.captureManager.analyzeCaptureFile(captureFile);
     } catch (error) {
       console.error('[Windows] Analysis error:', error.message);
       throw error;
@@ -481,36 +458,31 @@ class WindowsAdapterManager {
   }
 
   /**
-   * Get available monitors mode adapters (via WSL2)
+   * Get available monitor mode adapters across all backends
    */
   async getMonitorModeAdapters() {
     try {
-      return await this.wsl2Manager.getMonitorModeAdapters();
+      return await this.captureManager.npcap.listInterfaces();
     } catch (error) {
       console.error('[Windows] Error getting monitor adapters:', error.message);
-      return {
-        available: false,
-        adapters: [],
-        error: error.message,
-      };
+      return { available: false, adapters: [], error: error.message };
     }
   }
 
   /**
-   * Get system capabilities for advanced modes
+   * Get capabilities across all capture backends (Npcap, WSL2, AirPcap, vendor)
    */
   async getCapabilities() {
     try {
-      const capabilities = await this.wsl2Manager.getCapabilities();
-      this.supportsAdvancedModes =
-        capabilities.capabilities.monitorMode ||
-        capabilities.capabilities.promiscuousMode;
+      const caps = await this.captureManager.getCapabilities();
+      this.supportsAdvancedModes = Object.values(caps.backends)
+        .some(b => b.available && b.monitorMode);
 
       return {
         platform: 'Windows',
         adapters: this.adapters,
         activeAdapter: this.selectedAdapter,
-        wsl2: capabilities,
+        captureBackends: caps,
         currentModes: {
           monitorMode: this.monitorMode,
           promiscuousMode: this.promiscuousMode,
@@ -526,17 +498,47 @@ class WindowsAdapterManager {
   }
 
   /**
-   * Get setup instructions for advanced modes
+   * Get setup instructions for monitor mode across all backends
    */
   async getSetupInstructions() {
     try {
-      return await this.wsl2Manager.installRequiredTools();
+      return await this.captureManager.getSetupInstructions();
     } catch (error) {
       console.error('[Windows] Error getting setup instructions:', error.message);
-      return {
-        error: error.message,
-      };
+      return { error: error.message };
     }
+  }
+
+  /**
+   * Get all available capture backends with their status
+   */
+  async getCaptureBackends() {
+    return this.captureManager.getCapabilities();
+  }
+
+  /**
+   * Set the preferred capture backend
+   * @param {'auto'|'npcap'|'wsl2'|'airpcap'|'vendor'} backend
+   */
+  setCaptureBackend(backend) {
+    return this.captureManager.setCaptureBackend(backend);
+  }
+
+  /**
+   * Set the 802.11 channel on a monitor-mode interface (Npcap backend only)
+   * @param {string} interfaceName
+   * @param {number} channel
+   */
+  async setChannel(interfaceName, channel) {
+    return this.captureManager.setChannel(interfaceName, channel);
+  }
+
+  /**
+   * Get supported channels for an interface
+   * @param {string} interfaceName
+   */
+  async getSupportedChannels(interfaceName) {
+    return this.captureManager.getSupportedChannels(interfaceName);
   }
 }
 

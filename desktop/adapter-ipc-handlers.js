@@ -49,9 +49,9 @@ ipcMain.handle('get-active-adapter', async (event) => {
 /**
  * Select adapter for use
  */
-ipcMain.handle('select-adapter', async (event, adapterName) => {
+ipcMain.handle('select-adapter', async (event, { name }) => {
   try {
-    const adapter = adapterManager.setActiveAdapter(adapterName);
+    const adapter = adapterManager.setActiveAdapter(name);
     return {
       success: true,
       message: `Switched to ${adapter.name}`,
