@@ -68,12 +68,16 @@ class MainActivity : AppCompatActivity() {
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
+    private val requestNearbyWifiPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         NotificationHelper.createChannel(this)
+        requestNearbyWifiPermissionIfNeeded()
         requestNotificationPermissionIfNeeded()
         requestLocationPermissionIfNeeded()
 
@@ -316,6 +320,23 @@ class MainActivity : AppCompatActivity() {
                     requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
                 .setNegativeButton(R.string.perm_notif_skip, null)
+                .show()
+        }
+    }
+
+    /** Show a nearby-Wi-Fi-devices permission rationale dialog on Android 13+. */
+    private fun requestNearbyWifiPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.perm_nearby_wifi_title)
+                .setMessage(R.string.perm_nearby_wifi_message)
+                .setPositiveButton(R.string.perm_nearby_wifi_allow) { _, _ ->
+                    requestNearbyWifiPermission.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+                }
+                .setNegativeButton(R.string.perm_nearby_wifi_skip, null)
                 .show()
         }
     }

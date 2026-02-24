@@ -28,7 +28,11 @@ class WifiScanner(context: Context) {
     @Suppress("DEPRECATION")
     fun startScan(): Boolean {
         if (!wifiManager.isWifiEnabled) return false
-        return wifiManager.startScan()
+        return try {
+            wifiManager.startScan()
+        } catch (e: SecurityException) {
+            false
+        }
     }
 
     /**

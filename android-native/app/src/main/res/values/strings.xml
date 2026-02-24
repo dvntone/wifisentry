@@ -59,6 +59,12 @@
     <string name="history_empty">No scan history yet.</string>
     <string name="history_summary">%1$d networks scanned · %2$d flagged</string>
 
+    <!-- Permission rationale for nearby Wi-Fi devices (Android 13+) -->
+    <string name="perm_nearby_wifi_title">Wi-Fi Scanning Permission Required</string>
+    <string name="perm_nearby_wifi_message">Wi-Fi Sentry needs the Nearby Devices permission to initiate Wi-Fi scans on Android 13 and above. Scan data is analyzed locally and never uploaded.</string>
+    <string name="perm_nearby_wifi_allow">Grant Permission</string>
+    <string name="perm_nearby_wifi_skip">Not Now</string>
+
     <!-- Permission rationale for notifications -->
     <string name="perm_notif_title">Enable Threat Alerts</string>
     <string name="perm_notif_message">Wi-Fi Sentry can notify you when threats are detected during monitoring. Tap Allow on the next screen to enable these alerts.</string>
