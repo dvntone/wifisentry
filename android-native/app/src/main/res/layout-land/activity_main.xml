@@ -263,59 +263,119 @@
                 android:paddingEnd="4dp"
                 android:background="?attr/colorSurfaceVariant">
 
-                <TextView
-                    android:id="@+id/text_col_threat"
+                <!-- Threat column -->
+                <LinearLayout
+                    android:id="@+id/layout_col_threat"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
+                    android:orientation="vertical"
                     android:minWidth="48dp"
-                    android:gravity="center_vertical"
-                    android:paddingEnd="4dp"
-                    android:text="@string/col_threat"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:gravity="center_horizontal"
                     android:clickable="true"
                     android:focusable="true"
-                    android:background="?attr/selectableItemBackground" />
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_threat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingHorizontal="4dp"
+                        android:text="@string/col_threat"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_threat"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
 
-                <TextView
-                    android:id="@+id/text_col_ssid"
+                <!-- SSID column (takes remaining width) -->
+                <LinearLayout
+                    android:id="@+id/layout_col_ssid"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:gravity="center_vertical"
-                    android:text="@string/col_ssid"
-                    android:textSize="10sp"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:orientation="vertical"
                     android:clickable="true"
                     android:focusable="true"
-                    android:background="?attr/selectableItemBackground" />
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_ssid"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="4dp"
+                        android:text="@string/col_ssid"
+                        android:textSize="10sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_ssid"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
 
-                <TextView
-                    android:id="@+id/text_col_signal"
+                <!-- Signal column -->
+                <LinearLayout
+                    android:id="@+id/layout_col_signal"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
+                    android:orientation="vertical"
                     android:minWidth="48dp"
-                    android:gravity="center"
-                    android:text="@string/col_signal"
-                    android:textSize="10sp"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:gravity="center_horizontal"
                     android:clickable="true"
                     android:focusable="true"
-                    android:background="?attr/selectableItemBackground" />
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_signal"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="@string/col_signal"
+                        android:textSize="10sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_signal"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
 
-                <TextView
-                    android:id="@+id/text_col_channel"
+                <!-- Channel column -->
+                <LinearLayout
+                    android:id="@+id/layout_col_channel"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
+                    android:orientation="vertical"
                     android:minWidth="40dp"
-                    android:gravity="center"
-                    android:text="@string/col_channel"
-                    android:textSize="10sp"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:gravity="center_horizontal"
                     android:clickable="true"
                     android:focusable="true"
-                    android:background="?attr/selectableItemBackground" />
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_channel"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="@string/col_channel"
+                        android:textSize="10sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_channel"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
             </LinearLayout>
 
             <View
