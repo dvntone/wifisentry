@@ -17,6 +17,8 @@ jobs:
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.version.outputs.VERSION }}
 
     steps:
       - uses: actions/checkout@v4
@@ -184,28 +186,50 @@ jobs:
   publish-notification:
     name: Publish Release Notification
     runs-on: ubuntu-latest
-    needs: [build-windows-release, build-android-release, build-web-release]
+    needs: [create-release, build-windows-release, build-android-release, build-web-release]
     if: always()
 
     steps:
-      - name: Check Release Status
+      - name: Determine release URL
+        id: release_url
         run: |
-          echo "## Release Build Summary"
-          echo "Windows: ${{ needs.build-windows-release.result }}"
-          echo "Android: ${{ needs.build-android-release.result }}"
-          echo "Web: ${{ needs.build-web-release.result }}"
+          VERSION="${{ needs.create-release.outputs.VERSION }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "URL=${{ github.server_url }}/${{ github.repository }}/releases/tag/${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Get Version
-        id: version
+      - name: Write release summary
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          WINDOWS="${{ needs.build-windows-release.result }}"
+          ANDROID="${{ needs.build-android-release.result }}"
+          WEB="${{ needs.build-web-release.result }}"
+          VERSION="${{ steps.release_url.outputs.VERSION }}"
+          RELEASE_URL="${{ steps.release_url.outputs.URL }}"
 
-      - name: Create Success Badge
-        if: success()
-        run: |
-          echo "✅ WiFi Sentry ${{ steps.version.outputs.VERSION }} released successfully!"
-          echo "Platform builds:"
-          echo "- Windows Desktop: ${{ needs.build-windows-release.result }}"
-          echo "- Android Mobile: ${{ needs.build-android-release.result }}"
-          echo "- Web PWA: ${{ needs.build-web-release.result }}"
+          status_icon() { [ "$1" = "success" ] && echo "✅" || echo "❌"; }
+
+          ALL_OK="true"
+          [ "$WINDOWS" != "success" ] && ALL_OK="false"
+          [ "$ANDROID" != "success" ] && ALL_OK="false"
+          [ "$WEB"     != "success" ] && ALL_OK="false"
+
+          if [ "$ALL_OK" = "true" ]; then
+            echo "## ✅ WiFi Sentry ${VERSION} Released" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "All platform builds succeeded. The release is ready to download." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## ⚠️ WiFi Sentry ${VERSION} — Partial Release" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "One or more platform builds did not succeed. Check the jobs above for details." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**[🔗 View GitHub Release](${RELEASE_URL})**" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Windows Desktop (Electron x64) | $(status_icon $WINDOWS) ${WINDOWS} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Android Mobile (dev release APK) | $(status_icon $ANDROID) ${ANDROID} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Web PWA | $(status_icon $WEB) ${WEB} |" >> "$GITHUB_STEP_SUMMARY"
