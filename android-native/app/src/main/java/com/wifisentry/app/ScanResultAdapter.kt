@@ -67,7 +67,7 @@ class ScanResultAdapter :
                 secLabel == "WEP (insecure)" -> ContextCompat.getColor(ctx, R.color.badge_wep)
                 else                         -> ContextCompat.getColor(ctx, R.color.badge_open)
             }
-            (textBadge.background as? android.graphics.drawable.GradientDrawable)
+            (textBadge.background.mutate() as? android.graphics.drawable.GradientDrawable)
                 ?.setColor(badgeColor)
 
             if (network.isFlagged) {

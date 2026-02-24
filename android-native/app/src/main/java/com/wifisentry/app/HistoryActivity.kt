@@ -90,7 +90,13 @@ class HistoryActivity : AppCompatActivity() {
             ExportFormat.M8B   -> Spec(buildM8b(history),   "wifisentry_m8b.tsv",   "text/tab-separated-values", getString(R.string.export_m8b_hint))
         }
 
-        val exportDir = File(cacheDir, "exports").also { it.mkdirs() }
+        val exportDir = File(cacheDir, "exports")
+        if (!exportDir.exists() && !exportDir.mkdirs()) {
+            com.google.android.material.snackbar.Snackbar
+                .make(binding.recyclerHistory, "Export failed: could not create export directory", com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                .show()
+            return
+        }
         val file = File(exportDir, spec.fileName)
         file.writeText(spec.content)
 
@@ -169,7 +175,8 @@ class HistoryActivity : AppCompatActivity() {
                     if (n.bssid.isBlank() || !seen.add(n.bssid)) continue
                     val ssid = n.ssid.replace("\"", "\"\"")
                     val auth = n.capabilities.replace("\"", "\"\"")
-                    val ch   = WifiDisplayUtils.frequencyToChannel(n.frequency).coerceAtLeast(0)
+                    val ch   = WifiDisplayUtils.frequencyToChannel(n.frequency)
+                    if (ch < 0) continue  // skip networks with unrecognised frequency
                     appendLine("${n.bssid},\"$ssid\",\"$auth\",$ts,$ch,${n.rssi},0.0,0.0,0.0,0.0,WIFI")
                 }
             }
@@ -252,22 +259,27 @@ private class HistoryAdapter(
             val band = WifiDisplayUtils.frequencyToBand(network.frequency)
             val ch   = WifiDisplayUtils.frequencyToChannel(network.frequency)
             val flag = if (network.isFlagged) "  ⚠" else ""
+            val scale = ctx.resources.displayMetrics.density
 
+            val rowText = "• $ssid  ${network.rssi} dBm  $sec  $band ch$ch$flag"
             val row = TextView(ctx).apply {
-                text = "• $ssid  ${network.rssi} dBm  $sec  $band ch$ch$flag"
+                text = rowText
+                contentDescription = rowText
                 textSize = 12f
-                setPadding(0, 4, 0, 2)
+                setPadding(0, (4 * scale + 0.5f).toInt(), 0, (2 * scale + 0.5f).toInt())
                 if (network.isFlagged) setTextColor(ctx.getColor(R.color.status_error))
             }
             container.addView(row)
 
             if (network.isFlagged && network.threats.isNotEmpty()) {
+                val threatText = network.threats.joinToString(" · ") { t ->
+                    t.name.lowercase().replace('_', ' ')
+                }
                 val threats = TextView(ctx).apply {
-                    text = "  " + network.threats.joinToString(" · ") { t ->
-                        t.name.lowercase().replace('_', ' ')
-                    }
+                    text = "  $threatText"
+                    contentDescription = "Threats: $threatText"
                     textSize = 11f
-                    setPadding(16, 0, 0, 4)
+                    setPadding((16 * scale + 0.5f).toInt(), 0, 0, (4 * scale + 0.5f).toInt())
                     setTextColor(ctx.getColor(R.color.status_error))
                     alpha = 0.75f
                 }

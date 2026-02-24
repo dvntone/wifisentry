@@ -266,7 +266,12 @@ class MainViewModel(
 
     companion object {
         private const val SCAN_TIMEOUT_MS        = 10_000L
-        /** Reduced from 30 s to 10 s for a live wardriving feel (WiGLE default is ~6–15 s). */
+        /**
+         * 10 s is intentional for the live wardriving feel (WiGLE uses ~6–15 s).
+         * Android 9+ throttles to 4 scans / 2 min from the foreground; cached
+         * results are returned when throttled so battery impact is bounded.
+         * Consider exposing this as a user preference in a future settings screen.
+         */
         private const val MONITORING_INTERVAL_MS = 10_000L
         /** Delay between each network appearing in the list — creates a live discovery animation. */
         private const val STREAM_DELAY_MS        = 35L
