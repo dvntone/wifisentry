@@ -56,18 +56,23 @@ class MainViewModel(
     var onThreatsFound: ((flaggedCount: Int, totalCount: Int) -> Unit)? = null
 
     private var monitoringJob: Job? = null
-    // Plain field (not LiveData) so it is safe to read from IO dispatcher.
     private var continuousMonitoringActive = false
+
+    /**
+     * Networks accumulated across multiple monitoring scans, keyed by BSSID (or
+     * "anon:<ssid>" for networks with no hardware address).  Cleared when monitoring
+     * stops or a fresh one-shot scan begins.  Mirrors WiGLE's ConcurrentLinkedHashMap
+     * approach: each new network is appended once and never removed during a session.
+     */
+    private val sessionNetworks = LinkedHashMap<String, ScannedNetwork>()
 
     // ── public API ────────────────────────────────────────────────────────
 
-    /** Run a single on-demand scan. */
     fun scan(context: Context) {
         if (_isScanning.value == true) return
         viewModelScope.launch { doScan(context) }
     }
 
-    /** Begin periodic automatic scanning every [MONITORING_INTERVAL_MS] ms. */
     fun startContinuousMonitoring(context: Context) {
         if (continuousMonitoringActive) return
         continuousMonitoringActive = true
@@ -80,12 +85,12 @@ class MainViewModel(
         }
     }
 
-    /** Stop periodic scanning. */
     fun stopContinuousMonitoring() {
         monitoringJob?.cancel()
         monitoringJob = null
         continuousMonitoringActive = false
         _isMonitoring.value = false
+        sessionNetworks.clear()
     }
 
     // ── internal scan logic ───────────────────────────────────────────────
@@ -98,44 +103,107 @@ class MainViewModel(
         // 1. Trigger WiFi scan; await SCAN_RESULTS_AVAILABLE_ACTION broadcast.
         val raw = scanWithReceiver(context)
 
-        // 2. Root-enhanced frame capture + history load + threat analysis on IO.
+        // 2. Root frame capture + history load + threat analysis on IO.
         val analysed = withContext(Dispatchers.IO) {
             val rootData = if (RootChecker.isRooted && continuousMonitoringActive) {
                 rootShellScanner.scan()
             } else {
                 RootScanData()
             }
-            val history  = storage.loadHistory()
-            val result   = threatAnalyzer.analyze(raw, history, rootData)
+            val history = storage.loadHistory()
+            val result  = threatAnalyzer.analyze(raw, history, rootData)
             if (result.isNotEmpty()) {
                 storage.appendRecord(ScanRecord(System.currentTimeMillis(), result))
             }
             result
         }
 
-        // 3. Publish results on Main.
+        // 3. Stream results into the UI one-by-one (WiGLE addWiFi pattern).
+        if (continuousMonitoringActive) {
+            streamMonitoringResults(analysed)
+        } else {
+            streamOneShotResults(analysed)
+        }
+
+        // 4. Publish final status.
         val flagged = analysed.count { it.isFlagged }
-        _networks.value   = analysed
         _scanStatus.value = buildStatusString(analysed.size, flagged)
         if (analysed.isEmpty()) {
-            _scanError.value =
-                "No networks found. Ensure location services are enabled and try again."
+            _scanError.value = "No networks found. Ensure location services are enabled and try again."
         }
         _isScanning.value = false
-
         if (flagged > 0) onThreatsFound?.invoke(flagged, analysed.size)
     }
 
     /**
+     * One-shot scan: clear session state, stream every network in sorted by RSSI
+     * descending (strongest signal = most interesting = appears first, like WiGLE).
+     * ListAdapter's DiffUtil animates each insertion automatically.
+     */
+    private suspend fun streamOneShotResults(analysed: List<ScannedNetwork>) {
+        sessionNetworks.clear()
+        val byRssi = analysed.sortedByDescending { it.rssi }
+        val visible = mutableListOf<ScannedNetwork>()
+        for (network in byRssi) {
+            sessionNetworks[networkKey(network)] = network
+            visible.add(network)
+            _networks.value  = visible.toList()
+            _scanStatus.value = "Scanning\u2026 ${visible.size} / ${analysed.size} found"
+            delay(STREAM_DELAY_MS)
+        }
+        // Final sort: flagged networks float to the top (devsec priority)
+        _networks.value = sortNetworks(analysed)
+    }
+
+    /**
+     * Monitoring mode: update existing entries (RSSI may have changed) and stream
+     * only brand-new networks into the list, again sorted strongest-first.
+     * Known networks are kept in the live list so the session view grows over time.
+     */
+    private suspend fun streamMonitoringResults(analysed: List<ScannedNetwork>) {
+        val priorKeys = sessionNetworks.keys.toSet()
+
+        // Update all entries (refreshes RSSI on existing items)
+        analysed.forEach { n -> sessionNetworks[networkKey(n)] = n }
+
+        val newNetworks = analysed
+            .filter { networkKey(it) !in priorKeys }
+            .sortedByDescending { it.rssi }
+
+        val flagged = sessionNetworks.values.count { it.isFlagged }
+
+        if (newNetworks.isEmpty()) {
+            // Just refresh the list to reflect updated RSSIs
+            _networks.value = sortNetworks(sessionNetworks.values)
+            return
+        }
+
+        // Build the base without new arrivals, then append them one by one
+        val base = sortNetworks(sessionNetworks.filter { (k, _) -> k in priorKeys }.values)
+            .toMutableList()
+        for (n in newNetworks) {
+            base.add(n)
+            _networks.value  = sortNetworks(base)
+            _scanStatus.value = "\u25CF LIVE \u00B7 ${sessionNetworks.size} unique \u00B7 $flagged flagged"
+            delay(STREAM_DELAY_MS)
+        }
+        _networks.value = sortNetworks(sessionNetworks.values)
+    }
+
+    // ── helpers ───────────────────────────────────────────────────────────
+
+    private fun networkKey(n: ScannedNetwork): String =
+        if (n.bssid.isNotBlank()) n.bssid else "anon:${n.ssid}"
+
+    private fun sortNetworks(networks: Iterable<ScannedNetwork>): List<ScannedNetwork> =
+        networks.sortedWith(
+            compareByDescending<ScannedNetwork> { it.isFlagged }
+                .thenByDescending { it.rssi }
+        )
+
+    /**
      * Trigger a hardware scan and suspend until the system broadcasts
-     * [WifiManager.SCAN_RESULTS_AVAILABLE_ACTION] or [SCAN_TIMEOUT_MS] elapses.
-     *
-     * Must be called from the Main dispatcher so that the [BroadcastReceiver]
-     * is registered and delivered on the correct thread.
-     *
-     * Falls back to [WifiScanner.getLatestResults] (cached results) when:
-     * - Scan is throttled ([WifiManager.startScan] returns false on Android 9+)
-     * - The broadcast does not arrive within the timeout
+     * SCAN_RESULTS_AVAILABLE_ACTION or SCAN_TIMEOUT_MS elapses.
      */
     private suspend fun scanWithReceiver(context: Context): List<ScannedNetwork> {
         val deferred = CompletableDeferred<List<ScannedNetwork>>()
@@ -158,7 +226,6 @@ class MainViewModel(
         val started = withContext(Dispatchers.IO) { wifiScanner.startScan() }
 
         if (!started) {
-            // Throttled or Wi-Fi off — unregister and return cached results immediately.
             try { context.unregisterReceiver(receiver) } catch (_: Exception) {}
             return withContext(Dispatchers.IO) { wifiScanner.getLatestResults() }
         }
@@ -172,8 +239,13 @@ class MainViewModel(
 
     private fun buildStatusString(total: Int, flagged: Int): String {
         if (total == 0) return ""
-        val rootTag = if (RootChecker.isRooted) " · root+" else ""
-        return "Found $total network(s) · $flagged flagged$rootTag"
+        val rootTag = if (RootChecker.isRooted) " \u00B7 root+" else ""
+        return if (continuousMonitoringActive) {
+            val unique = sessionNetworks.size
+            "\u25CF LIVE \u00B7 $unique unique \u00B7 $flagged flagged$rootTag"
+        } else {
+            "Found $total network(s) \u00B7 $flagged flagged$rootTag"
+        }
     }
 
     // ── convenience helpers used by Activity ─────────────────────────────
@@ -189,13 +261,19 @@ class MainViewModel(
     fun isLocationEnabled(context: Context): Boolean {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         return lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+               lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
     }
 
     companion object {
-        /** Milliseconds to wait for SCAN_RESULTS_AVAILABLE_ACTION before falling back. */
         private const val SCAN_TIMEOUT_MS        = 10_000L
-        /** Milliseconds between automatic scans during continuous monitoring. */
-        private const val MONITORING_INTERVAL_MS = 30_000L
+        /**
+         * 10 s is intentional for the live wardriving feel (WiGLE uses ~6–15 s).
+         * Android 9+ throttles to 4 scans / 2 min from the foreground; cached
+         * results are returned when throttled so battery impact is bounded.
+         * Consider exposing this as a user preference in a future settings screen.
+         */
+        private const val MONITORING_INTERVAL_MS = 10_000L
+        /** Delay between each network appearing in the list — creates a live discovery animation. */
+        private const val STREAM_DELAY_MS        = 35L
     }
 }

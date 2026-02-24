@@ -11,4 +11,11 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="signal_good">#388E3C</color>
+    <color name="signal_fair">#F57C00</color>
+    <color name="signal_weak">#D32F2F</color>
+    <color name="badge_open">#D32F2F</color>
+    <color name="badge_wep">#E65100</color>
+    <color name="badge_wpa">#1565C0</color>
+    <color name="badge_wpa3">#2E7D32</color>
 </resources>

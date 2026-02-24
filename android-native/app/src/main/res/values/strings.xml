@@ -58,4 +58,53 @@
     <!-- History -->
     <string name="history_empty">No scan history yet.</string>
     <string name="history_summary">%1$d networks scanned · %2$d flagged</string>
+
+    <!-- Permission rationale for notifications -->
+    <string name="perm_notif_title">Enable Threat Alerts</string>
+    <string name="perm_notif_message">Wi-Fi Sentry can notify you when threats are detected during monitoring. Tap Allow on the next screen to enable these alerts.</string>
+    <string name="perm_notif_allow">Allow</string>
+    <string name="perm_notif_skip">Skip</string>
+
+    <!-- Network detail dialog -->
+    <string name="dialog_network_detail_title">Network Details</string>
+    <string name="dialog_close">Close</string>
+    <string name="detail_label_ssid">Network: %s</string>
+    <string name="detail_label_bssid">Address: %s</string>
+    <string name="detail_label_signal">Signal: %d dBm (%s)</string>
+    <string name="detail_label_band">Band: %s  Channel: %d</string>
+    <string name="detail_label_security">Security: %s</string>
+    <string name="detail_threats_header">\nDetected Threats:\n</string>
+
+    <!-- Per-threat plain-English descriptions (one sentence, non-technical) -->
+    <string name="threat_detail_open_network">This network has no password, so anyone nearby can see your internet traffic.</string>
+    <string name="threat_detail_suspicious_ssid">The network name matches patterns commonly used by fake or rogue hotspots.</string>
+    <string name="threat_detail_multiple_bssids">Multiple devices are broadcasting the same network name, which can indicate a rogue duplicate access point.</string>
+    <string name="threat_detail_security_change">This network\'s security settings changed since you last saw it, which may mean it was tampered with.</string>
+    <string name="threat_detail_evil_twin">An open hotspot is impersonating a network you\'ve seen as password-protected before — a classic fake-access-point trick.</string>
+    <string name="threat_detail_mac_spoofing">The router\'s hardware address looks artificially generated rather than from a real manufacturer.</string>
+    <string name="threat_detail_suspicious_signal">This brand-new network has an unusually strong signal, suggesting a rogue device nearby may be impersonating a legitimate hotspot.</string>
+    <string name="threat_detail_multi_ssid_same_oui">One device is broadcasting many different network names at once, a technique used by rogue hotspot attack tools.</string>
+    <string name="threat_detail_beacon_flood">A burst of new networks appeared from the same device, which matches a known Wi-Fi flooding attack signature.</string>
+    <string name="threat_detail_inconsistent_capabilities">This network claims a Wi-Fi standard that cannot operate on its channel — a sign the beacon may be forged by rogue software.</string>
+    <string name="threat_detail_bssid_near_clone">This router\'s hardware address is nearly identical to another nearby network, suggesting it may be a rogue copy.</string>
+    <string name="threat_detail_wps_vulnerable">This network has WPS enabled, a feature attackers can exploit to crack the password without knowing it.</string>
+    <string name="threat_detail_channel_shift">This router was previously seen on a different frequency band, suggesting a rogue device may be impersonating it.</string>
+    <string name="threat_detail_deauth_flood">Unusual disconnect signals were detected, a technique attackers use to force your device off a real network onto a fake one.</string>
+    <string name="threat_detail_probe_response_anomaly">A hidden device is responding to any network name your phone searches for, which is the defining signature of rogue hotspot tools.</string>
+
+    <!-- History export -->
+    <string name="button_export">⬆ Export History</string>
+    <string name="export_dialog_title">Export Format</string>
+    <string name="export_format_csv">CSV — spreadsheet / import</string>
+    <string name="export_format_text">Plain text — human-readable</string>
+    <string name="export_format_wigle">WiGLE CSV v1.4 — upload to wigle.net</string>
+    <string name="export_format_m8b">m8b input — MAC · LAT · LON lookup table</string>
+    <string name="export_share_subject">Wi-Fi Sentry Scan Export</string>
+    <string name="export_chooser_title">Share scan export…</string>
+    <string name="export_wigle_hint">To upload: visit wigle.net → sign in → Upload → choose this file.</string>
+    <string name="export_m8b_hint">m8b input format (MAC TAB LAT TAB LON). Coordinates are 0.0 — GPS support coming soon.</string>
+
+    <!-- History expand/collapse -->
+    <string name="history_expand">Expand scan record</string>
+    <string name="history_tap_hint">Tap to expand</string>
 </resources>

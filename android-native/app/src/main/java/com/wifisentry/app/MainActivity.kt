@@ -14,10 +14,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.wifisentry.app.databinding.ActivityMainBinding
 import com.wifisentry.core.ScanStorage
+import com.wifisentry.core.ScannedNetwork
 import com.wifisentry.core.ThreatAnalyzer
+import com.wifisentry.core.WifiDisplayUtils
 import com.wifisentry.core.WifiScanner
 
 class MainActivity : AppCompatActivity() {
@@ -56,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         requestNotificationPermissionIfNeeded()
 
         adapter = ScanResultAdapter()
+        adapter.onNetworkClick = { network -> showNetworkDetailDialog(network) }
         binding.recyclerNetworks.layoutManager = LinearLayoutManager(this)
         binding.recyclerNetworks.adapter = adapter
 
@@ -202,11 +206,44 @@ class MainActivity : AppCompatActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED
         ) {
-            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.perm_notif_title)
+                .setMessage(R.string.perm_notif_message)
+                .setPositiveButton(R.string.perm_notif_allow) { _, _ ->
+                    requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                .setNegativeButton(R.string.perm_notif_skip, null)
+                .show()
         }
     }
 
     private fun showSnackbar(resId: Int) {
         Snackbar.make(binding.root, resId, Snackbar.LENGTH_LONG).show()
+    }
+
+    private fun showNetworkDetailDialog(network: ScannedNetwork) {
+        val ssid     = network.ssid.ifBlank { getString(R.string.hidden_ssid) }
+        val security = WifiDisplayUtils.capabilitiesToSecurityLabel(network.capabilities)
+        val band     = WifiDisplayUtils.frequencyToBand(network.frequency)
+        val channel  = WifiDisplayUtils.frequencyToChannel(network.frequency)
+        val rssiLabel = WifiDisplayUtils.rssiToLabel(network.rssi)
+
+        val sb = StringBuilder()
+        sb.appendLine(getString(R.string.detail_label_ssid, ssid))
+        sb.appendLine(getString(R.string.detail_label_bssid, network.bssid))
+        sb.appendLine(getString(R.string.detail_label_signal, network.rssi, rssiLabel))
+        if (band.isNotBlank()) sb.appendLine(getString(R.string.detail_label_band, band, channel))
+        sb.appendLine(getString(R.string.detail_label_security, security))
+        sb.append(getString(R.string.detail_threats_header))
+        network.threats.forEach { threat ->
+            sb.appendLine("• ${threat.displayName(this)}")
+            sb.appendLine("  ${threat.detailDescription(this)}")
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dialog_network_detail_title)
+            .setMessage(sb.toString().trimEnd())
+            .setPositiveButton(R.string.dialog_close, null)
+            .show()
     }
 }

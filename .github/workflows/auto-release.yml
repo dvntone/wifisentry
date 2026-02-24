@@ -85,13 +85,6 @@ jobs:
             echo ""
             echo ""
             
-            # File changes summary
-            echo "### 📁 Files Changed"
-            echo ""
-            git diff --stat $(git rev-list -n 1 v$PREV_VERSION 2>/dev/null || git rev-list --max-count=1)..HEAD 2>/dev/null || git diff --stat HEAD~50..HEAD
-            echo ""
-            echo ""
-            
             # Categorize commits
             echo "### 🔀 Commit Categories"
             echo ""
@@ -244,18 +237,26 @@ jobs:
     steps:
       - name: Release Summary
         run: |
-          echo "═════════════════════════════════════════════════════════"
-          echo "🎉 RELEASE AUTOMATION COMPLETE"
-          echo "═════════════════════════════════════════════════════════"
-          echo ""
-          echo "📦 Version: v${{ needs.detect-version.outputs.version }}"
-          echo "📍 Status: ✅ Published"
-          echo ""
-          echo "📂 Available at:"
-          echo "   • Release: https://github.com/${{ github.repository }}/releases/tag/v${{ needs.detect-version.outputs.version }}"
-          echo "   • Backup Branch: release/v${{ needs.detect-version.outputs.version }}"
-          echo "   • Main Branch: Always latest code"
-          echo ""
-          echo "⏮️  Previous Version: v${{ needs.detect-version.outputs.previous-version }}"
-          echo ""
-          echo "═════════════════════════════════════════════════════════"
+          VERSION="v${{ needs.detect-version.outputs.version }}"
+          PREV_VERSION="v${{ needs.detect-version.outputs.previous-version }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${VERSION}"
+          PUBLISH_RESULT="${{ needs.publish-release.result }}"
+
+          if [ "$PUBLISH_RESULT" = "success" ]; then
+            echo "## ✅ WiFi Sentry ${VERSION} Released" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Release automation completed successfully." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## ⚠️ WiFi Sentry ${VERSION} — Release Issue" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The release job did not succeed. Check the jobs above for details." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**[🔗 View GitHub Release](${RELEASE_URL})**" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Previous version | \`${PREV_VERSION}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| New version | \`${VERSION}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backup branch | \`release/${VERSION}\` |" >> "$GITHUB_STEP_SUMMARY"

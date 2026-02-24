@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Muted dark-amber so flagged cards don't appear white-on-white in dark mode -->
+    <color name="flag_background">#3E2A00</color>
+</resources>
