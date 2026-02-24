@@ -39,13 +39,13 @@ class ThreatAnalyzer(
             if (isEvilTwin(network, history)) {
                 threats += ThreatType.EVIL_TWIN
             }
-            if (isMacSpoofingSuspected(network)) {
+            if (isMacSpoofingSuspected(network, knownBssids)) {
                 threats += ThreatType.MAC_SPOOFING_SUSPECTED
             }
             if (isSuspiciousSignalStrength(network, knownBssids)) {
                 threats += ThreatType.SUSPICIOUS_SIGNAL_STRENGTH
             }
-            if (hasMultipleSsidsFromSameOui(network, networks)) {
+            if (hasMultipleSsidsFromSameOui(network, networks, knownBssids)) {
                 threats += ThreatType.MULTI_SSID_SAME_OUI
             }
             if (isBeaconFlood(network, networks, knownBssids)) {
@@ -157,18 +157,28 @@ class ThreatAnalyzer(
 
     /**
      * True when the BSSID has the locally-administered bit set (first-octet
-     * bit 1 = 1, mask 0x02).
+     * bit 1 = 1, mask 0x02) AND the BSSID has not been seen in any prior scan.
      *
      * Every legitimate Wi-Fi AP ships with a globally-administered MAC address
      * assigned by its manufacturer.  A locally-administered BSSID indicates a
      * software-defined radio, a virtualised AP, or a deliberately spoofed MAC —
      * all common in rogue-AP and evil-twin toolkits.
+     *
+     * However, enterprise Wi-Fi controllers (Cisco WLC, Aruba, Meraki) legitimately
+     * assign locally-administered BSSIDs to create AP pools.  These produce a stable
+     * BSSID that persists across scans.  To suppress that false positive, we only
+     * flag a locally-administered MAC when it is brand new — not yet present in any
+     * prior scan history.  A rogue device will always appear as new; a known
+     * enterprise AP will be suppressed after the first scan.
      */
-    private fun isMacSpoofingSuspected(network: ScannedNetwork): Boolean {
+    private fun isMacSpoofingSuspected(network: ScannedNetwork, knownBssids: Set<String>): Boolean {
         // toIntOrNull(16) parses the hex octet string (e.g. "02") as base-16 without a "0x" prefix.
         val firstOctet = network.bssid.split(":").firstOrNull()?.toIntOrNull(16) ?: return false
         // Bit 1 (second-least-significant bit, mask 0x02) is the locally-administered flag.
-        return (firstOctet and 0x02) != 0
+        if ((firstOctet and 0x02) == 0) return false
+        // Suppress if this BSSID has been seen before — it is a known, stable enterprise AP.
+        if (knownBssids.isNotEmpty() && network.bssid in knownBssids) return false
+        return true
     }
 
     /**
@@ -192,7 +202,8 @@ class ThreatAnalyzer(
 
     /**
      * True when five or more distinct SSIDs are advertised by APs that share
-     * the same hardware OUI (first three BSSID octets) within the current scan.
+     * the same hardware OUI (first three BSSID octets) within the current scan,
+     * AND at least one of those same-OUI BSSIDs is not yet present in history.
      *
      * A home or office router may legitimately serve 2–4 SSIDs from a single
      * radio (main 2.4 GHz, main 5 GHz, guest 2.4 GHz, guest 5 GHz).  Five or
@@ -200,19 +211,27 @@ class ThreatAnalyzer(
      * of a Wi-Fi Pineapple running Karma mode or Wi-Fi Marauder's beacon-spam
      * "ap list" command, which floods the air with many virtual SSIDs.
      *
+     * The history guard suppresses false positives from stable enterprise
+     * deployments: an enterprise controller that has advertised 5+ SSIDs under
+     * one OUI for multiple scans will have all its BSSIDs in history and will
+     * not be re-flagged.  A Marauder attack always introduces new BSSIDs.
+     *
      * Note: on non-rooted Android we observe beacon/probe-response frames only;
      * actual probe-request frames from client STAs require monitor mode (root).
      */
     private fun hasMultipleSsidsFromSameOui(
         network: ScannedNetwork,
-        currentScan: List<ScannedNetwork>
+        currentScan: List<ScannedNetwork>,
+        knownBssids: Set<String>
     ): Boolean {
         val oui = ouiOf(network.bssid) ?: return false
-        val ssids = currentScan
-            .filter { ouiOf(it.bssid) == oui && it.ssid.isNotBlank() }
-            .map { it.ssid }
-            .toSet()
-        return ssids.size >= MULTI_SSID_OUI_THRESHOLD
+        val sameOuiNetworks = currentScan.filter { ouiOf(it.bssid) == oui && it.ssid.isNotBlank() }
+        val ssids = sameOuiNetworks.map { it.ssid }.toSet()
+        if (ssids.size < MULTI_SSID_OUI_THRESHOLD) return false
+        // Suppress if every BSSID in this OUI group was already known from history —
+        // it is a stable, previously-observed deployment, not an active attack.
+        if (knownBssids.isNotEmpty() && sameOuiNetworks.all { it.bssid in knownBssids }) return false
+        return true
     }
 
     /**
@@ -265,8 +284,8 @@ class ThreatAnalyzer(
 
         val DEFAULT_SUSPICIOUS_KEYWORDS = listOf(
             "free", "guest", "public", "open", "hack", "evil", "pineapple",
-            "test", "starbucks", "airport", "hotel", "setup",
-            "karma", "rogue", "probe", "pentest", "kali"
+            "starbucks", "airport", "hotel", "setup",
+            "karma", "rogue", "pentest", "kali"
         )
     }
 }

@@ -35,6 +35,14 @@ class ThreatAnalyzerTest {
         threats = threats
     )
 
+    private fun recentHistory(vararg networks: ScannedNetwork): List<ScanRecord> =
+        listOf(ScanRecord(System.currentTimeMillis() - RECENT_MS, networks.toList()))
+
+    companion object {
+        /** A history timestamp safely inside the 10-minute recent window. */
+        private const val RECENT_MS = 60_000L
+    }
+
     // ── OPEN_NETWORK ───────────────────────────────────────────────────────
 
     @Test
@@ -73,6 +81,18 @@ class ThreatAnalyzerTest {
     fun `SSID keyword match is case-insensitive`() {
         val result = analyzer.analyze(listOf(network(ssid = "EVIL_TWIN")), emptyList())
         assertTrue(result.first().threats.contains(ThreatType.SUSPICIOUS_SSID))
+    }
+
+    @Test
+    fun `SSID containing 'test' substring not flagged as suspicious (keyword removed)`() {
+        val result = analyzer.analyze(listOf(network(ssid = "TestNetwork")), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.SUSPICIOUS_SSID))
+    }
+
+    @Test
+    fun `SSID containing 'probe' substring not flagged as suspicious (keyword removed)`() {
+        val result = analyzer.analyze(listOf(network(ssid = "ProbeStreetWifi")), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.SUSPICIOUS_SSID))
     }
 
     @Test
@@ -252,10 +272,18 @@ class ThreatAnalyzerTest {
     // ── MAC_SPOOFING_SUSPECTED ────────────────────────────────────────────
 
     @Test
-    fun `locally-administered BSSID flagged as suspected MAC spoofing`() {
-        // 0x02 = 0000 0010: bit 1 (locally-administered flag, mask 0x02) is set
+    fun `locally-administered BSSID not in history flagged as suspected MAC spoofing`() {
+        // No prior history — brand-new LA BSSID (e.g. fresh Marauder/Pineapple AP) must be flagged.
         val result = analyzer.analyze(listOf(network(bssid = "02:00:00:00:00:01")), emptyList())
         assertTrue(result.first().threats.contains(ThreatType.MAC_SPOOFING_SUSPECTED))
+    }
+
+    @Test
+    fun `locally-administered BSSID already in history NOT flagged (stable enterprise AP)`() {
+        // LA BSSID present in prior scan → Cisco/Aruba enterprise controller; suppress false positive.
+        val bssid = "02:AA:BB:CC:DD:EE"
+        val result = analyzer.analyze(listOf(network(bssid = bssid)), recentHistory(network(bssid = bssid)))
+        assertFalse(result.first().threats.contains(ThreatType.MAC_SPOOFING_SUSPECTED))
     }
 
     @Test
@@ -312,6 +340,27 @@ class ThreatAnalyzerTest {
     // Detects: Pineapple Karma mode / Wi-Fi Marauder SSID list spam.
     // On non-rooted Android we see beacon/probe-response frames only; actual
     // probe-REQUEST traffic from client STAs requires monitor mode (root).
+
+    @Test
+    fun `five SSIDs from same OUI with all BSSIDs already in history NOT flagged (stable enterprise)`() {
+        // Enterprise controller with 5 SSIDs, all BSSIDs previously scanned → suppress false positive.
+        val bssids = (1..5).map { i -> "AA:BB:CC:00:00:0$i" }
+        val historicNets = bssids.mapIndexed { i, b -> network(ssid = "CorpSSID${i + 1}", bssid = b) }
+        val scan = bssids.mapIndexed { i, b -> network(ssid = "CorpSSID${i + 1}", bssid = b) }
+        val result = analyzer.analyze(scan, recentHistory(*historicNets.toTypedArray()))
+        assertFalse(result.any { it.threats.contains(ThreatType.MULTI_SSID_SAME_OUI) })
+    }
+
+    @Test
+    fun `five SSIDs from same OUI with one new BSSID still flagged (active Marauder attack)`() {
+        // Four known + one brand-new BSSID from same OUI → Marauder added a new AP → still flag.
+        val knownBssids = (1..4).map { i -> "AA:BB:CC:00:00:0$i" }
+        val historicNets = knownBssids.mapIndexed { i, b -> network(ssid = "Corp${i + 1}", bssid = b) }
+        val scan = knownBssids.mapIndexed { i, b -> network(ssid = "Corp${i + 1}", bssid = b) } +
+                listOf(network(ssid = "RogueSSID", bssid = "AA:BB:CC:00:00:09"))
+        val result = analyzer.analyze(scan, recentHistory(*historicNets.toTypedArray()))
+        assertTrue(result.any { it.threats.contains(ThreatType.MULTI_SSID_SAME_OUI) })
+    }
 
     @Test
     fun `five distinct SSIDs from same OUI flagged as multi-SSID spam`() {
