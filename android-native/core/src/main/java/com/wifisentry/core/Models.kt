@@ -13,6 +13,10 @@ const val WIFI_STANDARD_11BE    = 8  // Wi-Fi 7  (2.4, 5, and 6 GHz)
 
 /**
  * Represents a single scanned Wi-Fi network with threat analysis results.
+ *
+ * GPS fields use [Double.NaN] as a sentinel for "no fix available" so that
+ * old serialised records (which lack these fields) deserialise cleanly.
+ * Check [hasGpsFix] before using [latitude] / [longitude].
  */
 data class ScannedNetwork(
     val ssid: String,
@@ -22,11 +26,39 @@ data class ScannedNetwork(
     val frequency: Int,
     val timestamp: Long,
     val wifiStandard: Int = WIFI_STANDARD_UNKNOWN,
-    val threats: List<ThreatType> = emptyList()
+    val threats: List<ThreatType> = emptyList(),
+    /** WGS-84 latitude in decimal degrees, or [Double.NaN] when no GPS fix was available. */
+    val latitude: Double = Double.NaN,
+    /** WGS-84 longitude in decimal degrees, or [Double.NaN] when no GPS fix was available. */
+    val longitude: Double = Double.NaN,
+    /** Altitude above sea level in metres, or [Double.NaN] when not available. */
+    val altitude: Double = Double.NaN,
+    /** Horizontal accuracy radius in metres, or [Float.NaN] when not available. */
+    val gpsAccuracy: Float = Float.NaN,
 ) {
     val isFlagged: Boolean get() = threats.isNotEmpty()
     val isOpen: Boolean get() = !capabilities.contains("WPA") && !capabilities.contains("WEP") && !capabilities.contains("SAE")
+    /** True when a valid GPS fix is stored on this record. */
+    val hasGpsFix: Boolean get() = latitude.isFinite() && longitude.isFinite()
 }
+
+/**
+ * Aggregated scan statistics shown in the stats panel.
+ */
+data class ScanStats(
+    /** Networks found in the most-recent one-shot scan (or current monitoring batch). */
+    val totalThisScan: Int = 0,
+    /** Flagged networks in the most-recent scan. */
+    val threatsThisScan: Int = 0,
+    /** Unique networks accumulated across the current monitoring session. */
+    val sessionUnique: Int = 0,
+    /** Flagged networks in the current session. */
+    val sessionThreats: Int = 0,
+    /** Total networks stored across all scan history. */
+    val totalAllTime: Int = 0,
+    /** Total flagged networks stored across all scan history. */
+    val threatsAllTime: Int = 0,
+)
 
 /**
  * Types of threats that can be detected for a Wi-Fi network.

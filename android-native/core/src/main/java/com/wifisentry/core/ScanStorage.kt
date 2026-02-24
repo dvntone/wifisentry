@@ -58,7 +58,12 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
         val rssi: Int,
         val frequency: Int,
         val timestamp: Long,
-        val threats: List<String>
+        val threats: List<String>,
+        // GPS fields — default NaN so old JSON files without these fields still load.
+        val latitude: Double = Double.NaN,
+        val longitude: Double = Double.NaN,
+        val altitude: Double = Double.NaN,
+        val gpsAccuracy: Float = Float.NaN,
     ) {
         fun toModel() = ScannedNetwork(
             ssid = ssid,
@@ -67,7 +72,11 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
             rssi = rssi,
             frequency = frequency,
             timestamp = timestamp,
-            threats = threats.mapNotNull { runCatching { ThreatType.valueOf(it) }.getOrNull() }
+            threats = threats.mapNotNull { runCatching { ThreatType.valueOf(it) }.getOrNull() },
+            latitude = latitude,
+            longitude = longitude,
+            altitude = altitude,
+            gpsAccuracy = gpsAccuracy,
         )
 
         companion object {
@@ -78,7 +87,11 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
                 rssi = n.rssi,
                 frequency = n.frequency,
                 timestamp = n.timestamp,
-                threats = n.threats.map { it.name }
+                threats = n.threats.map { it.name },
+                latitude = n.latitude,
+                longitude = n.longitude,
+                altitude = n.altitude,
+                gpsAccuracy = n.gpsAccuracy,
             )
         }
     }

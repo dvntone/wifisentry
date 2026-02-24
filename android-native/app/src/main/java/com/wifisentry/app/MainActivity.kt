@@ -26,7 +26,10 @@ import com.wifisentry.core.WifiScanner
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    /** Adapter for the "All Networks" scroll box. */
     private lateinit var adapter: ScanResultAdapter
+    /** Adapter for the "Threats Detected" scroll box. */
+    private lateinit var threatAdapter: ScanResultAdapter
 
     private val viewModel: MainViewModel by viewModels {
         object : ViewModelProvider.Factory {
