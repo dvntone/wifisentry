@@ -229,6 +229,15 @@ jobs:
           echo "🔗 Backup branch: release/v${{ needs.detect-version.outputs.version }}"
           echo "🏷️  Tag: v${{ needs.detect-version.outputs.version }}"
 
+  build-release-artifacts:
+    name: Build and attach release artifacts
+    needs: [detect-version, publish-release]
+    if: needs.detect-version.outputs.version-changed == 'true'
+    uses: ./.github/workflows/release.yml
+    with:
+      version: v${{ needs.detect-version.outputs.version }}
+    secrets: inherit
+
   notify-release:
     needs: [detect-version, publish-release]
     runs-on: ubuntu-latest
