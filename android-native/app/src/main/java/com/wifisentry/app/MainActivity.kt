@@ -1,7 +1,9 @@
 package com.wifisentry.app
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
@@ -30,47 +32,47 @@ class MainActivity : AppCompatActivity() {
                 return MainViewModel(
                     WifiScanner(applicationContext),
                     ThreatAnalyzer(),
-                    ScanStorage(applicationContext)
+                    ScanStorage(applicationContext),
                 ) as T
             }
         }
     }
 
-    private val requestPermissionLauncher =
+    private val requestLocationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            if (granted) {
-                performScan()
-            } else {
-                Snackbar.make(
-                    binding.root,
-                    getString(R.string.permission_denied_message),
-                    Snackbar.LENGTH_LONG
-                ).show()
-            }
+            if (granted) performScan() else showSnackbar(R.string.permission_denied_message)
             updateStatusBanner()
         }
+
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        NotificationHelper.createChannel(this)
+        requestNotificationPermissionIfNeeded()
+
         adapter = ScanResultAdapter()
         binding.recyclerNetworks.layoutManager = LinearLayoutManager(this)
         binding.recyclerNetworks.adapter = adapter
 
         binding.buttonScan.setOnClickListener { onScanClicked() }
-
+        binding.buttonMonitor.setOnClickListener { onMonitorClicked() }
         binding.buttonHistory.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
-
         binding.textWifiStatus.setOnClickListener {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
         }
-
         binding.textLocationStatus.setOnClickListener {
             startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+        }
+
+        viewModel.onThreatsFound = { flagged, total ->
+            NotificationHelper.notifyThreats(this, flagged, total)
         }
 
         observeViewModel()
@@ -84,10 +86,33 @@ class MainActivity : AppCompatActivity() {
 
     private fun onScanClicked() {
         if (!viewModel.hasLocationPermission(this)) {
-            requestPermissionLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+            requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             return
         }
         performScan()
+    }
+
+    private fun onMonitorClicked() {
+        if (!viewModel.hasLocationPermission(this)) {
+            requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            return
+        }
+        if (viewModel.isMonitoring.value == true) {
+            viewModel.stopContinuousMonitoring()
+        } else {
+            if (!viewModel.isWifiEnabled()) {
+                showSnackbar(R.string.wifi_disabled_message)
+                return
+            }
+            if (!viewModel.isLocationEnabled(this)) {
+                Snackbar.make(binding.root, R.string.location_disabled_message, Snackbar.LENGTH_LONG)
+                    .setAction(R.string.action_settings) {
+                        startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    }.show()
+                return
+            }
+            viewModel.startContinuousMonitoring(this)
+        }
     }
 
     private fun performScan() {
@@ -117,11 +142,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.isScanning.observe(this) { scanning ->
-            binding.buttonScan.isEnabled = !scanning
+            binding.buttonScan.isEnabled =
+                !scanning && viewModel.isMonitoring.value != true
             binding.progressScan.visibility = if (scanning) View.VISIBLE else View.GONE
-            if (scanning) {
-                binding.textEmptyState.visibility = View.GONE
-            }
+            if (scanning) binding.textEmptyState.visibility = View.GONE
+        }
+
+        viewModel.isMonitoring.observe(this) { monitoring ->
+            binding.buttonMonitor.text = getString(
+                if (monitoring) R.string.button_stop_monitoring
+                else            R.string.button_start_monitoring
+            )
+            // Disable one-shot scan while continuous monitoring is running
+            binding.buttonScan.isEnabled =
+                !monitoring && viewModel.isScanning.value != true
         }
 
         viewModel.scanError.observe(this) { error ->
@@ -139,34 +173,40 @@ class MainActivity : AppCompatActivity() {
     private fun updateStatusBanner() {
         val wifiOk = viewModel.isWifiEnabled()
         val permOk = viewModel.hasLocationPermission(this)
-        val locOk = viewModel.isLocationEnabled(this)
+        val locOk  = viewModel.isLocationEnabled(this)
 
-        binding.textWifiStatus.text = if (wifiOk)
-            getString(R.string.status_wifi_on)
-        else
-            getString(R.string.status_wifi_off)
-        binding.textWifiStatus.setTextColor(
-            ContextCompat.getColor(this, if (wifiOk) R.color.status_ok else R.color.status_error)
-        )
+        binding.textWifiStatus.apply {
+            text = getString(if (wifiOk) R.string.status_wifi_on else R.string.status_wifi_off)
+            setTextColor(ContextCompat.getColor(this@MainActivity,
+                if (wifiOk) R.color.status_ok else R.color.status_error))
+        }
+        binding.textPermissionStatus.apply {
+            text = getString(if (permOk) R.string.status_permission_granted
+                             else        R.string.status_permission_missing)
+            setTextColor(ContextCompat.getColor(this@MainActivity,
+                if (permOk) R.color.status_ok else R.color.status_error))
+        }
+        binding.textLocationStatus.apply {
+            text = getString(if (locOk) R.string.status_location_on else R.string.status_location_off)
+            setTextColor(ContextCompat.getColor(this@MainActivity,
+                if (locOk) R.color.status_ok else R.color.status_error))
+        }
 
-        binding.textPermissionStatus.text = if (permOk)
-            getString(R.string.status_permission_granted)
-        else
-            getString(R.string.status_permission_missing)
-        binding.textPermissionStatus.setTextColor(
-            ContextCompat.getColor(this, if (permOk) R.color.status_ok else R.color.status_error)
-        )
+        val ready = wifiOk && permOk && locOk && viewModel.isScanning.value != true
+        binding.buttonScan.isEnabled    = ready && viewModel.isMonitoring.value != true
+        binding.buttonMonitor.isEnabled = permOk
+    }
 
-        binding.textLocationStatus.text = if (locOk)
-            getString(R.string.status_location_on)
-        else
-            getString(R.string.status_location_off)
-        binding.textLocationStatus.setTextColor(
-            ContextCompat.getColor(this, if (locOk) R.color.status_ok else R.color.status_error)
-        )
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
-        // Scan button enabled only when everything is ready
-        binding.buttonScan.isEnabled =
-            wifiOk && permOk && locOk && viewModel.isScanning.value != true
+    private fun showSnackbar(resId: Int) {
+        Snackbar.make(binding.root, resId, Snackbar.LENGTH_LONG).show()
     }
 }

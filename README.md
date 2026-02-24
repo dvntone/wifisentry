@@ -6,13 +6,19 @@ An advanced WiFi monitoring and security application designed to detect and log 
 
 **[⬇️ Latest Release — GitHub Releases page](https://github.com/dvntone/wifisentry/releases/latest)**
 
-| Platform | Artifact |
-|---|---|
-| Windows Desktop (Electron x64) | `.exe` installer / portable |
-| Android Mobile | `app-dev-release-unsigned.apk` |
-| Web PWA | `.tar.gz` / `.zip` archive |
+| Platform | Artifact | Node.js server required? |
+|---|---|---|
+| **Android APK** (native) | `app-dev-release-unsigned.apk` | ❌ No — runs entirely on the device |
+| Windows Desktop (Electron x64) | `.exe` installer / portable | ❌ No — server is bundled |
+| Web PWA | `.tar.gz` / `.zip` archive | ✅ Yes — requires `npm start` |
 
 > See [CHANGES.md](./CHANGES.md) for a full changelog.
+
+### 📱 Android APK — no setup required
+
+The Android APK is a **fully native app**. Install it and tap **Scan Networks**. It uses the device's built-in Wi-Fi hardware directly through the Android `WifiManager` API. There is no Node.js server, no npm, no extra tools, and no internet connection needed. All scanning and threat analysis runs on-device.
+
+See [`android-native/README.md`](./android-native/README.md) for the full list of on-device threat detections and build instructions.
 
 ---
 
@@ -52,46 +58,64 @@ An advanced WiFi monitoring and security application designed to detect and log 
 
 ## 🏗️ Architecture
 
-The application uses a modern, modular technology stack:
+There are two independent deployment paths. Choose the one that fits your use case.
 
-### Backend
-- **Node.js + Express** - RESTful API server
-- **Firebase Admin SDK** - Cloud database for persistent storage
+### Path A — Native Android App (no server)
+
+Everything runs on the Android device. No Node.js, no npm, no server.
+
+| Component | Technology |
+|---|---|
+| Wi-Fi scanning | Android `WifiManager` (built-in hardware) |
+| Threat analysis | Kotlin `ThreatAnalyzer` — 11 on-device heuristics |
+| Storage | JSON file in internal app storage |
+| UI | Native Android (Kotlin, ViewBinding) |
+
+See [`android-native/README.md`](./android-native/README.md) for full details.
+
+### Path B — Web PWA / Desktop (Node.js server required)
+
+The web dashboard and Electron desktop app are served by a Node.js backend.
+
+#### Backend (Node.js)
+- **Express** - RESTful API server
+- **MongoDB / Mongoose** - Persistent storage
 - **Google Generative AI (Gemini)** - AI-powered threat analysis
-- **node-wifi** - Hardware WiFi network scanning
-- **Geolocation APIs** - Maps SDK integration
+- **node-wifi** - WiFi network scanning via system tools (`iw`, `iwlist`)
+- System tools required: `aircrack-ng`, `tcpdump`, `iw`, `wireless-tools`, `tshark`, `net-tools`
 
-### Frontend
-- **Next.js 16** - React framework with TypeScript
+#### Frontend
+- **Next.js** - React framework with TypeScript
 - **Tailwind CSS** - Modern styling
-- **Real-time Updates** - SSE for live data streaming
-- **Responsive UI** - Mobile-first design
+- **SSE** - Server-Sent Events for real-time scan updates
 
-### Database
-- **Firestore/Firebase** - Cloud database collections:
-  - `threats` - Cataloged WiFi security threats
-  - `user_submissions` - Pending threat research queue
-  - `wifi_networks` - Historical scan results
-  - `locations` - GPS coordinates (with consent)
-
-### AI Integration
-- **Gemini API** - Analyzes threat patterns
-- **Detection Rules** - Generates custom detection signatures
-- **Threat Classification** - Assigns severity levels
-- **Emerging Threat Research** - Processes user submissions
+#### AI Integration
+- **Gemini API** - Analyzes threat patterns, generates detection signatures
+- **Threat Catalog** - Persistent community threat database
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Android APK — no setup needed
+
+1. Download `app-dev-release-unsigned.apk` from the [Releases page](https://github.com/dvntone/wifisentry/releases/latest)
+2. Enable **Install from unknown sources** in Android Settings
+3. Install the APK and open **Wi-Fi Sentry**
+4. Grant the location permission when prompted
+5. Tap **Scan Networks**
+
+No Node.js. No npm. No server. No configuration files.
+
+### Web PWA / Desktop — Node.js server required
+
+**Prerequisites**
 - Node.js 18+ and npm
-- WiFi adapter (for actual scanning)
+- WiFi adapter with drivers installed
 - Administrator/sudo privileges (for WiFi scanning)
+- System tools: `iw`, `wireless-tools`, `tcpdump` (Linux/WSL2); or see `node check-dependencies.js --guide`
 - Google Gemini API key (optional, for AI features)
 
-### Installation (60 seconds)
-
 ```bash
-# 1. Install backend dependencies
+# 1. Install dependencies
 npm install
 
 # 2. Configure environment (optional)
@@ -105,9 +129,9 @@ npm start
 cd web-app && npm run dev
 ```
 
-Access the app at **http://localhost:3000**
+Access the dashboard at **http://localhost:3000**
 
-### First Run
+### First Run (Web/Desktop)
 
 1. Select detection techniques (Karma, Evil Twin, Pineapple)
 2. Click "Start Monitoring"

@@ -66,7 +66,11 @@ const platformHelpers = {
       'npm': 'npm',
       'git': 'git',
       'curl': 'curl',
-      'wget': 'wget'
+      'wget': 'wget',
+      'iw': 'iw',
+      'wireless-tools': 'wireless-tools',
+      'tshark': 'tshark',
+      'net-tools': 'net-tools'
     }
   },
 
@@ -83,7 +87,11 @@ const platformHelpers = {
       'npm': 'npm',
       'git': 'git',
       'curl': 'curl',
-      'wget': 'wget'
+      'wget': 'wget',
+      'iw': 'iw',
+      'wireless-tools': 'wireless-tools',
+      'tshark': 'tshark',
+      'net-tools': 'net-tools'
     }
   },
 
@@ -113,7 +121,8 @@ const platformHelpers = {
       'npm': 'npm',
       'git': 'git',
       'curl': 'curl',
-      'wget': 'wget'
+      'wget': 'wget',
+      'tshark': 'wireshark'
     }
   },
 
@@ -152,7 +161,8 @@ const platformHelpers = {
       'npm': 'npm',
       'git': 'git',
       'curl': 'curl',
-      'wget': 'wget'
+      'wget': 'wget',
+      'tshark': 'wireshark'
     }
   },
 
@@ -169,7 +179,11 @@ const platformHelpers = {
       'npm': 'npm',
       'git': 'git',
       'curl': 'curl',
-      'wget': 'wget'
+      'wget': 'wget',
+      'iw': 'iw',
+      'wireless-tools': 'wireless-tools',
+      'tshark': 'tshark',
+      'net-tools': 'net-tools'
     }
   }
 };

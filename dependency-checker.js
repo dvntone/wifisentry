@@ -156,6 +156,54 @@ const DEPENDENCIES = {
       check: 'where wget',
       install: 'choco install wget -y'
     }
+  },
+
+  'iw': {
+    name: 'iw',
+    description: 'Linux wireless configuration tool (required for monitor mode and WiFi interface management)',
+    priority: 'critical',
+    linux: {
+      check: 'which iw',
+      install: 'sudo apt-get install -y iw'
+    }
+  },
+
+  'wireless-tools': {
+    name: 'wireless-tools',
+    description: 'Provides iwconfig and iwlist commands used by node-wifi for network scanning on Linux',
+    priority: 'critical',
+    linux: {
+      check: 'which iwlist',
+      install: 'sudo apt-get install -y wireless-tools'
+    }
+  },
+
+  'tshark': {
+    name: 'tshark',
+    description: 'Wireshark command-line packet capture tool for deep WiFi traffic analysis',
+    priority: 'high',
+    linux: {
+      check: 'which tshark',
+      install: 'sudo apt-get install -y tshark'
+    },
+    mac: {
+      check: 'which tshark',
+      install: 'brew install wireshark'
+    },
+    windows: {
+      check: 'where tshark',
+      install: 'choco install wireshark -y'
+    }
+  },
+
+  'net-tools': {
+    name: 'net-tools',
+    description: 'Provides ifconfig and netstat for network interface inspection and adapter detection',
+    priority: 'high',
+    linux: {
+      check: 'which ifconfig',
+      install: 'sudo apt-get install -y net-tools'
+    }
   }
 };
 

@@ -57,6 +57,12 @@ class ThreatAnalyzer(
             if (isBssidNearClone(network, networks, knownBssids)) {
                 threats += ThreatType.BSSID_NEAR_CLONE
             }
+            if (isWpsVulnerable(network)) {
+                threats += ThreatType.WPS_VULNERABLE
+            }
+            if (hasChannelShift(network, history)) {
+                threats += ThreatType.CHANNEL_SHIFT
+            }
 
             network.copy(threats = threats)
         }
@@ -376,6 +382,90 @@ class ThreatAnalyzer(
         frequency in 4900..5924 -> 5
         frequency in 5925..7125 -> 6
         else                    -> 0
+    }
+
+    // ── non-root checks (ScanResult data only) ────────────────────────────
+
+    /**
+     * True when the AP advertises WPS in its capabilities string.
+     *
+     * WPS PIN mode is vulnerable to offline brute-force attacks (Pixie Dust,
+     * Reaver).  The "[WPS]" token is always present in
+     * [android.net.wifi.ScanResult.capabilities] when WPS is enabled.
+     */
+    private fun isWpsVulnerable(network: ScannedNetwork): Boolean =
+        network.capabilities.contains("[WPS]", ignoreCase = true)
+
+    /**
+     * True when the BSSID was previously observed on a different frequency
+     * band (e.g. 2.4 GHz → 5 GHz).
+     *
+     * Legitimate APs are fixed to one band by their hardware radio.  A BSSID
+     * that moves between bands between scans is consistent with a rogue device
+     * impersonating the AP from a different radio (cheap SDR or Pineapple with
+     * dual-band capability).
+     *
+     * Not flagged when there is no prior history for the BSSID (first scan
+     * avoids false positives on dual-band routers not yet in history).
+     */
+    private fun hasChannelShift(network: ScannedNetwork, history: List<ScanRecord>): Boolean {
+        if (network.bssid.isBlank() || network.frequency <= 0) return false
+
+        val previousFreq = history
+            .sortedByDescending { it.timestampMs }
+            .flatMap { it.networks }
+            .firstOrNull { it.bssid == network.bssid }
+            ?.frequency ?: return false   // not seen before — do not flag
+
+        return bandOf(network.frequency) != bandOf(previousFreq) &&
+               bandOf(network.frequency) != 0 &&
+               bandOf(previousFreq) != 0
+    }
+
+    // ── root-aware public overload ─────────────────────────────────────────
+
+    /**
+     * Root-aware overload that additionally applies [ThreatType.DEAUTH_FLOOD]
+     * and [ThreatType.PROBE_RESPONSE_ANOMALY] when root-derived frame data is
+     * supplied.
+     *
+     * On non-rooted devices pass [RootScanData] with defaults (rootActive =
+     * false) and this behaves identically to the two-argument overload.
+     */
+    fun analyze(
+        networks: List<ScannedNetwork>,
+        history: List<ScanRecord>,
+        rootData: RootScanData,
+    ): List<ScannedNetwork> {
+        val base = analyze(networks, history)
+        if (!rootData.rootActive) return base
+
+        val knownSsids = networks.map { it.ssid }.toSet()
+        val deauthFlood = rootData.deauthFrameCount >= RootShellScanner.DEAUTH_FLOOD_THRESHOLD
+
+        // Annotate every beaconing network with environmental root threats
+        val annotated = base.map { network ->
+            val extra = mutableListOf<ThreatType>()
+            if (deauthFlood) extra += ThreatType.DEAUTH_FLOOD
+            if (extra.isEmpty()) network else network.copy(threats = network.threats + extra)
+        }.toMutableList()
+
+        // Synthetic entries for SSIDs seen only in probe-responses (Karma signature)
+        for (ssid in rootData.probeOnlySsids) {
+            if (ssid.isNotBlank() && ssid !in knownSsids) {
+                annotated += ScannedNetwork(
+                    ssid         = ssid,
+                    bssid        = "",
+                    capabilities = "",
+                    rssi         = 0,
+                    frequency    = 0,
+                    timestamp    = System.currentTimeMillis(),
+                    threats      = listOf(ThreatType.PROBE_RESPONSE_ANOMALY),
+                )
+            }
+        }
+
+        return annotated
     }
 
     companion object {

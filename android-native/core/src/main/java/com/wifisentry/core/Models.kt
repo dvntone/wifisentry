@@ -80,7 +80,38 @@ enum class ThreatType {
      *  • The near-clone BSSID is brand-new (not seen in any prior scan) while
      *    the matching SSID + near-identical BSSID was already known — consistent
      *    with an attacker inserting a rogue AP alongside a legitimate one. */
-    BSSID_NEAR_CLONE
+    BSSID_NEAR_CLONE,
+
+    // ── detectable without root, from WifiManager ScanResult data ─────────
+
+    /** AP advertises WPS (Wi-Fi Protected Setup) in its capabilities string.
+     *  WPS PIN mode is vulnerable to offline brute-force (Pixie Dust, Reaver).
+     *  Detectable without root from [android.net.wifi.ScanResult.capabilities]
+     *  which includes "[WPS]" when WPS is active. */
+    WPS_VULNERABLE,
+
+    /** This BSSID was previously observed on a different frequency band (e.g.
+     *  2.4 GHz → 5 GHz or vice versa).  Legitimate APs stay on their assigned
+     *  band; a sudden band change for a known BSSID is consistent with a rogue
+     *  device impersonating the AP from a different radio.
+     *  Detectable without root using frequency data from [android.net.wifi.ScanResult]. */
+    CHANNEL_SHIFT,
+
+    // ── root + monitor mode required ──────────────────────────────────────
+
+    /** An elevated number of 802.11 deauthentication / disassociation frames
+     *  was captured during continuous monitoring in monitor mode.  Deauth
+     *  floods forcibly disconnect clients from a legitimate AP so they
+     *  reconnect to a rogue clone.
+     *  Requires root + a WiFi adapter that supports monitor mode. */
+    DEAUTH_FLOOD,
+
+    /** An SSID was seen in a captured probe-response frame but is absent from
+     *  every beacon in the current scan.  This is the defining Karma / Pineapple
+     *  signature: the rogue device answers client probe requests for any SSID
+     *  but never spontaneously beacons for those SSIDs itself.
+     *  Requires root + monitor mode + tshark. */
+    PROBE_RESPONSE_ANOMALY
 }
 
 /**

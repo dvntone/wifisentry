@@ -40,6 +40,20 @@
     <string name="threat_beacon_flood">Beacon flood (AP list spam)</string>
     <string name="threat_inconsistent_capabilities">Impossible protocol/band combo</string>
     <string name="threat_bssid_near_clone">BSSID near-clone (same-band or rogue insertion)</string>
+    <string name="threat_wps_vulnerable">WPS enabled (Pixie Dust / Reaver risk)</string>
+    <string name="threat_channel_shift">Band shift (BSSID moved to different band)</string>
+    <string name="threat_deauth_flood">Deauth flood detected (root+)</string>
+    <string name="threat_probe_response_anomaly">Karma / Pineapple probe-response (root+)</string>
+
+    <!-- Continuous monitoring -->
+    <string name="button_start_monitoring">▶ Start Continuous Monitoring</string>
+    <string name="button_stop_monitoring">■ Stop Monitoring</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">Threat Alerts</string>
+    <string name="notification_channel_desc">Alerts when Wi-Fi threats are detected during monitoring</string>
+    <string name="notification_title">⚠️ Wi-Fi Threats Detected</string>
+    <string name="notification_text">%1$d of %2$d networks flagged</string>
 
     <!-- History -->
     <string name="history_empty">No scan history yet.</string>
