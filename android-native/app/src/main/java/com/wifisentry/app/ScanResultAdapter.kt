@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.wifisentry.core.ScannedNetwork
+import com.wifisentry.core.ThreatSeverity
 import com.wifisentry.core.ThreatType
 import com.wifisentry.core.WifiDisplayUtils
 
@@ -31,6 +32,19 @@ class ScanResultAdapter :
             }
         }
 
+    /** Optional manufacturer string per BSSID, populated by the Activity after OUI lookup. */
+    var manufacturers: Map<String, String> = emptyMap()
+        set(value) {
+            field = value
+            notifyItemRangeChanged(0, itemCount)
+        }
+
+    var visibleColumns: Set<NetworkColumn> = ALL_COLUMNS
+        set(value) {
+            field = value
+            notifyItemRangeChanged(0, itemCount)
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NetworkViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_network, parent, false)
@@ -38,7 +52,7 @@ class ScanResultAdapter :
     }
 
     override fun onBindViewHolder(holder: NetworkViewHolder, position: Int) {
-        holder.bind(getItem(position), onNetworkClick, distanceInFeet)
+        holder.bind(getItem(position), onNetworkClick, distanceInFeet, manufacturers, visibleColumns)
     }
 
     class NetworkViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -50,12 +64,24 @@ class ScanResultAdapter :
         private val textBadge: TextView       = itemView.findViewById(R.id.text_security_badge)
         private val flagIndicator: View       = itemView.findViewById(R.id.flag_indicator)
         private val textDistance: TextView    = itemView.findViewById(R.id.text_distance)
+        private val textChannel: TextView     = itemView.findViewById(R.id.text_channel)
 
-        fun bind(network: ScannedNetwork, onClick: ((ScannedNetwork) -> Unit)?, distanceInFeet: Boolean) {
+        fun bind(
+            network: ScannedNetwork,
+            onClick: ((ScannedNetwork) -> Unit)?,
+            distanceInFeet: Boolean,
+            manufacturers: Map<String, String>,
+            visibleColumns: Set<NetworkColumn>,
+        ) {
             val ctx: Context = itemView.context
 
             textSsid.text    = network.ssid.ifBlank { ctx.getString(R.string.hidden_ssid) }
-            textBssid.text   = network.bssid
+
+            // Show manufacturer name alongside BSSID when available
+            val mfgr = manufacturers[network.bssid]
+            textBssid.text = if (!mfgr.isNullOrBlank()) "${network.bssid}  ·  $mfgr"
+                             else network.bssid
+
             textSignal.text  = ctx.getString(R.string.signal_format, network.rssi)
             textSecurity.text = if (network.isOpen)
                 ctx.getString(R.string.security_open)
@@ -74,7 +100,17 @@ class ScanResultAdapter :
             val distM = WifiDisplayUtils.rssiToDistanceMeters(network.rssi, network.frequency)
             textDistance.text = WifiDisplayUtils.formatDistance(distM, distanceInFeet)
 
-            // Security badge (WPA3 / WPA2 / WEP / Open)
+            // Channel label
+            val channelLabel = WifiDisplayUtils.channelLabel(network.frequency)
+            textChannel.text = channelLabel
+            textChannel.visibility = if (NetworkColumn.CHANNEL in visibleColumns && channelLabel.isNotEmpty()) View.VISIBLE else View.GONE
+
+            // Optional column visibility
+            textBssid.visibility    = if (NetworkColumn.BSSID in visibleColumns) View.VISIBLE else View.GONE
+            textSecurity.visibility = if (NetworkColumn.SECURITY_TEXT in visibleColumns) View.VISIBLE else View.GONE
+            textDistance.visibility = if (NetworkColumn.DISTANCE in visibleColumns) View.VISIBLE else View.GONE
+
+            // Security badge (always visible — compact and important for threat triage)
             val secLabel = WifiDisplayUtils.capabilitiesToSecurityLabel(network.capabilities)
             textBadge.text = secLabel
             val badgeColor = when {
@@ -89,16 +125,36 @@ class ScanResultAdapter :
 
             if (network.isFlagged) {
                 flagIndicator.visibility = View.VISIBLE
-                textThreats.visibility   = View.VISIBLE
+                textThreats.visibility   = if (NetworkColumn.THREATS in visibleColumns) View.VISIBLE else View.GONE
                 textThreats.text = network.threats.joinToString(" · ") { it.displayName(ctx) }
-                itemView.setBackgroundColor(ctx.getColor(R.color.flag_background))
-                itemView.setOnClickListener { onClick?.invoke(network) }
+
+                // Colour-code by highest threat severity for immediate visual triage
+                val severity = network.highestSeverity
+                val (bgColor, barColor) = when (severity) {
+                    ThreatSeverity.HIGH -> Pair(
+                        ContextCompat.getColor(ctx, R.color.threat_bg_high),
+                        ContextCompat.getColor(ctx, R.color.threat_bar_high)
+                    )
+                    ThreatSeverity.MEDIUM -> Pair(
+                        ContextCompat.getColor(ctx, R.color.threat_bg_medium),
+                        ContextCompat.getColor(ctx, R.color.threat_bar_medium)
+                    )
+                    else -> Pair(
+                        ContextCompat.getColor(ctx, R.color.threat_bg_low),
+                        ContextCompat.getColor(ctx, R.color.threat_bar_low)
+                    )
+                }
+                itemView.setBackgroundColor(bgColor)
+                flagIndicator.setBackgroundColor(barColor)
+                // Threat label colour matches severity bar
+                textThreats.setTextColor(barColor)
             } else {
                 flagIndicator.visibility = View.GONE
                 textThreats.visibility   = View.GONE
                 itemView.setBackgroundColor(Color.TRANSPARENT)
-                itemView.setOnClickListener(null)
             }
+            // All items are tappable — tap opens the action popup (copy / pin / Gemini)
+            itemView.setOnClickListener { onClick?.invoke(network) }
         }
     }
 
@@ -147,3 +203,4 @@ internal fun ThreatType.detailDescription(ctx: Context): String = when (this) {
     ThreatType.DEAUTH_FLOOD              -> ctx.getString(R.string.threat_detail_deauth_flood)
     ThreatType.PROBE_RESPONSE_ANOMALY    -> ctx.getString(R.string.threat_detail_probe_response_anomaly)
 }
+

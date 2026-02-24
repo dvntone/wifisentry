@@ -65,9 +65,16 @@
     <string name="perm_notif_allow">Allow</string>
     <string name="perm_notif_skip">Skip</string>
 
+    <!-- Permission rationale for location -->
+    <string name="perm_location_title">Location Permission Required</string>
+    <string name="perm_location_message">Wi-Fi Sentry needs precise location permission to scan nearby Wi-Fi networks. Android requires this permission to access Wi-Fi scan results. Your location data stays on your device and is never uploaded.</string>
+    <string name="perm_location_allow">Grant Permission</string>
+    <string name="perm_location_skip">Not Now</string>
+
     <!-- Network detail dialog — distance + GPS -->
     <string name="detail_label_distance">Distance: %s (RSSI estimate)</string>
-    <string name="detail_label_gps">GPS: %.6f, %.6f</string>
+    <string name="detail_label_gps">GPS: %1$.6f, %2$.6f</string>
+    <string name="detail_label_manufacturer">Manufacturer: %s</string>
 
     <!-- Stats panel -->
     <string name="label_stats_title">📊 Scan Statistics</string>
@@ -84,12 +91,17 @@
     <!-- Distance unit toggle -->
     <string name="button_unit_meters">m</string>
     <string name="button_unit_feet">ft</string>
+
+    <!-- Sort order toggle -->
+    <string name="button_sort_threat">⚑ Threat</string>
+    <string name="button_sort_signal">📶 Signal</string>
+    <string name="button_sort_ssid">A–Z SSID</string>
     <string name="dialog_network_detail_title">Network Details</string>
     <string name="dialog_close">Close</string>
     <string name="detail_label_ssid">Network: %s</string>
     <string name="detail_label_bssid">Address: %s</string>
-    <string name="detail_label_signal">Signal: %d dBm (%s)</string>
-    <string name="detail_label_band">Band: %s  Channel: %d</string>
+    <string name="detail_label_signal">Signal: %1$d dBm (%2$s)</string>
+    <string name="detail_label_band">Band: %1$s  Channel: %2$d</string>
     <string name="detail_label_security">Security: %s</string>
     <string name="detail_threats_header">\nDetected Threats:\n</string>
 
@@ -125,4 +137,83 @@
     <!-- History expand/collapse -->
     <string name="history_expand">Expand scan record</string>
     <string name="history_tap_hint">Tap to expand</string>
+
+    <!-- Column header labels (Data Table / WiGLE-style) -->
+    <string name="col_threat">Threat</string>
+    <string name="col_ssid">SSID</string>
+    <string name="col_signal">Signal</string>
+    <string name="col_channel">Ch/Band</string>
+    <string name="col_bssid">MAC / Mfgr</string>
+    <string name="col_channel_menu">Channel / Band</string>
+    <string name="col_security_text">Security Info</string>
+    <string name="col_distance">Distance</string>
+    <string name="col_threats">Threat Details</string>
+    <string name="col_menu_content_desc">Column options</string>
+
+    <!-- Import Activity -->
+    <string name="import_title">Import Scan Data</string>
+    <string name="import_explanation_title">Seed your threat database</string>
+    <string name="import_explanation_body">Import your existing WiGLE CSV wardriving data or an OpenCellID database export. Imported networks are merged with your scan history so Wi-Fi Sentry can immediately detect evil-twin attacks, rogue APs, and beacon floods — even before your first live scan.</string>
+    <string name="import_button_wigle">⬆ Choose WiGLE CSV…</string>
+    <string name="import_button_opencellid">⬆ Choose OpenCellID CSV…</string>
+    <string name="import_loading">Importing, please wait…</string>
+    <string name="import_result_title">Import Complete</string>
+    <string name="import_wigle_success">Added %1$d new networks (%2$d parsed, %3$d skipped rows)</string>
+    <string name="import_opencellid_success">Added %1$d new cell towers (%2$d parsed, %3$d skipped rows)</string>
+    <string name="import_error_title">Import Failed</string>
+    <string name="import_error_read">Could not read the selected file. Please check the file is a valid CSV export.</string>
+    <string name="button_import">⬇ Import Data</string>
+
+    <!-- Active analysis -->
+    <string name="button_analyze">⚡ Analyze</string>
+    <string name="button_analyzing">Analyzing…</string>
+    <string name="analysis_tap_to_run">Tap ⚡ to analyze scan history for AP changes</string>
+    <string name="analysis_no_changes">✓ No AP changes detected in history</string>
+    <string name="analysis_summary">⚡ %1$d changes: %2$d high, %3$d medium severity</string>
+    <string name="analysis_dialog_title">%1$d AP Changes Detected</string>
+    <!-- Import / History -->
+    <string name="button_done">Done</string>
+    <!-- Status colors used programmatically -->
+    <string name="status_warning_label">Warning</string>
+
+    <!-- Network item action sheet (tap on any network in list) -->
+    <string name="action_copy_ssid">📋 Copy SSID</string>
+    <string name="action_copy_bssid">📋 Copy MAC (BSSID)</string>
+    <string name="action_copy_all">📋 Copy All Details</string>
+    <string name="action_pin">📌 Pin for Tracking</string>
+    <string name="action_unpin">📌 Unpin</string>
+    <string name="action_view_details">ℹ Details</string>
+    <string name="action_ask_gemini">🤖 Ask Gemini AI</string>
+
+    <!-- Clipboard toasts -->
+    <string name="copied_ssid">SSID copied to clipboard</string>
+    <string name="copied_bssid">MAC address copied to clipboard</string>
+    <string name="copied_all">Details copied to clipboard</string>
+
+    <!-- Pin actions -->
+    <string name="pin_added">📌 Pinned: %s</string>
+    <string name="pin_removed">Unpinned: %s</string>
+
+    <!-- PinDetailActivity -->
+    <string name="title_pin_detail">Pinned Network</string>
+    <string name="pin_since">Pinned since: %s</string>
+    <string name="pin_changes_title">⚡ AP Change Analysis</string>
+    <string name="pin_no_changes">✓ No changes detected in scan history for this AP.</string>
+    <string name="pin_history_title">Scan History</string>
+    <string name="pin_history_title_count">Scan History (%d appearances)</string>
+    <string name="pin_no_history">No scan records found for this AP yet.</string>
+
+    <!-- Gemini AI integration (PinDetailActivity) -->
+    <string name="gemini_card_title">🤖 Gemini AI Analysis</string>
+    <string name="button_ask_gemini">Ask Gemini</string>
+    <string name="gemini_tap_hint">Tap \'Ask Gemini\' to get an AI-powered threat assessment.\nRequires a Gemini API key (free tier available at aistudio.google.com).</string>
+    <string name="gemini_thinking">Asking Gemini AI…</string>
+    <string name="gemini_error">AI analysis failed: %s</string>
+    <string name="gemini_key_dialog_title">Gemini API Key</string>
+    <string name="gemini_key_dialog_message">Enter your Gemini API key. Get a free key at aistudio.google.com.\n\nYour key is stored only on this device in private app storage and is never transmitted except to the Gemini API.</string>
+    <string name="gemini_key_hint">Gemini API key</string>
+    <string name="gemini_key_save">Save &amp; Analyze</string>
+    <string name="gemini_key_clear">Clear Saved Key</string>
+    <string name="gemini_key_empty">Please enter an API key</string>
+    <string name="gemini_key_cleared">Saved API key removed</string>
 </resources>

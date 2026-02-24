@@ -46,7 +46,7 @@ See [`android-native/README.md`](./android-native/README.md) for the full list o
 
 ### Data Export & Integration
 - **WiGLE.net Compatibility** - Export scans to wardriving database
-, - **CSV/JSON Export** - Export cataloged threats and scan data in multiple formats
+- **CSV/JSON Export** - Export cataloged threats and scan data in multiple formats
 - **Historical Tracking** - Query networks scanned during specific date ranges
 - **Batch Operations** - Process thousands of networks efficiently
 
@@ -387,7 +387,7 @@ See [INSTALLATION.md](./INSTALLATION.md) for comprehensive troubleshooting.
 
 ## 🚦 Roadmap
 
-- [ ] Mobile app (React Native)
+- [x] Mobile app (native Android APK — no server required)
 - [ ] Bluetooth threat detection
 - [ ] Real-time WebSocket alerts
 - [ ] Advanced analytics dashboard
@@ -424,5 +424,5 @@ Created with focus on WiFi security awareness and emerging threat detection.
 ---
 
 **Last Updated**: February 2026  
-**Version**: 1.1.6  
+**Version**: 1.1.10  
 **Status**: Active Development 🟢

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="status_ok">#388E3C</color>
+    <color name="status_warning">#F57C00</color>
     <color name="status_error">#D32F2F</color>
     <color name="flag_red">#F44336</color>
     <color name="flag_background">#FFF8E1</color>
@@ -18,4 +19,12 @@
     <color name="badge_wep">#E65100</color>
     <color name="badge_wpa">#1565C0</color>
     <color name="badge_wpa3">#2E7D32</color>
+    <!-- Threat severity — indicator bar colours -->
+    <color name="threat_bar_high">#C62828</color>
+    <color name="threat_bar_medium">#E65100</color>
+    <color name="threat_bar_low">#F9A825</color>
+    <!-- Threat severity — card background colours (light mode) -->
+    <color name="threat_bg_high">#FFEBEE</color>
+    <color name="threat_bg_medium">#FFF3E0</color>
+    <color name="threat_bg_low">#FFFDE7</color>
 </resources>

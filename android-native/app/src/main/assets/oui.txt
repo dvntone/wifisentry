@@ -1,0 +1,183 @@
+# NOTE: This file is superseded by oui.properties (WiGLE-compatible Java Properties format).
+# It is no longer loaded by OuiLookup and is kept only for reference.
+# Wi-Fi Sentry OUI lookup table
+# Format: OUI<TAB>Manufacturer
+# OUI = first 3 octets of BSSID in uppercase colon-separated form (AA:BB:CC)
+# Source: IEEE MA-L / MA-M public registry (subset of most common AP vendors)
+# Update this file or fetch from GitHub to expand coverage.
+#
+00:00:0C	Cisco Systems
+00:00:5E	IANA (Multicast)
+00:03:7F	Atheros Communications
+00:04:96	Extreme Networks
+00:08:74	Dell
+00:0A:F7	Broadcom
+00:0B:86	Aruba Networks (HPE)
+00:0C:E7	Sagemcom
+00:0D:97	Netgear
+00:0E:35	Intel Corporate
+00:0E:8E	Comtrend
+00:0F:61	Ubiquiti Networks
+00:11:22	Cimsys
+00:13:46	Intel Corporate
+00:14:6C	Netgear
+00:15:6D	Ubiquiti Networks
+00:16:B6	Cisco-Linksys
+00:17:3F	Cisco-Linksys
+00:18:01	Xavi Technologies
+00:19:5B	D-Link
+00:1A:2B	Cisco-Linksys
+00:1B:11	D-Link
+00:1C:10	Cisco Systems
+00:1D:0F	Cisco Systems
+00:1E:2A	Cisco-Linksys
+00:1F:33	Cisco-Linksys
+00:21:29	Cisco-Linksys
+00:22:6B	Cisco-Linksys
+00:23:69	Cisco-Linksys
+00:24:01	Cisco-Linksys
+00:25:9C	Cisco-Linksys
+00:26:B9	D-Link
+00:50:F2	Microsoft
+00:90:4C	Epigram (Broadcom)
+04:18:D6	Apple
+04:4B:F8	Google (Nest)
+04:54:53	Google
+08:00:27	VirtualBox
+08:86:3B	Qualcomm Atheros
+0A:00:27	VirtualBox (host-only)
+0C:47:C9	Belkin International
+10:02:B5	Belkin International
+10:62:EB	Netgear
+10:86:8C	Apple
+10:9A:DD	Zyxel
+10:C3:7B	Hewlett Packard
+14:59:C0	TP-Link Technologies
+18:20:32	Ubiquiti Networks
+18:35:D1	Apple
+18:60:41	T-Mobile (ASCO)
+18:A5:FF	Edgecore Networks
+18:D6:C7	Apple
+1C:74:0D	Ubiquiti Networks
+20:76:93	TP-Link Technologies
+20:AA:4B	Cisco-Linksys
+24:A4:3C	Apple
+28:28:5D	Netgear
+28:80:88	Belkin International
+2C:B0:5D	Netgear
+2C:D0:5A	Cisco Systems
+30:85:A9	Netgear
+30:B5:C2	Apple
+34:08:04	TP-Link Technologies
+34:76:C5	Intel Corporate
+38:70:0C	ASUSTek Computer
+3C:37:86	Apple
+3C:78:95	Netgear
+3C:7A:8A	Motorola Solutions
+40:3D:EC	Apple
+40:4A:03	Zyxel Communications
+44:32:C8	Apple
+44:94:FC	Aruba Networks (HPE)
+48:A9:D2	Cisco Systems
+4C:E6:76	Apple
+50:64:2B	Apple
+50:C7:BF	TP-Link Technologies
+54:4A:16	Apple
+58:6D:8F	Apple
+58:96:30	Sagemcom
+5C:F4:AB	Apple
+60:38:E0	Belkin International
+60:45:CB	Apple
+60:F1:89	Apple
+60:FA:CD	Apple
+64:16:F0	Apple
+64:76:BA	Ubiquiti Networks
+64:A5:C3	Apple
+68:03:CF	Apple
+68:7F:74	Cisco Systems
+6C:40:08	Apple
+6C:72:20	Apple
+70:3A:CB	Apple
+70:56:81	Apple
+74:DA:88	EnGenius Technologies
+74:F6:1C	Apple
+78:31:C1	Apple
+78:C8:81	Apple
+7C:6D:62	Apple
+7C:D1:C3	Apple
+80:00:0B	D-Link
+80:EA:96	Apple
+84:38:38	Apple
+84:8E:DF	Apple
+88:1D:FC	Apple
+88:D7:F6	Netgear
+8C:3B:AD	Apple
+8C:85:90	Apple
+90:9D:7D	Cisco Meraki
+94:D7:23	Apple
+94:E9:79	Apple
+98:01:A7	Apple
+98:FC:11	Apple
+9C:8E:99	Apple
+9C:F3:87	Apple
+A0:99:9B	Apple
+A4:5E:60	Apple
+A4:77:33	Apple
+A8:20:66	Apple
+A8:51:AB	Apple
+AC:22:0B	Apple
+AC:37:43	Apple
+AC:87:A3	Apple
+AC:BC:32	Apple
+AC:D7:5B	T-Mobile (ASCO)
+AC:DF:9F	T-Mobile (Arcadyan)
+AC:DF:4E	Sagemcom (T-Mobile)
+B0:09:DA	Apple
+B0:34:95	Apple
+B0:A4:60	Apple
+B0:BE:83	Apple
+B4:FB:E4	Apple
+B8:09:8A	Apple
+B8:78:2E	Apple
+B8:C7:5D	Apple
+BC:92:6B	Apple
+BC:EC:A0	Apple
+C0:A0:0D	Zyxel Communications
+C0:C1:C0	Apple
+C4:B3:01	Apple
+C8:2A:14	Apple
+C8:69:CD	Apple
+C8:9E:43	Ubee Interactive (QJMPNG OUI)
+C8:BC:C8	Apple
+CC:08:8D	Apple
+CC:20:E8	Apple
+CC:44:63	Apple
+D0:03:4B	Apple
+D0:22:BE	Apple
+D0:81:7A	Apple
+D4:20:B0	Apple
+D4:61:9D	Apple
+D4:F4:6F	Apple
+D8:1D:72	Apple
+D8:96:95	Apple
+DC:2B:2A	Apple
+DC:86:D8	TP-Link Technologies
+DC:EB:69	Sagemcom (Cox)
+E0:55:3D	Apple
+E0:B9:BA	Apple
+E4:BF:FA	Technicolor (Cox Communications)
+E4:CE:8F	Apple
+E4:F0:42	Apple
+E8:04:62	Apple
+E8:8D:28	Apple
+EC:AD:B8	Apple
+EC:FA:AA	Apple
+F0:B4:29	Apple
+F0:CB:A1	Apple
+F4:0F:24	Apple
+F4:D4:88	Apple
+F8:1E:DF	Apple
+F8:27:93	Apple
+F8:FF:C2	Apple
+FC:25:3F	Apple
+FC:E9:98	Apple

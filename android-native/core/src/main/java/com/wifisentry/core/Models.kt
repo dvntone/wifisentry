@@ -40,6 +40,12 @@ data class ScannedNetwork(
     val isOpen: Boolean get() = !capabilities.contains("WPA") && !capabilities.contains("WEP") && !capabilities.contains("SAE")
     /** True when a valid GPS fix is stored on this record. */
     val hasGpsFix: Boolean get() = latitude.isFinite() && longitude.isFinite()
+    /**
+     * The highest (most severe) [ThreatSeverity] across all detected threats,
+     * or null when the network is not flagged.
+     */
+    val highestSeverity: ThreatSeverity?
+        get() = threats.map { it.severity }.minByOrNull { it.ordinal }
 }
 
 /**
@@ -59,6 +65,34 @@ data class ScanStats(
     /** Total flagged networks stored across all scan history. */
     val threatsAllTime: Int = 0,
 )
+
+/**
+ * Severity level assigned to each [ThreatType].
+ * Used for colour-coding list items: HIGH = red, MEDIUM = orange, LOW = amber.
+ */
+enum class ThreatSeverity { HIGH, MEDIUM, LOW }
+
+/** The severity associated with this threat type. */
+val ThreatType.severity: ThreatSeverity
+    get() = when (this) {
+        ThreatType.EVIL_TWIN,
+        ThreatType.DEAUTH_FLOOD,
+        ThreatType.PROBE_RESPONSE_ANOMALY,
+        ThreatType.BEACON_FLOOD,
+        ThreatType.INCONSISTENT_CAPABILITIES -> ThreatSeverity.HIGH
+
+        ThreatType.OPEN_NETWORK,
+        ThreatType.SECURITY_CHANGE,
+        ThreatType.MAC_SPOOFING_SUSPECTED,
+        ThreatType.MULTI_SSID_SAME_OUI,
+        ThreatType.BSSID_NEAR_CLONE,
+        ThreatType.SUSPICIOUS_SIGNAL_STRENGTH,
+        ThreatType.CHANNEL_SHIFT -> ThreatSeverity.MEDIUM
+
+        ThreatType.WPS_VULNERABLE,
+        ThreatType.MULTIPLE_BSSIDS,
+        ThreatType.SUSPICIOUS_SSID -> ThreatSeverity.LOW
+    }
 
 /**
  * Types of threats that can be detected for a Wi-Fi network.
@@ -171,3 +205,72 @@ fun ScanResult.toScannedNetwork(threats: List<ThreatType> = emptyList()): Scanne
         wifiStandard = wifiStandard
     )
 }
+
+/**
+ * Category of change detected between two observations of the same AP.
+ *
+ * Detection design is informed by:
+ * - Flock-You-Android (MaxwellDPS) WifiDetectionHandler + THREAT_SCORING_FRAMEWORK
+ * - Kismet WIDS alert system (evil-twin, deauth, capability-change alerts)
+ * - Stock Android feasibility analysis: all of these are detectable via
+ *   WifiManager.getScanResults() without root or monitor mode.
+ */
+enum class ChangeType {
+    /** Security protocol dropped to a weaker scheme (e.g. WPA2 → WPA or → Open).
+     *  Classic downgrade-attack / evil-twin setup indicator. */
+    SECURITY_DOWNGRADE,
+    /** Security protocol improved (e.g. Open → WPA2).  Not a threat but notable. */
+    SECURITY_UPGRADE,
+    /** BSSID moved to a different Wi-Fi channel or band between scans.
+     *  Legitimate APs stay on their assigned channel; a change is suspicious. */
+    CHANNEL_SHIFT,
+    /** A new BSSID is broadcasting a previously-known SSID.
+     *  The most common evil-twin indicator on stock Android. */
+    NEW_BSSID_SAME_SSID,
+    /** RSSI changed by more than [ChangeAnalyzer.RSSI_ANOMALY_DBM] dBm between
+     *  consecutive scans.  Consistent with a moving rogue AP or sudden physical change. */
+    SIGNAL_ANOMALY,
+    /** The capabilities string changed significantly (different security suite,
+     *  WPS appeared/disappeared, cipher changed). */
+    CAPABILITIES_CHANGED,
+    /** This BSSID has been seen at multiple geographically distinct locations,
+     *  suggesting it is a mobile device following the user — the "following network"
+     *  attack documented by Flock-You-Android. */
+    FOLLOWING_NETWORK,
+}
+
+/**
+ * A single detected change in an AP's characteristics across two scan records.
+ *
+ * The [description] field is intentionally formatted as a Gemini-ready prompt
+ * fragment: it states the facts, context, and previous/current values so that an
+ * LLM can generate a natural-language threat explanation without needing the raw
+ * data objects.
+ *
+ * Scoring uses the formula: `score = (baseLikelihood * impactFactor * confidence).toInt()`
+ * modelled after the Flock-You Android threat scoring framework.  Score ≥ 70 → HIGH,
+ * ≥ 40 → MEDIUM, ≥ 10 → LOW, < 10 is suppressed as a likely false positive.
+ *
+ * ## Gemini AI integration note
+ * When a Gemini API key is configured (see GEMINI.md), pass each [NetworkChange]
+ * to the Gemini API with a prompt like:
+ *   "A Wi-Fi access point '[ssid]' ([bssid]) has the following change: [description].
+ *    Threat score: [score]/100. Explain whether this is a genuine security threat and
+ *    what the user should do."
+ * The [ChangeAnalyzer] is intentionally decoupled so a GeminiAnalysisEngine wrapper
+ * can call it first, then enrich each finding with AI-generated remediation text.
+ * YES — Google Gemini AI absolutely works for this use-case.
+ */
+data class NetworkChange(
+    val ssid: String,
+    val bssid: String,
+    val type: ChangeType,
+    val previousValue: String,
+    val currentValue: String,
+    /** Human-readable change description, pre-formatted as a Gemini prompt fragment. */
+    val description: String,
+    val detectedAtMs: Long = System.currentTimeMillis(),
+    /** Calibrated 0–100 threat score (likelihood × impact × confidence). */
+    val score: Int,
+    val severity: ThreatSeverity,
+)

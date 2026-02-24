@@ -12,6 +12,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wifisentry.core.OuiLookup
 import com.wifisentry.core.RootChecker
 import com.wifisentry.core.RootScanData
 import com.wifisentry.core.RootShellScanner
@@ -21,6 +22,8 @@ import com.wifisentry.core.ScanStorage
 import com.wifisentry.core.ScannedNetwork
 import com.wifisentry.core.ThreatAnalyzer
 import com.wifisentry.core.WifiScanner
+import com.wifisentry.core.ChangeAnalyzer
+import com.wifisentry.core.NetworkChange
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -29,6 +32,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+
+/** User-selectable sort order for the All Networks list. */
+// NOTE: SortColumn and NetworkColumn are defined in NetworkColumn.kt
 
 class MainViewModel(
     private val wifiScanner: WifiScanner,
@@ -63,9 +69,81 @@ class MainViewModel(
     private val _distanceInFeet = MutableLiveData(false)
     val distanceInFeet: LiveData<Boolean> = _distanceInFeet
 
+    /** Column by which the network list is currently sorted. */
+    private val _sortColumn = MutableLiveData(SortColumn.THREAT)
+    val sortColumn: LiveData<SortColumn> = _sortColumn
+
+    /** True = sort in the column's natural "ascending" direction (▲). */
+    private val _sortAscending = MutableLiveData(true)
+    val sortAscending: LiveData<Boolean> = _sortAscending
+
+    /**
+     * Which optional columns are currently visible.  SSID and Signal are always
+     * shown and are not in this set.  Both adapters observe this value.
+     */
+    private val _visibleColumns = MutableLiveData<Set<NetworkColumn>>(ALL_COLUMNS)
+    val visibleColumns: LiveData<Set<NetworkColumn>> = _visibleColumns
+
+    /**
+     * BSSID → manufacturer name resolved via [OuiLookup] after each scan.
+     * Observed by the Activity to pass into both adapters.
+     */
+    private val _manufacturers = MutableLiveData<Map<String, String>>(emptyMap())
+    val manufacturers: LiveData<Map<String, String>> = _manufacturers
+
+    /** Changes detected by [ChangeAnalyzer] after the most recent analysis run. */
+    private val _analysisChanges = MutableLiveData<List<NetworkChange>>(emptyList())
+    val analysisChanges: LiveData<List<NetworkChange>> = _analysisChanges
+
+    /** True while [analyzeHistory] is running. */
+    private val _isAnalyzing = MutableLiveData(false)
+    val isAnalyzing: LiveData<Boolean> = _isAnalyzing
+
     /** Toggle between feet and metres for the distance display. */
     fun toggleDistanceUnit() {
         _distanceInFeet.value = _distanceInFeet.value != true
+    }
+
+    /**
+     * Set the sort column.  Tapping the same column reverses direction;
+     * tapping a new column resets to its [SortColumn.defaultAscending] direction.
+     * Mirrors WiGLE's NetworkListSorter approach but driven from column-header taps.
+     */
+    fun setSort(col: SortColumn) {
+        if (_sortColumn.value == col) {
+            _sortAscending.value = _sortAscending.value != true
+        } else {
+            _sortColumn.value  = col
+            _sortAscending.value = col.defaultAscending
+        }
+        // Re-sort existing list immediately, no new scan needed
+        val current = sessionNetworks.values.toList()
+        if (current.isNotEmpty()) _networks.value = sortNetworks(current)
+    }
+
+    /**
+     * Toggle the visibility of an optional column.
+     * Both adapters observe [visibleColumns] and update their item views.
+     */
+    fun toggleColumn(col: NetworkColumn) {
+        val current = _visibleColumns.value ?: ALL_COLUMNS
+        _visibleColumns.value = if (col in current) current - col else current + col
+    }
+
+    /**
+     * Run [ChangeAnalyzer] on the full stored scan history.
+     * Executes on [Dispatchers.IO] and posts results back to the main thread.
+     * Safe to call from any thread; no-ops if already running.
+     */
+    fun analyzeHistory(context: android.content.Context) {
+        if (_isAnalyzing.value == true) return
+        _isAnalyzing.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val history = ScanStorage(context).loadHistory()
+            val result  = ChangeAnalyzer.analyze(history)
+            _analysisChanges.postValue(result.changes)
+            _isAnalyzing.postValue(false)
+        }
     }
 
     private val rootShellScanner = RootShellScanner()
@@ -92,6 +170,11 @@ class MainViewModel(
     fun scan(context: Context) {
         if (_isScanning.value == true) return
         viewModelScope.launch { doScan(context) }
+    }
+
+    /** Trigger a background OUI database refresh from GitHub. */
+    fun refreshOuiDatabase(context: Context) {
+        viewModelScope.launch { OuiLookup.updateFromGitHub(context) }
     }
 
     fun startContinuousMonitoring(context: Context) {
@@ -158,14 +241,22 @@ class MainViewModel(
             tagged
         }
 
-        // 3. Stream results into the UI one-by-one (WiGLE addWiFi pattern).
+        // 3. Resolve OUI manufacturer names on IO, then publish to adapters.
+        val mfgrMap = withContext(Dispatchers.IO) {
+            analysed.associate { n ->
+                n.bssid to OuiLookup.lookup(context, n.bssid)
+            }.filterValues { it.isNotEmpty() }
+        }
+        _manufacturers.value = mfgrMap
+
+        // 4. Stream results into the UI one-by-one (WiGLE addWiFi pattern).
         if (continuousMonitoringActive) {
             streamMonitoringResults(analysed)
         } else {
             streamOneShotResults(analysed)
         }
 
-        // 4. Update threat list, stats, and final status.
+        // 5. Update threat list, stats, and final status.
         val flagged = analysed.count { it.isFlagged }
         _threatNetworks.value = if (continuousMonitoringActive) {
             sortNetworks(sessionNetworks.values.filter { it.isFlagged })
@@ -211,7 +302,7 @@ class MainViewModel(
             _scanStatus.value = "Scanning\u2026 ${visible.size} / ${analysed.size} found"
             delay(STREAM_DELAY_MS)
         }
-        // Final sort: flagged networks float to the top (devsec priority)
+        // Final sort: apply current sort order
         _networks.value = sortNetworks(analysed)
     }
 
@@ -255,11 +346,21 @@ class MainViewModel(
     private fun networkKey(n: ScannedNetwork): String =
         if (n.bssid.isNotBlank()) n.bssid else "anon:${n.ssid}"
 
-    private fun sortNetworks(networks: Iterable<ScannedNetwork>): List<ScannedNetwork> =
-        networks.sortedWith(
-            compareByDescending<ScannedNetwork> { it.isFlagged }
+    private fun sortNetworks(networks: Iterable<ScannedNetwork>): List<ScannedNetwork> {
+        val col = _sortColumn.value ?: SortColumn.THREAT
+        val asc = _sortAscending.value ?: true
+        val comparator: Comparator<ScannedNetwork> = when (col) {
+            SortColumn.THREAT -> compareByDescending<ScannedNetwork> { it.isFlagged }
+                .thenBy { it.highestSeverity?.ordinal ?: Int.MAX_VALUE }
                 .thenByDescending { it.rssi }
-        )
+            SortColumn.SIGNAL  -> compareByDescending { it.rssi }
+            SortColumn.SSID    -> compareBy<ScannedNetwork> { it.ssid.lowercase() }
+                .thenByDescending { it.rssi }
+            SortColumn.CHANNEL -> compareBy { it.frequency }
+        }
+        val sorted = networks.sortedWith(comparator)
+        return if (asc) sorted else sorted.reversed()
+    }
 
     /**
      * Fetch the most-recently-updated location from GPS or network providers.

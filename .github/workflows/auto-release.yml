@@ -65,58 +65,55 @@ jobs:
           VERSION=${{ needs.detect-version.outputs.version }}
           PREV_VERSION=${{ needs.detect-version.outputs.previous-version }}
           
-          # Start changelog
+          # Determine commit range
+          if git rev-list "v$PREV_VERSION..HEAD" >/dev/null 2>&1; then
+            COMMIT_RANGE="v$PREV_VERSION..HEAD"
+          else
+            COMMIT_RANGE="--max-count=50"
+          fi
+          
+          # Build changelog — skip internal/plumbing commits
           {
-            echo "## 📝 Changes in WiFi Sentry v$VERSION"
-            echo ""
-            echo "**Previous version:** v$PREV_VERSION"
+            echo "## WiFi Sentry v$VERSION"
             echo ""
             
-            # Get commits and diffs
-            if git rev-list "v$PREV_VERSION..HEAD" >/dev/null 2>&1; then
-              COMMIT_RANGE="v$PREV_VERSION..HEAD"
-            else
-              COMMIT_RANGE="--max-count=50"
-            fi
-            
-            echo "### 📋 Commits"
-            echo ""
-            git log $COMMIT_RANGE --pretty=format:"- %h - %s (%an)" --no-merges
-            echo ""
-            echo ""
-            
-            # Categorize commits
-            echo "### 🔀 Commit Categories"
-            echo ""
-            
-            FEATURES=$(git log $COMMIT_RANGE --grep="^feat" --pretty=format:"- %s" --no-merges || echo "")
-            if [ ! -z "$FEATURES" ]; then
-              echo "#### ✨ Features"
+            FEATURES=$(git log $COMMIT_RANGE --grep="^feat" \
+              --pretty=format:"%s" --no-merges \
+              | sed 's/^feat[^:]*: //' | sed 's/^/- /' || true)
+            if [ -n "$FEATURES" ]; then
+              echo "### ✨ New Features"
               echo "$FEATURES"
               echo ""
             fi
             
-            FIXES=$(git log $COMMIT_RANGE --grep="^fix" --pretty=format:"- %s" --no-merges || echo "")
-            if [ ! -z "$FIXES" ]; then
-              echo "#### 🐛 Bug Fixes"
+            FIXES=$(git log $COMMIT_RANGE --grep="^fix" \
+              --pretty=format:"%s" --no-merges \
+              | sed 's/^fix[^:]*: //' | sed 's/^/- /' || true)
+            if [ -n "$FIXES" ]; then
+              echo "### 🐛 Bug Fixes"
               echo "$FIXES"
               echo ""
             fi
             
-            DOCS=$(git log $COMMIT_RANGE --grep="^docs" --pretty=format:"- %s" --no-merges || echo "")
-            if [ ! -z "$DOCS" ]; then
-              echo "#### 📚 Documentation"
+            DOCS=$(git log $COMMIT_RANGE --grep="^docs" \
+              --pretty=format:"%s" --no-merges \
+              | sed 's/^docs[^:]*: //' | sed 's/^/- /' || true)
+            if [ -n "$DOCS" ]; then
+              echo "### 📚 Documentation"
               echo "$DOCS"
               echo ""
             fi
             
-            # Installation & deployment info
-            echo "### 🚀 Deployment"
+            echo "---"
+            echo "**Download:** see the assets below."
             echo ""
-            echo "**Supported Platforms:** Windows, macOS, Linux, WSL2, Termux"
+            echo "| Platform | Artifact |"
+            echo "|---|---|"
+            echo "| Android (native APK) | \`app-dev-release.apk\` — install directly, no server needed |"
+            echo "| Windows Desktop | \`.exe\` installer |"
+            echo "| Web PWA | \`.tar.gz\` / \`.zip\` archive (requires \`npm start\`) |"
             echo ""
-            echo "**Installation:** See [README.md](README.md) for instructions"
-            echo ""
+            echo "Full install guide: [README.md](README.md)"
             
           } > changelog.md
           

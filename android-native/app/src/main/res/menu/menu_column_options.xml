@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Column-visibility popup menu.
+  Each item maps to a NetworkColumn enum value and is toggled checked/unchecked
+  by MainActivity.showColumnMenu().  All items are individually checkable so
+  the user can mix and match visible columns, like Excel's column chooser.
+-->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:id="@+id/group_columns">
+        <item
+            android:id="@+id/col_bssid"
+            android:title="@string/col_bssid"
+            android:checkable="true" />
+        <item
+            android:id="@+id/col_channel"
+            android:title="@string/col_channel_menu"
+            android:checkable="true" />
+        <item
+            android:id="@+id/col_security_text"
+            android:title="@string/col_security_text"
+            android:checkable="true" />
+        <item
+            android:id="@+id/col_distance"
+            android:title="@string/col_distance"
+            android:checkable="true" />
+        <item
+            android:id="@+id/col_threats"
+            android:title="@string/col_threats"
+            android:checkable="true" />
+    </group>
+</menu>

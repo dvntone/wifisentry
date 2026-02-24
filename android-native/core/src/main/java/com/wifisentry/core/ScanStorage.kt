@@ -49,6 +49,46 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
         if (file.exists()) file.delete()
     }
 
+    /**
+     * Import parsed WiGLE [ScanRecord]s into the stored history.
+     *
+     * Deduplication: records with the same UTC-day bucket as an existing stored
+     * record are merged (the stored record is replaced with a union of both
+     * network lists, de-duplicated by BSSID).  New day buckets are simply prepended.
+     *
+     * The merged list is trimmed to [maxRecords] and sorted newest-first before
+     * writing, matching the invariant maintained by [appendRecord].
+     *
+     * @return the number of new networks added.
+     */
+    fun importWigleRecords(incoming: List<ScanRecord>): Int {
+        val existing = loadHistory().associateByTo(LinkedHashMap()) { utcDayKey(it.timestampMs) }
+        var added = 0
+        for (record in incoming) {
+            val key = utcDayKey(record.timestampMs)
+            val stored = existing[key]
+            if (stored == null) {
+                existing[key] = record
+                added += record.networks.size
+            } else {
+                // Merge: union of networks, dedup by BSSID
+                val bssids  = stored.networks.mapTo(mutableSetOf()) { it.bssid }
+                val newNets = record.networks.filter { it.bssid !in bssids }
+                if (newNets.isNotEmpty()) {
+                    existing[key] = stored.copy(networks = stored.networks + newNets)
+                    added += newNets.size
+                }
+            }
+        }
+        val merged = existing.values
+            .sortedByDescending { it.timestampMs }
+            .let { if (it.size > maxRecords) it.take(maxRecords) else it }
+        file.writeText(gson.toJson(merged.map { ScanRecordDto.fromModel(it) }))
+        return added
+    }
+
+    private fun utcDayKey(epochMs: Long): Long = utcDayBucketMs(epochMs)
+
     // ── DTO classes (safe for Gson serialisation) ─────────────────────────
 
     private data class NetworkDto(

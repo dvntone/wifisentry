@@ -6,6 +6,8 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- INTERNET: required for optional OUI database updates from GitHub -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <!-- POST_NOTIFICATIONS is required on Android 13+ (API 33+) for threat alerts -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -36,6 +38,18 @@
             android:name=".HistoryActivity"
             android:exported="false"
             android:label="@string/title_history"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".ImportActivity"
+            android:exported="false"
+            android:label="@string/import_title"
+            android:parentActivityName=".HistoryActivity" />
+
+        <activity
+            android:name=".PinDetailActivity"
+            android:exported="false"
+            android:label="@string/title_pin_detail"
             android:parentActivityName=".MainActivity" />
 
         <provider

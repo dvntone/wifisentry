@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Portrait layout.
-  Top section: status card + action buttons (ConstraintLayout handles fixed-size items).
-  Bottom section: a vertical LinearLayout fills all remaining space and holds the
-  stats card plus two equal-height scrollable lists (all networks / threats only).
+  Portrait layout — Material Design 3 with WiGLE-influenced data panels.
+
+  Top section: status card + action buttons.
+  Bottom section: stats card + two data panels each with:
+    • Compound header row (section title + ⋮ column-visibility menu button)
+    • Sticky column-header bar with tappable sort arrows (MD3 Data Table pattern)
+    • Scrollable RecyclerView
 -->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -141,7 +144,6 @@
 
     <!--
       Results container: fills all space below status / controls.
-      LinearLayout lets the two scroll boxes share height equally via layout_weight.
     -->
     <LinearLayout
         android:id="@+id/layout_results"
@@ -185,6 +187,7 @@
                         android:textStyle="bold"
                         android:textSize="13sp" />
 
+                    <!-- Distance unit toggle (kept from previous session) -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/button_distance_unit"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -217,27 +220,219 @@
                     android:layout_height="wrap_content"
                     android:textSize="12sp"
                     android:paddingVertical="1dp" />
+
+                <!-- Active analysis row: shows change count + analyze trigger -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <TextView
+                        android:id="@+id/text_changes_summary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textSize="12sp"
+                        android:text="@string/analysis_tap_to_run"
+                        android:textColor="?attr/colorPrimary"
+                        android:paddingVertical="2dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_analyze"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        android:textSize="11sp"
+                        android:text="@string/button_analyze" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- All Networks section (weight = 1) -->
+        <!-- ── All Networks section ──────────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/text_all_networks_header"
+            <!--
+              Compound section header: title + ⋮ column-visibility menu button.
+              Inspired by WiGLE's toolbar with filter/sort actions.
+            -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="14dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="4dp"
                 android:paddingTop="6dp"
-                android:paddingBottom="2dp"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="?attr/colorPrimary"
-                android:text="@string/label_all_networks_header_zero" />
+                android:paddingBottom="2dp">
+
+                <TextView
+                    android:id="@+id/text_all_networks_header"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary"
+                    android:text="@string/label_all_networks_header_zero" />
+
+                <!-- ⋮ column visibility button (Excel-style column chooser) -->
+                <ImageButton
+                    android:id="@+id/button_all_columns_menu"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_more_vert"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/col_menu_content_desc"
+                    android:tint="?attr/colorPrimary" />
+            </LinearLayout>
+
+            <!--
+              MD3-style sticky column-header bar (Data Table pattern).
+              Background uses colorSurfaceVariant to visually separate header
+              from the list rows below. Each label is tappable to sort by that
+              column; the active column shows a ▲/▼ arrow.
+              Left padding of 18dp approximates the item card indent so labels
+              roughly align with card content (severity bar + card margin).
+            -->
+            <LinearLayout
+                android:id="@+id/layout_col_headers"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="18dp"
+                android:paddingEnd="4dp"
+                android:background="?attr/colorSurfaceVariant">
+
+                <!-- Threat column -->
+                <LinearLayout
+                    android:id="@+id/layout_col_threat"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:minWidth="52dp"
+                    android:gravity="center_horizontal"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_threat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingHorizontal="4dp"
+                        android:text="@string/col_threat"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_threat"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
+
+                <!-- SSID column (takes remaining width) -->
+                <LinearLayout
+                    android:id="@+id/layout_col_ssid"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_ssid"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical"
+                        android:paddingHorizontal="4dp"
+                        android:text="@string/col_ssid"
+                        android:textSize="11sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_ssid"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
+
+                <!-- Signal column -->
+                <LinearLayout
+                    android:id="@+id/layout_col_signal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:minWidth="52dp"
+                    android:gravity="center_horizontal"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_signal"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="@string/col_signal"
+                        android:textSize="11sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_signal"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
+
+                <!-- Channel column -->
+                <LinearLayout
+                    android:id="@+id/layout_col_channel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:minWidth="44dp"
+                    android:gravity="center_horizontal"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="?attr/selectableItemBackground">
+                    <TextView
+                        android:id="@+id/text_col_channel"
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:text="@string/col_channel"
+                        android:textSize="11sp"
+                        android:textColor="?android:attr/textColorSecondary" />
+                    <View
+                        android:id="@+id/ind_col_channel"
+                        android:layout_width="match_parent"
+                        android:layout_height="3dp"
+                        android:background="?attr/colorPrimary"
+                        android:visibility="invisible" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Bottom divider under column header bar -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="?android:attr/listDivider" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_networks"
@@ -249,31 +444,51 @@
                 android:clipToPadding="false" />
         </LinearLayout>
 
-        <!-- Divider -->
+        <!-- Divider between the two lists -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
             android:layout_marginHorizontal="12dp"
             android:background="?android:attr/listDivider" />
 
-        <!-- Threats Detected section (weight = 1) -->
+        <!-- ── Threats Detected section ──────────────────────────────────── -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/text_threats_header"
+            <!-- Compound section header: title + ⋮ -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="14dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="14dp"
+                android:paddingEnd="4dp"
                 android:paddingTop="6dp"
-                android:paddingBottom="2dp"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="@color/status_error"
-                android:text="@string/label_threats_header_zero" />
+                android:paddingBottom="2dp">
+
+                <TextView
+                    android:id="@+id/text_threats_header"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/status_error"
+                    android:text="@string/label_threats_header_zero" />
+
+                <!-- Shares the same column menu (both lists reflect the same visible-columns state) -->
+                <ImageButton
+                    android:id="@+id/button_threats_columns_menu"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_more_vert"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/col_menu_content_desc"
+                    android:tint="@color/status_error" />
+            </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recycler_threats"

@@ -2,4 +2,8 @@
 <resources>
     <!-- Muted dark-amber so flagged cards don't appear white-on-white in dark mode -->
     <color name="flag_background">#3E2A00</color>
+    <!-- Threat severity — card background colours (dark mode) -->
+    <color name="threat_bg_high">#4E1010</color>
+    <color name="threat_bg_medium">#3E1F00</color>
+    <color name="threat_bg_low">#3E2A00</color>
 </resources>

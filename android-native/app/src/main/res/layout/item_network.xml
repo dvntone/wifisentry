@@ -91,6 +91,14 @@
                     android:textColor="?android:attr/textColorSecondary" />
 
                 <TextView
+                    android:id="@+id/text_channel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="6dp"
+                    android:textSize="11sp"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+                <TextView
                     android:id="@+id/text_signal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
