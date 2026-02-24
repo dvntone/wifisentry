@@ -65,8 +65,25 @@
     <string name="perm_notif_allow">Allow</string>
     <string name="perm_notif_skip">Skip</string>
 
-    <!-- Network detail dialog -->
-    <string name="dialog_network_detail_title">Network Details</string>
+    <!-- Network detail dialog — distance + GPS -->
+    <string name="detail_label_distance">Distance: %s (RSSI estimate)</string>
+    <string name="detail_label_gps">GPS: %.6f, %.6f</string>
+
+    <!-- Stats panel -->
+    <string name="label_stats_title">📊 Scan Statistics</string>
+    <string name="stat_this_scan">This scan: %1$d networks · %2$d threats</string>
+    <string name="stat_session">Session: %1$d unique · %2$d threats</string>
+    <string name="stat_all_time">All time: %1$d total · %2$d threats</string>
+
+    <!-- Dual-list section headers (%d = count) -->
+    <string name="label_all_networks_header">All Networks (%d)</string>
+    <string name="label_all_networks_header_zero">All Networks</string>
+    <string name="label_threats_header">⚠ Threats Detected (%d)</string>
+    <string name="label_threats_header_zero">⚠ Threats Detected</string>
+
+    <!-- Distance unit toggle -->
+    <string name="button_unit_meters">m</string>
+    <string name="button_unit_feet">ft</string>
     <string name="dialog_close">Close</string>
     <string name="detail_label_ssid">Network: %s</string>
     <string name="detail_label_bssid">Address: %s</string>

@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Landscape variant of activity_main.
-  Two-column layout: controls (left) | results (right).
-  The left panel is inside a ScrollView so every button is always reachable
-  even on phones with limited landscape height (e.g. 360 dp).
-  All View IDs are identical to the portrait layout so MainActivity needs
-  no orientation-specific code.
+  Left panel: controls (scrollable).  Right panel: stats card + two scroll boxes.
+  All View IDs are identical to the portrait layout so MainActivity needs no
+  orientation-specific code.
 -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -15,7 +13,7 @@
     android:orientation="horizontal"
     android:baselineAligned="false">
 
-    <!-- ── LEFT PANEL: status + controls (scrollable) ────────────────── -->
+    <!-- ── LEFT PANEL: status + controls (scrollable) ───────────────────── -->
     <ScrollView
         android:layout_width="0dp"
         android:layout_height="match_parent"
@@ -135,42 +133,151 @@
                 android:ellipsize="end"
                 android:textColor="?attr/colorPrimary" />
 
+            <!-- Stats card (in left panel for landscape) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_stats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardElevation="2dp"
+                app:cardCornerRadius="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="4dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/label_stats_title"
+                            android:textStyle="bold"
+                            android:textSize="12sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_distance_unit"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:minHeight="0dp"
+                            android:paddingHorizontal="8dp"
+                            android:paddingVertical="3dp"
+                            android:textSize="10sp"
+                            android:text="@string/button_unit_meters" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/text_stat_this_scan"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp"
+                        android:paddingVertical="1dp" />
+
+                    <TextView
+                        android:id="@+id/text_stat_session"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp"
+                        android:paddingVertical="1dp" />
+
+                    <TextView
+                        android:id="@+id/text_stat_all_time"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="11sp"
+                        android:paddingVertical="1dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
     </ScrollView>
 
-    <!-- Vertical divider between panels -->
+    <!-- Vertical divider -->
     <View
         android:layout_width="1dp"
         android:layout_height="match_parent"
         android:background="?android:attr/listDivider" />
 
-    <!-- ── RIGHT PANEL: results (fills remaining width) ──────────────── -->
-    <FrameLayout
+    <!-- ── RIGHT PANEL: two scroll boxes (fills remaining width) ─────────── -->
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_weight="6">
+        android:layout_weight="6"
+        android:orientation="vertical">
 
-        <!-- Empty state centred in the result area -->
-        <TextView
-            android:id="@+id/text_empty_state"
+        <!-- All Networks section (weight = 1) -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:text="@string/empty_state_message"
-            android:textSize="14sp"
-            android:textColor="?android:attr/textColorSecondary"
-            android:gravity="center"
-            android:padding="24dp"
-            android:visibility="visible" />
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-        <!-- Results list fills the full right panel -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_networks"
+            <TextView
+                android:id="@+id/text_all_networks_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:text="@string/label_all_networks_header_zero" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_networks"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="4dp"
+                android:clipToPadding="false" />
+        </LinearLayout>
+
+        <!-- Divider between the two lists -->
+        <View
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:paddingHorizontal="4dp"
-            android:paddingBottom="8dp"
-            android:clipToPadding="false" />
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="8dp"
+            android:background="?android:attr/listDivider" />
 
-    </FrameLayout>
+        <!-- Threats Detected section (weight = 1) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_threats_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="10dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_error"
+                android:text="@string/label_threats_header_zero" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_threats"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="4dp"
+                android:paddingBottom="8dp"
+                android:clipToPadding="false" />
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

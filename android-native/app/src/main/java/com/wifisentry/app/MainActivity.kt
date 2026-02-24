@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.wifisentry.app.databinding.ActivityMainBinding
+import com.wifisentry.core.ScanStats
 import com.wifisentry.core.ScanStorage
 import com.wifisentry.core.ScannedNetwork
 import com.wifisentry.core.ThreatAnalyzer
@@ -61,16 +62,24 @@ class MainActivity : AppCompatActivity() {
         NotificationHelper.createChannel(this)
         requestNotificationPermissionIfNeeded()
 
+        // All Networks list
         adapter = ScanResultAdapter()
         adapter.onNetworkClick = { network -> showNetworkDetailDialog(network) }
         binding.recyclerNetworks.layoutManager = LinearLayoutManager(this)
         binding.recyclerNetworks.adapter = adapter
+
+        // Threats Detected list — flagged networks only
+        threatAdapter = ScanResultAdapter()
+        threatAdapter.onNetworkClick = { network -> showNetworkDetailDialog(network) }
+        binding.recyclerThreats.layoutManager = LinearLayoutManager(this)
+        binding.recyclerThreats.adapter = threatAdapter
 
         binding.buttonScan.setOnClickListener { onScanClicked() }
         binding.buttonMonitor.setOnClickListener { onMonitorClicked() }
         binding.buttonHistory.setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
+        binding.buttonDistanceUnit.setOnClickListener { viewModel.toggleDistanceUnit() }
         binding.textWifiStatus.setOnClickListener {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
         }
@@ -144,15 +153,31 @@ class MainActivity : AppCompatActivity() {
     private fun observeViewModel() {
         viewModel.networks.observe(this) { networks ->
             adapter.submitList(networks)
-            binding.textEmptyState.visibility =
-                if (networks.isEmpty()) View.VISIBLE else View.GONE
+            binding.textAllNetworksHeader.text =
+                getString(R.string.label_all_networks_header, networks.size)
+        }
+
+        viewModel.threatNetworks.observe(this) { threats ->
+            threatAdapter.submitList(threats)
+            binding.textThreatsHeader.text =
+                getString(R.string.label_threats_header, threats.size)
+        }
+
+        viewModel.scanStats.observe(this) { stats ->
+            updateStatsCard(stats)
+        }
+
+        viewModel.distanceInFeet.observe(this) { useFeet ->
+            adapter.distanceInFeet      = useFeet
+            threatAdapter.distanceInFeet = useFeet
+            binding.buttonDistanceUnit.text =
+                getString(if (useFeet) R.string.button_unit_feet else R.string.button_unit_meters)
         }
 
         viewModel.isScanning.observe(this) { scanning ->
             binding.buttonScan.isEnabled =
                 !scanning && viewModel.isMonitoring.value != true
             binding.progressScan.visibility = if (scanning) View.VISIBLE else View.GONE
-            if (scanning) binding.textEmptyState.visibility = View.GONE
         }
 
         viewModel.isMonitoring.observe(this) { monitoring ->
@@ -160,21 +185,26 @@ class MainActivity : AppCompatActivity() {
                 if (monitoring) R.string.button_stop_monitoring
                 else            R.string.button_start_monitoring
             )
-            // Disable one-shot scan while continuous monitoring is running
             binding.buttonScan.isEnabled =
                 !monitoring && viewModel.isScanning.value != true
         }
 
         viewModel.scanError.observe(this) { error ->
-            if (!error.isNullOrBlank()) {
-                binding.textEmptyState.text = error
-                binding.textEmptyState.visibility = View.VISIBLE
-            }
+            if (!error.isNullOrBlank()) showSnackbar(error)
         }
 
         viewModel.scanStatus.observe(this) { status ->
             binding.textScanStatus.text = status
         }
+    }
+
+    private fun updateStatsCard(stats: ScanStats) {
+        binding.textStatThisScan.text =
+            getString(R.string.stat_this_scan, stats.totalThisScan, stats.threatsThisScan)
+        binding.textStatSession.text =
+            getString(R.string.stat_session, stats.sessionUnique, stats.sessionThreats)
+        binding.textStatAllTime.text =
+            getString(R.string.stat_all_time, stats.totalAllTime, stats.threatsAllTime)
     }
 
     private fun updateStatusBanner() {
@@ -224,19 +254,31 @@ class MainActivity : AppCompatActivity() {
         Snackbar.make(binding.root, resId, Snackbar.LENGTH_LONG).show()
     }
 
+    private fun showSnackbar(message: String) {
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+    }
+
     private fun showNetworkDetailDialog(network: ScannedNetwork) {
-        val ssid     = network.ssid.ifBlank { getString(R.string.hidden_ssid) }
-        val security = WifiDisplayUtils.capabilitiesToSecurityLabel(network.capabilities)
-        val band     = WifiDisplayUtils.frequencyToBand(network.frequency)
-        val channel  = WifiDisplayUtils.frequencyToChannel(network.frequency)
+        val ssid      = network.ssid.ifBlank { getString(R.string.hidden_ssid) }
+        val security  = WifiDisplayUtils.capabilitiesToSecurityLabel(network.capabilities)
+        val band      = WifiDisplayUtils.frequencyToBand(network.frequency)
+        val channel   = WifiDisplayUtils.frequencyToChannel(network.frequency)
         val rssiLabel = WifiDisplayUtils.rssiToLabel(network.rssi)
+        val useFeet   = viewModel.distanceInFeet.value == true
+        val distM     = WifiDisplayUtils.rssiToDistanceMeters(network.rssi, network.frequency)
+        val distLabel = WifiDisplayUtils.formatDistance(distM, useFeet)
 
         val sb = StringBuilder()
         sb.appendLine(getString(R.string.detail_label_ssid, ssid))
         sb.appendLine(getString(R.string.detail_label_bssid, network.bssid))
         sb.appendLine(getString(R.string.detail_label_signal, network.rssi, rssiLabel))
+        sb.appendLine(getString(R.string.detail_label_distance, distLabel))
         if (band.isNotBlank()) sb.appendLine(getString(R.string.detail_label_band, band, channel))
         sb.appendLine(getString(R.string.detail_label_security, security))
+        if (network.hasGpsFix) {
+            sb.appendLine(getString(R.string.detail_label_gps,
+                network.latitude, network.longitude))
+        }
         sb.append(getString(R.string.detail_threats_header))
         network.threats.forEach { threat ->
             sb.appendLine("• ${threat.displayName(this)}")
@@ -250,3 +292,5 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
+
+
