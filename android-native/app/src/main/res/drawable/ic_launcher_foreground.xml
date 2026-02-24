@@ -4,24 +4,28 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Shield outline -->
+    <!-- Shield outline — proportions matched to docs/logo.svg (200×200 → 108×108, scale 0.54) -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M54,12 L20,28 L20,52 C20,70 35,84 54,92 C73,84 88,70 88,52 L88,28 Z" />
-    <!-- Wi-Fi arcs -->
+        android:pathData="M54,16 L24,29 L24,56 C24,75 37,89 54,95 C71,89 84,75 84,56 L84,29 Z" />
+    <!-- Outer Wi-Fi arc -->
     <path
-        android:fillColor="#6200EE"
-        android:pathData="M54,46 m-4,0 a4,4 0 0,1 8,0 a4,4 0 0,1 -8,0" />
-    <path
+        android:fillAlpha="0"
         android:fillColor="#6200EE"
         android:strokeColor="#6200EE"
+        android:strokeLineCap="round"
         android:strokeWidth="3"
-        android:pathData="M44,52 Q44,42 54,42 Q64,42 64,52"
-        android:fillAlpha="0" />
+        android:pathData="M33,44 Q33,30 54,30 Q75,30 75,44" />
+    <!-- Inner Wi-Fi arc -->
     <path
+        android:fillAlpha="0"
         android:fillColor="#6200EE"
         android:strokeColor="#6200EE"
+        android:strokeLineCap="round"
         android:strokeWidth="3"
-        android:pathData="M37,56 Q37,35 54,35 Q71,35 71,56"
-        android:fillAlpha="0" />
+        android:pathData="M42,52 Q42,43 54,43 Q66,43 66,52" />
+    <!-- Wi-Fi dot -->
+    <path
+        android:fillColor="#6200EE"
+        android:pathData="M54,61 m-4,0 a4,4 0 0,1 8,0 a4,4 0 0,1 -8,0" />
 </vector>
