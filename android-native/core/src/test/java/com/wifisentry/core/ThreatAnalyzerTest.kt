@@ -49,6 +49,12 @@ class ThreatAnalyzerTest {
     }
 
     @Test
+    fun `SAE (WPA3) network not flagged as open`() {
+        val result = analyzer.analyze(listOf(network(capabilities = "[SAE][ESS]")), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.OPEN_NETWORK))
+    }
+
+    @Test
     fun `WEP network not flagged as open`() {
         val result = analyzer.analyze(listOf(network(capabilities = "[WEP][ESS]")), emptyList())
         assertFalse(result.first().threats.contains(ThreatType.OPEN_NETWORK))
@@ -107,6 +113,19 @@ class ThreatAnalyzerTest {
     }
 
     @Test
+    fun `same SSID seen with different BSSID outside history window not flagged`() {
+        val oldBssid = "11:22:33:44:55:66"
+        // Record is older than the 10-minute window
+        val historicNetwork = network(ssid = "CafeNet", bssid = oldBssid)
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 11 * 60 * 1000L, listOf(historicNetwork)))
+
+        val currentNetwork = network(ssid = "CafeNet", bssid = "AA:BB:CC:DD:EE:FF")
+        val result = analyzer.analyze(listOf(currentNetwork), history)
+
+        assertFalse(result.first().threats.contains(ThreatType.MULTIPLE_BSSIDS))
+    }
+
+    @Test
     fun `same SSID seen with same BSSID in history not flagged for multiple BSSIDs`() {
         val bssid = "AA:BB:CC:DD:EE:FF"
         val historicNetwork = network(ssid = "StableNet", bssid = bssid)
@@ -127,6 +146,17 @@ class ThreatAnalyzerTest {
         val result = analyzer.analyze(listOf(current), history)
 
         assertTrue(result.first().threats.contains(ThreatType.SECURITY_CHANGE))
+    }
+
+    @Test
+    fun `security change not triggered when only WPS tag is removed`() {
+        val oldNetwork = network(ssid = "HomeNet", capabilities = "[WPA2-PSK-CCMP][ESS][WPS]")
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(oldNetwork)))
+
+        val current = network(ssid = "HomeNet", capabilities = "[WPA2-PSK-CCMP][ESS]")
+        val result = analyzer.analyze(listOf(current), history)
+
+        assertFalse(result.first().threats.contains(ThreatType.SECURITY_CHANGE))
     }
 
     @Test
@@ -160,6 +190,11 @@ class ThreatAnalyzerTest {
     @Test
     fun `isOpen true for open network`() {
         assertTrue(network(capabilities = "[ESS]").isOpen)
+    }
+
+    @Test
+    fun `isOpen false for SAE (WPA3) network`() {
+        assertFalse(network(capabilities = "[SAE][ESS]").isOpen)
     }
 
     @Test

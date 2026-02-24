@@ -15,7 +15,7 @@ data class ScannedNetwork(
     val threats: List<ThreatType> = emptyList()
 ) {
     val isFlagged: Boolean get() = threats.isNotEmpty()
-    val isOpen: Boolean get() = !capabilities.contains("WPA") && !capabilities.contains("WEP")
+    val isOpen: Boolean get() = !capabilities.contains("WPA") && !capabilities.contains("WEP") && !capabilities.contains("SAE")
 }
 
 /**

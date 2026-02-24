@@ -98,11 +98,13 @@ class ThreatAnalyzer(
         return normaliseCaps(previous.capabilities) != normaliseCaps(network.capabilities)
     }
 
-    /** Strip signal-level info and retain only the security tokens. */
+    /** Strip infrastructure/feature tags and retain only the security tokens. */
     private fun normaliseCaps(caps: String): String {
         return caps.uppercase()
             .replace(Regex("\\[ESS]"), "")
             .replace(Regex("\\[BSS]"), "")
+            .replace(Regex("\\[IBSS]"), "")
+            .replace(Regex("\\[WPS]"), "")
             .trim()
     }
 
