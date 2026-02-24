@@ -10,6 +10,7 @@ import android.provider.Settings
 import android.util.TypedValue
 import android.view.View
 import android.widget.PopupMenu
+import android.widget.ScrollView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +27,9 @@ import com.wifisentry.core.ScannedNetwork
 import com.wifisentry.core.ThreatAnalyzer
 import com.wifisentry.core.WifiDisplayUtils
 import com.wifisentry.core.WifiScanner
+import com.wifisentry.core.ChangeType
+import com.wifisentry.core.NetworkChange
+import com.wifisentry.core.ThreatSeverity
 
 class MainActivity : AppCompatActivity() {
 
@@ -84,6 +88,11 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
         binding.buttonDistanceUnit.setOnClickListener { viewModel.toggleDistanceUnit() }
+
+        // Active analysis button
+        binding.buttonAnalyze.setOnClickListener {
+            viewModel.analyzeHistory(applicationContext)
+        }
 
         // Column header sort taps
         binding.layoutColThreat.setOnClickListener  { viewModel.setSort(SortColumn.THREAT) }
@@ -231,6 +240,25 @@ class MainActivity : AppCompatActivity() {
         viewModel.scanStatus.observe(this) { status ->
             binding.textScanStatus.text = status
         }
+
+        viewModel.isAnalyzing.observe(this) { running ->
+            binding.buttonAnalyze.isEnabled = !running
+            binding.buttonAnalyze.text = if (running)
+                getString(R.string.button_analyzing)
+            else
+                getString(R.string.button_analyze)
+        }
+
+        viewModel.analysisChanges.observe(this) { changes ->
+            if (changes.isEmpty()) {
+                binding.textChangesSummary.text = getString(R.string.analysis_no_changes)
+            } else {
+                val high   = changes.count { it.severity == ThreatSeverity.HIGH }
+                val medium = changes.count { it.severity == ThreatSeverity.MEDIUM }
+                binding.textChangesSummary.text = getString(R.string.analysis_summary, changes.size, high, medium)
+                if (high > 0) showAnalysisDialog(changes)
+            }
+        }
     }
 
     private fun updateStatsCard(stats: ScanStats) {
@@ -365,6 +393,62 @@ class MainActivity : AppCompatActivity() {
             true
         }
         popup.show()
+    }
+
+    /**
+     * Display active analysis results in a scrollable Material dialog.
+     * Each [NetworkChange] row is colour-coded by severity and shows:
+     *   [severity icon] SSID · ChangeType  (score/100)
+     *   description (first 140 chars)
+     *
+     * The description field is Gemini-ready: if a Gemini API key is added,
+     * this same text can be sent directly to the Gemini API for AI enrichment.
+     */
+    private fun showAnalysisDialog(changes: List<NetworkChange>) {
+        val ctx = this
+        val scrollView = ScrollView(ctx)
+        val container = android.widget.LinearLayout(ctx).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val pad = (12 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+        }
+        scrollView.addView(container)
+
+        changes.take(30).forEach { change ->
+            val icon = when (change.severity) {
+                ThreatSeverity.HIGH   -> "🔴"
+                ThreatSeverity.MEDIUM -> "🟠"
+                ThreatSeverity.LOW    -> "🟡"
+            }
+            val colorRes = when (change.severity) {
+                ThreatSeverity.HIGH   -> R.color.status_error
+                ThreatSeverity.MEDIUM -> R.color.status_warning
+                ThreatSeverity.LOW    -> R.color.status_ok
+            }
+            val title = android.widget.TextView(ctx).apply {
+                text = "$icon ${change.ssid.ifBlank { change.bssid }} · " +
+                        "${change.type.name.lowercase().replace('_', ' ')} (${change.score}/100)"
+                textSize  = 12f
+                setTypeface(null, Typeface.BOLD)
+                setTextColor(getColor(colorRes))
+                val pad = (4 * resources.displayMetrics.density).toInt()
+                setPadding(0, pad * 2, 0, 0)
+            }
+            val body = android.widget.TextView(ctx).apply {
+                text = change.description.take(140)
+                textSize = 11f
+                val pad = (4 * resources.displayMetrics.density).toInt()
+                setPadding(0, 0, 0, pad)
+            }
+            container.addView(title)
+            container.addView(body)
+        }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            .setTitle(getString(R.string.analysis_dialog_title, changes.size))
+            .setView(scrollView)
+            .setPositiveButton(R.string.dialog_close, null)
+            .show()
     }
 
     private fun showNetworkDetailDialog(network: ScannedNetwork) {

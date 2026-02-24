@@ -55,6 +55,7 @@ class ImportActivity : AppCompatActivity() {
         binding.buttonImportOpenCellId.setOnClickListener {
             pickOpenCellId.launch("text/*")
         }
+        binding.buttonDone.setOnClickListener { finish() }
     }
 
     override fun onSupportNavigateUp(): Boolean {

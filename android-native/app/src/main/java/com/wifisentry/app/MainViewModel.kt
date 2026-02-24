@@ -22,6 +22,8 @@ import com.wifisentry.core.ScanStorage
 import com.wifisentry.core.ScannedNetwork
 import com.wifisentry.core.ThreatAnalyzer
 import com.wifisentry.core.WifiScanner
+import com.wifisentry.core.ChangeAnalyzer
+import com.wifisentry.core.NetworkChange
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -89,6 +91,14 @@ class MainViewModel(
     private val _manufacturers = MutableLiveData<Map<String, String>>(emptyMap())
     val manufacturers: LiveData<Map<String, String>> = _manufacturers
 
+    /** Changes detected by [ChangeAnalyzer] after the most recent analysis run. */
+    private val _analysisChanges = MutableLiveData<List<NetworkChange>>(emptyList())
+    val analysisChanges: LiveData<List<NetworkChange>> = _analysisChanges
+
+    /** True while [analyzeHistory] is running. */
+    private val _isAnalyzing = MutableLiveData(false)
+    val isAnalyzing: LiveData<Boolean> = _isAnalyzing
+
     /** Toggle between feet and metres for the distance display. */
     fun toggleDistanceUnit() {
         _distanceInFeet.value = _distanceInFeet.value != true
@@ -118,6 +128,22 @@ class MainViewModel(
     fun toggleColumn(col: NetworkColumn) {
         val current = _visibleColumns.value ?: ALL_COLUMNS
         _visibleColumns.value = if (col in current) current - col else current + col
+    }
+
+    /**
+     * Run [ChangeAnalyzer] on the full stored scan history.
+     * Executes on [Dispatchers.IO] and posts results back to the main thread.
+     * Safe to call from any thread; no-ops if already running.
+     */
+    fun analyzeHistory(context: android.content.Context) {
+        if (_isAnalyzing.value == true) return
+        _isAnalyzing.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            val history = ScanStorage(context).loadHistory()
+            val result  = ChangeAnalyzer.analyze(history)
+            _analysisChanges.postValue(result.changes)
+            _isAnalyzing.postValue(false)
+        }
     }
 
     private val rootShellScanner = RootShellScanner()

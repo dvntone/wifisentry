@@ -43,7 +43,8 @@
         <activity
             android:name=".ImportActivity"
             android:exported="false"
-            android:label="@string/import_title" />
+            android:label="@string/import_title"
+            android:parentActivityName=".HistoryActivity" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

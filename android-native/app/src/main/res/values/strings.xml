@@ -163,4 +163,16 @@
     <string name="import_error_title">Import Failed</string>
     <string name="import_error_read">Could not read the selected file. Please check the file is a valid CSV export.</string>
     <string name="button_import">⬇ Import Data</string>
+
+    <!-- Active analysis -->
+    <string name="button_analyze">⚡ Analyze</string>
+    <string name="button_analyzing">Analyzing…</string>
+    <string name="analysis_tap_to_run">Tap ⚡ to analyse scan history for AP changes</string>
+    <string name="analysis_no_changes">✓ No AP changes detected in history</string>
+    <string name="analysis_summary">⚡ %1$d changes: %2$d high, %3$d medium severity</string>
+    <string name="analysis_dialog_title">%1$d AP Changes Detected</string>
+    <!-- Import / History -->
+    <string name="button_done">Done</string>
+    <!-- Status colors used programmatically -->
+    <string name="status_warning_label">Warning</string>
 </resources>

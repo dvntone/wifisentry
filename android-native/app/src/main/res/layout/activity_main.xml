@@ -220,6 +220,36 @@
                     android:layout_height="wrap_content"
                     android:textSize="12sp"
                     android:paddingVertical="1dp" />
+
+                <!-- Active analysis row: shows change count + analyze trigger -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <TextView
+                        android:id="@+id/text_changes_summary"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:textSize="12sp"
+                        android:text="@string/analysis_tap_to_run"
+                        android:textColor="?attr/colorPrimary"
+                        android:paddingVertical="2dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_analyze"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        android:textSize="11sp"
+                        android:text="@string/button_analyze" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
