@@ -232,7 +232,6 @@ jobs:
   build-release-artifacts:
     name: Build and attach release artifacts
     needs: [detect-version, publish-release]
-    if: needs.detect-version.outputs.version-changed == 'true'
     uses: ./.github/workflows/release.yml
     with:
       version: v${{ needs.detect-version.outputs.version }}
