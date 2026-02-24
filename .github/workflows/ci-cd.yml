@@ -7,8 +7,12 @@ on:
       - '**.js'
       - '**.ts'
       - '**.tsx'
+      - '**.kt'
+      - '**.gradle'
       - 'package.json'
       - 'web-app/package.json'
+      - 'android-native/**'
+      - 'desktop/**'
       - '.github/workflows/ci-cd.yml'
   pull_request:
     branches: [ "main", "develop" ]
@@ -145,6 +149,10 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android-native/**/*.gradle', 'android-native/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
+
+      - name: Run Android unit tests
+        working-directory: android-native
+        run: ./gradlew :core:test
 
       - name: Build Android APK
         working-directory: android-native
