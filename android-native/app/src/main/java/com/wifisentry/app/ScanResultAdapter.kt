@@ -80,4 +80,8 @@ private fun ThreatType.displayName(ctx: Context): String = when (this) {
     ThreatType.BEACON_FLOOD -> ctx.getString(R.string.threat_beacon_flood)
     ThreatType.INCONSISTENT_CAPABILITIES -> ctx.getString(R.string.threat_inconsistent_capabilities)
     ThreatType.BSSID_NEAR_CLONE -> ctx.getString(R.string.threat_bssid_near_clone)
+    ThreatType.WPS_VULNERABLE -> ctx.getString(R.string.threat_wps_vulnerable)
+    ThreatType.CHANNEL_SHIFT -> ctx.getString(R.string.threat_channel_shift)
+    ThreatType.DEAUTH_FLOOD -> ctx.getString(R.string.threat_deauth_flood)
+    ThreatType.PROBE_RESPONSE_ANOMALY -> ctx.getString(R.string.threat_probe_response_anomaly)
 }
