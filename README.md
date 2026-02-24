@@ -2,6 +2,20 @@
 
 An advanced WiFi monitoring and security application designed to detect and log potential threats, including WiFi Pineapples, evil twin cloning, and Karma attacks. The application features a user-friendly interface that allows users to select and customize detection techniques in real time.
 
+## 📥 Download
+
+**[⬇️ Latest Release — GitHub Releases page](https://github.com/dvntone/wifisentry/releases/latest)**
+
+| Platform | Artifact |
+|---|---|
+| Windows Desktop (Electron x64) | `.exe` installer / portable |
+| Android Mobile | `app-dev-release-unsigned.apk` |
+| Web PWA | `.tar.gz` / `.zip` archive |
+
+> See [CHANGES.md](./CHANGES.md) for a full changelog.
+
+---
+
 ## ✨ Features
 
 ### Real-Time Detection
@@ -385,6 +399,6 @@ Created with focus on WiFi security awareness and emerging threat detection.
 
 ---
 
-**Last Updated**: February 2024  
-**Version**: 1.0.0  
+**Last Updated**: February 2026  
+**Version**: 1.1.6  
 **Status**: Active Development 🟢
