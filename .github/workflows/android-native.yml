@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   build-android-native:
-    name: Build Android Native (assembleDebug)
+    name: Build Android Native (debug + dev release)
     runs-on: ubuntu-latest
 
     steps:
@@ -59,5 +59,16 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wifisentry-debug-apk
-          path: android-native/app/build/outputs/apk/debug/*.apk
+          path: android-native/app/build/outputs/apk/dev/debug/*.apk
+          if-no-files-found: warn
+
+      - name: Build dev release APK
+        working-directory: android-native
+        run: ./gradlew :app:assembleDevRelease --stacktrace
+
+      - name: Upload dev release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wifisentry-dev-release-apk
+          path: android-native/app/build/outputs/apk/dev/release/*.apk
           if-no-files-found: warn

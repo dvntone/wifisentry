@@ -17,6 +17,19 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    flavorDimensions "environment"
+    productFlavors {
+        // dev — development build; applicationId gets .dev suffix so it can
+        // be installed alongside a production build on the same device.
+        // A `prod` flavor should be added here when production release signing
+        // is configured.
+        dev {
+            dimension "environment"
+            applicationIdSuffix ".dev"
+            versionNameSuffix "-dev"
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
