@@ -59,11 +59,11 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
         val frequency: Int,
         val timestamp: Long,
         val threats: List<String>,
-        // GPS fields — default NaN so old JSON files without these fields still load.
-        val latitude: Double = Double.NaN,
-        val longitude: Double = Double.NaN,
-        val altitude: Double = Double.NaN,
-        val gpsAccuracy: Float = Float.NaN,
+        // GPS fields — null when no fix available so Gson serialises clean JSON (NaN is non-standard).
+        val latitude: Double? = null,
+        val longitude: Double? = null,
+        val altitude: Double? = null,
+        val gpsAccuracy: Float? = null,
     ) {
         fun toModel() = ScannedNetwork(
             ssid = ssid,
@@ -73,10 +73,10 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
             frequency = frequency,
             timestamp = timestamp,
             threats = threats.mapNotNull { runCatching { ThreatType.valueOf(it) }.getOrNull() },
-            latitude = latitude,
-            longitude = longitude,
-            altitude = altitude,
-            gpsAccuracy = gpsAccuracy,
+            latitude = latitude ?: Double.NaN,
+            longitude = longitude ?: Double.NaN,
+            altitude = altitude ?: Double.NaN,
+            gpsAccuracy = gpsAccuracy ?: Float.NaN,
         )
 
         companion object {
@@ -88,10 +88,10 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
                 frequency = n.frequency,
                 timestamp = n.timestamp,
                 threats = n.threats.map { it.name },
-                latitude = n.latitude,
-                longitude = n.longitude,
-                altitude = n.altitude,
-                gpsAccuracy = n.gpsAccuracy,
+                latitude = if (n.latitude.isFinite()) n.latitude else null,
+                longitude = if (n.longitude.isFinite()) n.longitude else null,
+                altitude = if (n.altitude.isFinite()) n.altitude else null,
+                gpsAccuracy = if (n.gpsAccuracy.isFinite()) n.gpsAccuracy else null,
             )
         }
     }
