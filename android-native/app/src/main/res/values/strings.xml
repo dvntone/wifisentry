@@ -167,7 +167,7 @@
     <!-- Active analysis -->
     <string name="button_analyze">⚡ Analyze</string>
     <string name="button_analyzing">Analyzing…</string>
-    <string name="analysis_tap_to_run">Tap ⚡ to analyse scan history for AP changes</string>
+    <string name="analysis_tap_to_run">Tap ⚡ to analyze scan history for AP changes</string>
     <string name="analysis_no_changes">✓ No AP changes detected in history</string>
     <string name="analysis_summary">⚡ %1$d changes: %2$d high, %3$d medium severity</string>
     <string name="analysis_dialog_title">%1$d AP Changes Detected</string>
@@ -175,4 +175,45 @@
     <string name="button_done">Done</string>
     <!-- Status colors used programmatically -->
     <string name="status_warning_label">Warning</string>
+
+    <!-- Network item action sheet (tap on any network in list) -->
+    <string name="action_copy_ssid">📋 Copy SSID</string>
+    <string name="action_copy_bssid">📋 Copy MAC (BSSID)</string>
+    <string name="action_copy_all">📋 Copy All Details</string>
+    <string name="action_pin">📌 Pin for Tracking</string>
+    <string name="action_unpin">📌 Unpin</string>
+    <string name="action_view_details">ℹ Details</string>
+    <string name="action_ask_gemini">🤖 Ask Gemini AI</string>
+
+    <!-- Clipboard toasts -->
+    <string name="copied_ssid">SSID copied to clipboard</string>
+    <string name="copied_bssid">MAC address copied to clipboard</string>
+    <string name="copied_all">Details copied to clipboard</string>
+
+    <!-- Pin actions -->
+    <string name="pin_added">📌 Pinned: %s</string>
+    <string name="pin_removed">Unpinned: %s</string>
+
+    <!-- PinDetailActivity -->
+    <string name="title_pin_detail">Pinned Network</string>
+    <string name="pin_since">Pinned since: %s</string>
+    <string name="pin_changes_title">⚡ AP Change Analysis</string>
+    <string name="pin_no_changes">✓ No changes detected in scan history for this AP.</string>
+    <string name="pin_history_title">Scan History</string>
+    <string name="pin_history_title_count">Scan History (%d appearances)</string>
+    <string name="pin_no_history">No scan records found for this AP yet.</string>
+
+    <!-- Gemini AI integration (PinDetailActivity) -->
+    <string name="gemini_card_title">🤖 Gemini AI Analysis</string>
+    <string name="button_ask_gemini">Ask Gemini</string>
+    <string name="gemini_tap_hint">Tap \'Ask Gemini\' to get an AI-powered threat assessment.\nRequires a Gemini API key (free tier available at aistudio.google.com).</string>
+    <string name="gemini_thinking">Asking Gemini AI…</string>
+    <string name="gemini_error">AI analysis failed: %s</string>
+    <string name="gemini_key_dialog_title">Gemini API Key</string>
+    <string name="gemini_key_dialog_message">Enter your Gemini API key. Get a free key at aistudio.google.com.\n\nYour key is stored only on this device in private app storage and is never transmitted except to the Gemini API.</string>
+    <string name="gemini_key_hint">Gemini API key</string>
+    <string name="gemini_key_save">Save &amp; Analyze</string>
+    <string name="gemini_key_clear">Clear Saved Key</string>
+    <string name="gemini_key_empty">Please enter an API key</string>
+    <string name="gemini_key_cleared">Saved API key removed</string>
 </resources>

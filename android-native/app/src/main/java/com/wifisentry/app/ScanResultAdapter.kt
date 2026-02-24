@@ -148,13 +148,13 @@ class ScanResultAdapter :
                 flagIndicator.setBackgroundColor(barColor)
                 // Threat label colour matches severity bar
                 textThreats.setTextColor(barColor)
-                itemView.setOnClickListener { onClick?.invoke(network) }
             } else {
                 flagIndicator.visibility = View.GONE
                 textThreats.visibility   = View.GONE
                 itemView.setBackgroundColor(Color.TRANSPARENT)
-                itemView.setOnClickListener(null)
             }
+            // All items are tappable — tap opens the action popup (copy / pin / Gemini)
+            itemView.setOnClickListener { onClick?.invoke(network) }
         }
     }
 

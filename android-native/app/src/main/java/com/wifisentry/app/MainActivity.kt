@@ -1,6 +1,8 @@
 package com.wifisentry.app
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
@@ -20,7 +22,12 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.wifisentry.app.databinding.ActivityMainBinding
+import com.wifisentry.core.GeminiAnalyzer
+import com.wifisentry.core.PinnedNetwork
+import com.wifisentry.core.PinnedStorage
 import com.wifisentry.core.ScanStats
 import com.wifisentry.core.ScanStorage
 import com.wifisentry.core.ScannedNetwork
@@ -72,13 +79,13 @@ class MainActivity : AppCompatActivity() {
 
         // All Networks list
         adapter = ScanResultAdapter()
-        adapter.onNetworkClick = { network -> showNetworkDetailDialog(network) }
+        adapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
         binding.recyclerNetworks.layoutManager = LinearLayoutManager(this)
         binding.recyclerNetworks.adapter = adapter
 
         // Threats Detected list — flagged networks only
         threatAdapter = ScanResultAdapter()
-        threatAdapter.onNetworkClick = { network -> showNetworkDetailDialog(network) }
+        threatAdapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
         binding.recyclerThreats.layoutManager = LinearLayoutManager(this)
         binding.recyclerThreats.adapter = threatAdapter
 
@@ -449,6 +456,100 @@ class MainActivity : AppCompatActivity() {
             .setView(scrollView)
             .setPositiveButton(R.string.dialog_close, null)
             .show()
+    }
+
+    /**
+     * Action-sheet popup shown when the user taps any network in the list.
+     *
+     * Options:
+     *  • Copy SSID
+     *  • Copy MAC (BSSID)
+     *  • Copy All Details
+     *  • Pin for Tracking  / Unpin
+     *  • View Details        (existing detail dialog)
+     *  • Ask Gemini AI       (opens PinDetailActivity with Gemini prompt)
+     */
+    private fun showNetworkActionSheet(network: ScannedNetwork) {
+        val ssid    = network.ssid.ifBlank { getString(R.string.hidden_ssid) }
+        val storage = PinnedStorage(applicationContext)
+        val isPinned = storage.isPinned(network.bssid)
+
+        val items = mutableListOf(
+            getString(R.string.action_copy_ssid),
+            getString(R.string.action_copy_bssid),
+            getString(R.string.action_copy_all),
+            if (isPinned) getString(R.string.action_unpin) else getString(R.string.action_pin),
+            getString(R.string.action_view_details),
+            getString(R.string.action_ask_gemini),
+        )
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(ssid)
+            .setItems(items.toTypedArray()) { _, which ->
+                when (which) {
+                    0 -> copyToClipboard(network.ssid, R.string.copied_ssid)
+                    1 -> copyToClipboard(network.bssid, R.string.copied_bssid)
+                    2 -> copyToClipboard(buildAllDetailsText(network), R.string.copied_all)
+                    3 -> togglePin(network, storage)
+                    4 -> showNetworkDetailDialog(network)
+                    5 -> openPinDetail(network)
+                }
+            }
+            .setNegativeButton(R.string.dialog_close, null)
+            .show()
+    }
+
+    private fun copyToClipboard(text: String, toastResId: Int) {
+        val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("wifisentry", text))
+        Snackbar.make(binding.root, toastResId, Snackbar.LENGTH_SHORT).show()
+    }
+
+    private fun buildAllDetailsText(network: ScannedNetwork): String {
+        val ssid     = network.ssid.ifBlank { getString(R.string.hidden_ssid) }
+        val security = WifiDisplayUtils.capabilitiesToSecurityLabel(network.capabilities)
+        val band     = WifiDisplayUtils.frequencyToBand(network.frequency)
+        val channel  = WifiDisplayUtils.frequencyToChannel(network.frequency)
+        val mfgr     = viewModel.manufacturers.value?.get(network.bssid)
+        return buildString {
+            appendLine("SSID: $ssid")
+            appendLine("BSSID: ${network.bssid}")
+            if (!mfgr.isNullOrBlank()) appendLine("Manufacturer: $mfgr")
+            appendLine("Signal: ${network.rssi} dBm")
+            appendLine("Security: $security")
+            if (band.isNotBlank()) appendLine("Band: $band  Channel: $channel")
+            if (network.isFlagged) {
+                appendLine("Threats: ${network.threats.joinToString { it.displayName(this@MainActivity) }}")
+            }
+        }.trimEnd()
+    }
+
+    private fun togglePin(network: ScannedNetwork, storage: PinnedStorage) {
+        if (storage.isPinned(network.bssid)) {
+            storage.unpin(network.bssid)
+            val label = network.ssid.ifBlank { network.bssid }
+            Snackbar.make(binding.root, getString(R.string.pin_removed, label), Snackbar.LENGTH_SHORT).show()
+        } else {
+            val pin = PinnedNetwork(bssid = network.bssid, ssid = network.ssid)
+            storage.pin(pin)
+            val label = network.ssid.ifBlank { network.bssid }
+            Snackbar.make(binding.root, getString(R.string.pin_added, label), Snackbar.LENGTH_SHORT)
+                .setAction(R.string.action_view_details) { openPinDetail(network) }
+                .show()
+        }
+    }
+
+    private fun openPinDetail(network: ScannedNetwork) {
+        // Ensure the network is pinned before opening the detail page
+        val storage = PinnedStorage(applicationContext)
+        if (!storage.isPinned(network.bssid)) {
+            storage.pin(PinnedNetwork(bssid = network.bssid, ssid = network.ssid))
+        }
+        val intent = Intent(this, PinDetailActivity::class.java).apply {
+            putExtra(PinDetailActivity.EXTRA_BSSID, network.bssid)
+            putExtra(PinDetailActivity.EXTRA_SSID,  network.ssid)
+        }
+        startActivity(intent)
     }
 
     private fun showNetworkDetailDialog(network: ScannedNetwork) {

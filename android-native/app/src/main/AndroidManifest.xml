@@ -46,6 +46,12 @@
             android:label="@string/import_title"
             android:parentActivityName=".HistoryActivity" />
 
+        <activity
+            android:name=".PinDetailActivity"
+            android:exported="false"
+            android:label="@string/title_pin_detail"
+            android:parentActivityName=".MainActivity" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
