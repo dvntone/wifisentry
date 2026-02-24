@@ -307,4 +307,89 @@ class ThreatAnalyzerTest {
 
         assertFalse(result.first().threats.contains(ThreatType.SUSPICIOUS_SIGNAL_STRENGTH))
     }
+
+    // ── MULTI_SSID_SAME_OUI ───────────────────────────────────────────────
+    // Detects: Pineapple Karma mode / Wi-Fi Marauder SSID list spam.
+    // On non-rooted Android we see beacon/probe-response frames only; actual
+    // probe-REQUEST traffic from client STAs requires monitor mode (root).
+
+    @Test
+    fun `five distinct SSIDs from same OUI flagged as multi-SSID spam`() {
+        val scan = (1..5).map { i ->
+            network(ssid = "SpamSSID$i", bssid = "AA:BB:CC:00:00:0$i")
+        }
+        val result = analyzer.analyze(scan, emptyList())
+        assertTrue(result.all { it.threats.contains(ThreatType.MULTI_SSID_SAME_OUI) })
+    }
+
+    @Test
+    fun `four distinct SSIDs from same OUI not flagged (below threshold)`() {
+        val scan = (1..4).map { i ->
+            network(ssid = "RouterSSID$i", bssid = "AA:BB:CC:00:00:0$i")
+        }
+        val result = analyzer.analyze(scan, emptyList())
+        assertFalse(result.any { it.threats.contains(ThreatType.MULTI_SSID_SAME_OUI) })
+    }
+
+    @Test
+    fun `five distinct SSIDs from different OUIs not flagged as multi-SSID spam`() {
+        val scan = listOf(
+            network(ssid = "Net1", bssid = "AA:BB:CC:00:00:01"),
+            network(ssid = "Net2", bssid = "AA:BB:DD:00:00:02"),
+            network(ssid = "Net3", bssid = "AA:BB:EE:00:00:03"),
+            network(ssid = "Net4", bssid = "AA:BB:FF:00:00:04"),
+            network(ssid = "Net5", bssid = "AA:CC:11:00:00:05")
+        )
+        val result = analyzer.analyze(scan, emptyList())
+        assertFalse(result.any { it.threats.contains(ThreatType.MULTI_SSID_SAME_OUI) })
+    }
+
+    // ── BEACON_FLOOD ──────────────────────────────────────────────────────
+    // Detects: Wi-Fi Marauder "spam ap list" / mdk4 beacon flood.
+    // Same-OUI burst of brand-new BSSIDs relative to prior scan history.
+
+    @Test
+    fun `four new BSSIDs from same OUI in single scan with history flagged as beacon flood`() {
+        val knownBssid = network(bssid = "AA:BB:CC:00:00:00", rssi = -70)
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(knownBssid)))
+
+        val floodScan = (1..4).map { i ->
+            network(ssid = "Flood$i", bssid = "AA:BB:CC:FF:00:0$i")
+        }
+        val result = analyzer.analyze(floodScan, history)
+        assertTrue(result.all { it.threats.contains(ThreatType.BEACON_FLOOD) })
+    }
+
+    @Test
+    fun `four new BSSIDs from same OUI on first scan (no history) not flagged`() {
+        val scan = (1..4).map { i ->
+            network(ssid = "Flood$i", bssid = "AA:BB:CC:FF:00:0$i")
+        }
+        val result = analyzer.analyze(scan, emptyList())
+        assertFalse(result.any { it.threats.contains(ThreatType.BEACON_FLOOD) })
+    }
+
+    @Test
+    fun `three new BSSIDs from same OUI not flagged (below threshold)`() {
+        val knownBssid = network(bssid = "AA:BB:CC:00:00:00", rssi = -70)
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(knownBssid)))
+
+        val scan = (1..3).map { i ->
+            network(ssid = "New$i", bssid = "AA:BB:CC:FF:00:0$i")
+        }
+        val result = analyzer.analyze(scan, history)
+        assertFalse(result.any { it.threats.contains(ThreatType.BEACON_FLOOD) })
+    }
+
+    @Test
+    fun `four BSSIDs from same OUI already in history not flagged as beacon flood`() {
+        val bssids = (1..4).map { i -> "AA:BB:CC:00:00:0$i" }
+        val historicNets = bssids.mapIndexed { i, b -> network(ssid = "Known${i + 1}", bssid = b) }
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, historicNets))
+
+        // Same BSSIDs appear again — not a flood, just existing APs
+        val scan = bssids.mapIndexed { i, b -> network(ssid = "Known${i + 1}", bssid = b) }
+        val result = analyzer.analyze(scan, history)
+        assertFalse(result.any { it.threats.contains(ThreatType.BEACON_FLOOD) })
+    }
 }

@@ -18,6 +18,9 @@ class ThreatAnalyzer(
         networks: List<ScannedNetwork>,
         history: List<ScanRecord>
     ): List<ScannedNetwork> {
+        // Pre-compute the full set of known BSSIDs once; used by multiple checks.
+        val knownBssids = history.flatMap { it.networks }.map { it.bssid }.toSet()
+
         return networks.map { network ->
             val threats = mutableListOf<ThreatType>()
 
@@ -39,8 +42,14 @@ class ThreatAnalyzer(
             if (isMacSpoofingSuspected(network)) {
                 threats += ThreatType.MAC_SPOOFING_SUSPECTED
             }
-            if (isSuspiciousSignalStrength(network, history)) {
+            if (isSuspiciousSignalStrength(network, knownBssids)) {
                 threats += ThreatType.SUSPICIOUS_SIGNAL_STRENGTH
+            }
+            if (hasMultipleSsidsFromSameOui(network, networks)) {
+                threats += ThreatType.MULTI_SSID_SAME_OUI
+            }
+            if (isBeaconFlood(network, networks, knownBssids)) {
+                threats += ThreatType.BEACON_FLOOD
             }
 
             network.copy(threats = threats)
@@ -174,12 +183,72 @@ class ThreatAnalyzer(
      */
     private fun isSuspiciousSignalStrength(
         network: ScannedNetwork,
-        history: List<ScanRecord>
+        knownBssids: Set<String>
     ): Boolean {
-        if (history.isEmpty()) return false
+        if (knownBssids.isEmpty()) return false
         if (network.rssi < SUSPICIOUS_RSSI_THRESHOLD) return false
-        val knownBssids = history.flatMap { it.networks }.map { it.bssid }.toSet()
         return network.bssid.isNotBlank() && network.bssid !in knownBssids
+    }
+
+    /**
+     * True when five or more distinct SSIDs are advertised by APs that share
+     * the same hardware OUI (first three BSSID octets) within the current scan.
+     *
+     * A home or office router may legitimately serve 2–4 SSIDs from a single
+     * radio (main 2.4 GHz, main 5 GHz, guest 2.4 GHz, guest 5 GHz).  Five or
+     * more different SSIDs from the same OUI is abnormal and matches the output
+     * of a Wi-Fi Pineapple running Karma mode or Wi-Fi Marauder's beacon-spam
+     * "ap list" command, which floods the air with many virtual SSIDs.
+     *
+     * Note: on non-rooted Android we observe beacon/probe-response frames only;
+     * actual probe-request frames from client STAs require monitor mode (root).
+     */
+    private fun hasMultipleSsidsFromSameOui(
+        network: ScannedNetwork,
+        currentScan: List<ScannedNetwork>
+    ): Boolean {
+        val oui = ouiOf(network.bssid) ?: return false
+        val ssids = currentScan
+            .filter { ouiOf(it.bssid) == oui && it.ssid.isNotBlank() }
+            .map { it.ssid }
+            .toSet()
+        return ssids.size >= MULTI_SSID_OUI_THRESHOLD
+    }
+
+    /**
+     * True when four or more brand-new BSSIDs sharing the same OUI have
+     * appeared in the current scan without any prior presence in scan history.
+     *
+     * Wi-Fi Marauder's "spam ap list" and similar beacon-flood tools
+     * (hostapd-wpe, mdk3/mdk4) create many virtual APs in rapid succession.
+     * All virtual APs share the same physical radio OUI, producing a burst of
+     * many same-OUI BSSIDs that have never appeared before.  Requiring a
+     * history baseline prevents false-positives on the very first scan in a
+     * new environment.
+     */
+    private fun isBeaconFlood(
+        network: ScannedNetwork,
+        currentScan: List<ScannedNetwork>,
+        knownBssids: Set<String>
+    ): Boolean {
+        if (knownBssids.isEmpty()) return false
+        val oui = ouiOf(network.bssid) ?: return false
+        val newBssidsFromOui = currentScan
+            .filter { ouiOf(it.bssid) == oui && it.bssid.isNotBlank() }
+            .map { it.bssid }
+            .toSet()
+            .count { it !in knownBssids }
+        return newBssidsFromOui >= BEACON_FLOOD_THRESHOLD
+    }
+
+    /** Returns the OUI portion (first three colon-separated octets) of a BSSID,
+     *  or null if the BSSID is malformed or any octet is not two hex digits. */
+    private fun ouiOf(bssid: String): String? {
+        val parts = bssid.split(":")
+        if (parts.size < 3) return null
+        val hexOctet = Regex("^[0-9A-Fa-f]{2}$")
+        if (parts.take(3).any { !it.matches(hexOctet) }) return null
+        return "${parts[0]}:${parts[1]}:${parts[2]}"
     }
 
     companion object {
@@ -187,6 +256,12 @@ class ThreatAnalyzer(
 
         /** dBm above which a brand-new BSSID is considered suspiciously close. */
         private const val SUSPICIOUS_RSSI_THRESHOLD = -40  // dBm
+
+        /** Minimum distinct SSIDs from one OUI to flag as multi-SSID spam. */
+        private const val MULTI_SSID_OUI_THRESHOLD = 5
+
+        /** Minimum new BSSIDs from one OUI in a single scan to flag as a beacon flood. */
+        private const val BEACON_FLOOD_THRESHOLD = 4
 
         val DEFAULT_SUSPICIOUS_KEYWORDS = listOf(
             "free", "guest", "public", "open", "hack", "evil", "pineapple",

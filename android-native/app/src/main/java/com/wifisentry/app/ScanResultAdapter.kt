@@ -76,4 +76,6 @@ private fun ThreatType.displayName(ctx: Context): String = when (this) {
     ThreatType.EVIL_TWIN -> ctx.getString(R.string.threat_evil_twin)
     ThreatType.MAC_SPOOFING_SUSPECTED -> ctx.getString(R.string.threat_mac_spoofing)
     ThreatType.SUSPICIOUS_SIGNAL_STRENGTH -> ctx.getString(R.string.threat_suspicious_signal)
+    ThreatType.MULTI_SSID_SAME_OUI -> ctx.getString(R.string.threat_multi_ssid_same_oui)
+    ThreatType.BEACON_FLOOD -> ctx.getString(R.string.threat_beacon_flood)
 }

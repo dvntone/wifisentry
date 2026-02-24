@@ -36,6 +36,8 @@
     <string name="threat_evil_twin">Evil twin / Pineapple</string>
     <string name="threat_mac_spoofing">MAC spoofing suspected</string>
     <string name="threat_suspicious_signal">Suspiciously strong signal</string>
+    <string name="threat_multi_ssid_same_oui">Beacon spam (multi-SSID same radio)</string>
+    <string name="threat_beacon_flood">Beacon flood (AP list spam)</string>
 
     <!-- History -->
     <string name="history_empty">No scan history yet.</string>

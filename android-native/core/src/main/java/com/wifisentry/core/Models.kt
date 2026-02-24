@@ -36,7 +36,20 @@ enum class ThreatType {
     /** Previously-unseen BSSID advertising with an unusually strong signal while
      *  established scan history exists.  Consistent with a rogue device (e.g. a
      *  Wi-Fi Pineapple) being physically co-located with the user. */
-    SUSPICIOUS_SIGNAL_STRENGTH
+    SUSPICIOUS_SIGNAL_STRENGTH,
+    /** Five or more distinct SSIDs are being advertised by APs that share the same
+     *  hardware OUI (first three BSSID octets).  A single legitimate router may
+     *  have 2–4 virtual SSIDs; five or more from the same OUI in one scan is a
+     *  strong indicator of a Pineapple running Karma mode or Wi-Fi Marauder's
+     *  beacon-spam SSID list. */
+    MULTI_SSID_SAME_OUI,
+    /** Four or more brand-new BSSIDs sharing the same OUI have appeared in a
+     *  single scan that were absent from all prior scan history.  This matches
+     *  the sudden-flood signature of Wi-Fi Marauder's "spam ap list" command,
+     *  where one ESP32 radio rapidly creates dozens of virtual APs.
+     *  Requires at least one prior scan as a baseline; first-scan events are
+     *  not flagged to avoid false positives in new environments. */
+    BEACON_FLOOD
 }
 
 /**
