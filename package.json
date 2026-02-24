@@ -36,6 +36,7 @@
     "@fastify/websocket": "^11.0.2",
     "@google/generative-ai": "^0.3.0",
     "axios": "^1.6.2",
+    "better-sqlite3": "^12.6.2",
     "dotenv": "^16.3.1",
     "electron-updater": "^6.1.1",
     "fastify": "^5.7.2",

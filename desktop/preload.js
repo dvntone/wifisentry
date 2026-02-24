@@ -81,6 +81,22 @@ const electronAPI = {
   firewallAddRule:    (port)          => ipcRenderer.invoke('firewall-add-rule',   port !== undefined ? { port } : undefined),
   firewallRemoveRule: ()              => ipcRenderer.invoke('firewall-remove-rule'),
 
+  // Auto-launch & startup
+  getAutoLaunch:           () => ipcRenderer.invoke('get-auto-launch'),
+  setAutoLaunch:           (enabled) => ipcRenderer.invoke('set-auto-launch', { enabled }),
+  getAutoStartMonitoring:  () => ipcRenderer.invoke('get-auto-start-monitoring'),
+
+  // OS Notifications (renderer → main when threat arrives via SSE)
+  notifyThreat:            (threat) => ipcRenderer.send('notify-threat', threat),
+
+  // Map API
+  getMapConfig:            () => ipcRenderer.invoke('get-map-config'),
+  setMapConfig:            (updates) => ipcRenderer.invoke('set-map-config', updates),
+  validateMapKey:          (apiKey) => ipcRenderer.invoke('validate-map-key', { apiKey }),
+
+  // Auto-start monitoring event (main → renderer)
+  onAutoStartMonitoring:   (callback) => ipcRenderer.on('auto-start-monitoring', (_event, techniques) => callback(techniques)),
+
   // Install update on quit
   installUpdate: () => ipcRenderer.send('install-update'),
 

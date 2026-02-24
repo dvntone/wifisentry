@@ -35,7 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = JSON.parse(event.data);
             if (data.type === 'scan-result') {
                 addLog(`[${data.timestamp}] Scan complete. Networks: ${data.networkCount}. Threats: ${data.findings.length}`);
-                data.findings.forEach(f => addLog(`⚠️ THREAT: ${f.reason} (${f.ssid})`, 'red'));
+                data.findings.forEach(f => {
+                    addLog(`⚠️ THREAT: ${f.reason || f.threat || f.description} (${f.ssid})`, 'red');
+                    // Push threat to Electron for native OS notification (desktop only)
+                    if (typeof window !== 'undefined' && window.electron?.notifyThreat) {
+                        window.electron.notifyThreat(f);
+                    }
+                });
             } else if (data.type === 'error') {
                 addLog(`Error: ${data.message}`, 'red');
             }
@@ -58,4 +64,17 @@ document.addEventListener('DOMContentLoaded', () => {
         addLog('Exporting cataloged threats to CSV...');
         window.location.href = '/api/export/threats-csv';
     });
+
+    // Desktop: auto-start monitoring when Electron sends the signal on startup
+    if (typeof window !== 'undefined' && window.electron?.onAutoStartMonitoring) {
+        window.electron.onAutoStartMonitoring((techniques) => {
+            if (monitoring) return;
+            addLog(`Auto-starting monitoring (${techniques.join(', ')})…`);
+            techniques.forEach(t => {
+                const cb = document.querySelector(`input[name="technique"][value="${t}"]`);
+                if (cb) cb.checked = true;
+            });
+            startButton.click();
+        });
+    }
 });

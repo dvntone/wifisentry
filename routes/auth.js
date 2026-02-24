@@ -66,6 +66,7 @@ module.exports = async function authRoutes(fastify) {
 
   fastify.post('/api/auth/2fa/enable', {
     preHandler: requireAuth,
+    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
     const { token } = request.body;
     const secret = request.session.temp2faSecret;
@@ -98,7 +99,9 @@ module.exports = async function authRoutes(fastify) {
     return reply.status(401).send({ success: false, message: 'Invalid username or password.' });
   });
 
-  fastify.post('/api/auth/2fa/verify', async (request, reply) => {
+  fastify.post('/api/auth/2fa/verify', {
+    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     const { token } = request.body;
 
     if (!request.session.awaiting2fa) {

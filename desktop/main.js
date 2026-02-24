@@ -18,7 +18,7 @@
 
 'use strict';
 
-const { app, BrowserWindow, Menu, ipcMain, Tray, nativeImage, dialog, shell } =
+const { app, BrowserWindow, Menu, ipcMain, Tray, nativeImage, Notification, dialog, shell } =
   require('electron');
 const { autoUpdater } = require('electron-updater');
 const path  = require('path');
@@ -34,8 +34,8 @@ const { findAvailablePort } = require('./utils/port-manager');
 const HANDLER_MODULES = [
   cfg.features.adapterManagement && './adapter-ipc-handlers',
   './handlers/port',                 // port scanning + Windows Firewall — always on
+  cfg.features.mapApi              && './handlers/map',             // Leaflet/OSM now, Google Maps ready
   // cfg.features.wireshark       && './handlers/wireshark',   // future
-  // cfg.features.mapApi          && './handlers/map',          // future
   // cfg.features.database        && './handlers/database',     // future
   // cfg.features.cloudBackend    && './handlers/cloud-backend',// future
 ].filter(Boolean);
@@ -122,7 +122,26 @@ function createWindow() {
   log(`Loading URL: ${mainURL}`);
   mainWindow.loadURL(mainURL);
 
-  mainWindow.once('ready-to-show', () => { mainWindow.show(); log('Main window shown'); });
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    log('Main window shown');
+
+    // Auto-start monitoring if the user has opted in
+    try {
+      const settingsPath = path.join(appDataPath, 'WiFi Sentry', 'settings.json');
+      const saved = fs.existsSync(settingsPath)
+        ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+        : {};
+      const shouldAutoStart = saved.autoStartMonitoring ?? cfg.autoLaunch.autoStartMonitoring;
+      if (shouldAutoStart) {
+        const techniques = saved.defaultTechniques || cfg.autoLaunch.defaultTechniques;
+        log(`Auto-starting monitoring with techniques: ${techniques}`);
+        mainWindow.webContents.send('auto-start-monitoring', techniques);
+      }
+    } catch (err) {
+      log(`Auto-start check failed: ${err.message}`);
+    }
+  });
 
   if (isDev) mainWindow.webContents.openDevTools();
 
@@ -235,7 +254,38 @@ function createMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// ── Core IPC handlers ─────────────────────────────────────────────────────────
+// ── OS Notifications ──────────────────────────────────────────────────────────
+/**
+ * Show a native OS notification for a detected threat.
+ * Respects cfg.notifications.minSeverity so Low/Medium alerts stay quiet.
+ */
+const SEVERITY_ORDER = { Low: 1, Medium: 2, High: 3, Critical: 4 };
+
+function showThreatNotification(threat) {
+  if (!cfg.notifications.enabled) return;
+  if (!Notification.isSupported()) return;
+  const min = SEVERITY_ORDER[cfg.notifications.minSeverity] ?? SEVERITY_ORDER['High'];
+  const sev = SEVERITY_ORDER[threat.severity];
+  if (sev === undefined) {
+    log(`[notify] Unknown severity "${threat.severity}" — skipping notification`);
+    return;
+  }
+  if (sev < min) return;
+
+  const n = new Notification({
+    title: `⚠ WiFi Sentry — ${threat.severity} Threat`,
+    body:  `${threat.ssid || 'Unknown SSID'}: ${threat.threat || threat.reason || threat.description || 'Threat detected'}`,
+    icon:  path.join(__dirname, 'assets', 'icon.ico'),
+    urgency: threat.severity === 'Critical' ? 'critical' : 'normal',
+  });
+  n.on('click', () => { mainWindow?.show(); mainWindow?.focus(); });
+  n.show();
+}
+
+// Renderer sends threat events received from the backend SSE stream
+ipcMain.on('notify-threat', (_event, threat) => showThreatNotification(threat));
+
+
 function registerCoreHandlers() {
   // Status — uses handle() so invoke() in preload works correctly
   ipcMain.handle('get-status', () => ({
@@ -273,6 +323,31 @@ function registerCoreHandlers() {
     } catch (err) {
       return { success: false, error: err.message };
     }
+  });
+
+  // Auto-launch (open at OS login)
+  ipcMain.handle('get-auto-launch', () => {
+    return app.getLoginItemSettings().openAtLogin;
+  });
+  ipcMain.handle('set-auto-launch', (_event, { enabled }) => {
+    try {
+      app.setLoginItemSettings({ openAtLogin: !!enabled });
+      log(`Auto-launch ${enabled ? 'enabled' : 'disabled'}`);
+      return { success: true };
+    } catch (err) {
+      log(`Auto-launch error: ${err.message}`);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // Auto-start monitoring preference
+  ipcMain.handle('get-auto-start-monitoring', () => {
+    try {
+      const s = fs.existsSync(settingsPath)
+        ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8'))
+        : {};
+      return s.autoStartMonitoring ?? cfg.autoLaunch.autoStartMonitoring;
+    } catch { return cfg.autoLaunch.autoStartMonitoring; }
   });
 
   // Logs

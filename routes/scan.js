@@ -64,9 +64,12 @@ module.exports = async function scanRoutes(fastify) {
         findings = findings.concat(detectKarmaAttack(scannedNetworks, scanHistory));
       }
       if (techniques.includes('evil-twin')) {
-        const evilTwinFindings = detectEvilTwin(scannedNetworks, scanHistory);
-        evilTwinFindings.forEach(f => { f.reason = `Evil Twin/Pineapple detected. ${f.reason}`; });
-        findings = findings.concat(evilTwinFindings);
+        findings = findings.concat(
+          detectEvilTwin(scannedNetworks, scanHistory).map(f => ({ ...f, reason: `Evil Twin/Pineapple detected. ${f.reason}` }))
+        );
+
+
+
       }
 
       // Merge heuristic threats not already captured
