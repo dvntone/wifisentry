@@ -12,19 +12,21 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:minHeight="48dp"
         android:orientation="horizontal"
         android:padding="12dp">
 
-        <!-- Flag indicator bar -->
+        <!-- Threat severity bar — hidden when network is not flagged -->
         <View
             android:id="@+id/flag_indicator"
             android:layout_width="4dp"
-            android:layout_height="48dp"
+            android:layout_height="match_parent"
+            android:minHeight="48dp"
             android:layout_marginEnd="10dp"
             android:background="@color/flag_red"
             android:visibility="gone" />
 
-        <!-- Network info -->
+        <!-- Network info: takes all remaining width -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -37,14 +39,16 @@
                 android:layout_height="wrap_content"
                 android:textStyle="bold"
                 android:textSize="15sp"
-                android:ellipsize="end"
-                android:maxLines="1" />
+                android:maxLines="1"
+                android:ellipsize="end" />
 
             <TextView
                 android:id="@+id/text_bssid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end"
                 android:textColor="?android:attr/textColorSecondary" />
 
             <LinearLayout
@@ -59,8 +63,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:textSize="12sp"
-                    android:ellipsize="end"
-                    android:maxLines="1" />
+                    android:maxLines="1"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/text_signal"
@@ -70,13 +74,15 @@
                     android:textColor="?android:attr/textColorSecondary" />
             </LinearLayout>
 
-            <!-- Threat tags -->
+            <!-- Threat tags: at most 2 lines so items stay readable on small screens -->
             <TextView
                 android:id="@+id/text_threats"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textSize="12sp"
+                android:textSize="11sp"
+                android:maxLines="2"
+                android:ellipsize="end"
                 android:textColor="@color/status_error"
                 android:textStyle="italic"
                 android:visibility="gone" />
