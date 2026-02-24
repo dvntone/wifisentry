@@ -1,5 +1,7 @@
 package com.wifisentry.core
 
+import kotlin.math.pow
+
 /**
  * Pure display-formatting utilities for Wi-Fi scan data.
  *
@@ -108,4 +110,41 @@ object WifiDisplayUtils {
             else                                   -> "Open"
         }
     }
+
+    // ── Distance estimation ───────────────────────────────────────────────
+
+    /**
+     * Estimate the approximate distance in metres from a device to an AP using
+     * the log-distance path-loss model:
+     *
+     *   distance = 10 ^ ((txPower − rssi) / 20)
+     *
+     * where [txPower] is the empirical RSSI at 1 m for each band:
+     *  • 2.4 GHz → −59 dBm (802.11b/g/n typical 1 m value)
+     *  • 5 GHz   → −65 dBm (802.11a/n/ac typical 1 m value)
+     *  • 6 GHz   → −68 dBm (802.11ax/be typical 1 m value)
+     *
+     * The result is a rough indicator only (±50 %); use for relative comparison.
+     */
+    fun rssiToDistanceMeters(rssi: Int, frequencyMhz: Int = 2412): Double {
+        val txPower = when {
+            frequencyMhz in 2400..2499 -> -59
+            frequencyMhz in 4900..5924 -> -65
+            frequencyMhz in 5925..7125 -> -68
+            else                       -> -59
+        }
+        return 10.0.pow((txPower - rssi) / 20.0)
+    }
+
+    /**
+     * Format an estimated distance for display.
+     *
+     * @param meters   Distance in metres as returned by [rssiToDistanceMeters].
+     * @param useFeet  When true, converts to feet; when false uses metres / km.
+     */
+    fun formatDistance(meters: Double, useFeet: Boolean): String =
+        if (useFeet)            "~%.0f ft".format(meters * 3.28084)
+        else if (meters < 1000) "~%.0f m".format(meters)
+        else                    "~%.1f km".format(meters / 1000.0)
 }
+

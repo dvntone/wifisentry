@@ -58,7 +58,12 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
         val rssi: Int,
         val frequency: Int,
         val timestamp: Long,
-        val threats: List<String>
+        val threats: List<String>,
+        // GPS fields — null when no fix available so Gson serialises clean JSON (NaN is non-standard).
+        val latitude: Double? = null,
+        val longitude: Double? = null,
+        val altitude: Double? = null,
+        val gpsAccuracy: Float? = null,
     ) {
         fun toModel() = ScannedNetwork(
             ssid = ssid,
@@ -67,7 +72,11 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
             rssi = rssi,
             frequency = frequency,
             timestamp = timestamp,
-            threats = threats.mapNotNull { runCatching { ThreatType.valueOf(it) }.getOrNull() }
+            threats = threats.mapNotNull { runCatching { ThreatType.valueOf(it) }.getOrNull() },
+            latitude = latitude ?: Double.NaN,
+            longitude = longitude ?: Double.NaN,
+            altitude = altitude ?: Double.NaN,
+            gpsAccuracy = gpsAccuracy ?: Float.NaN,
         )
 
         companion object {
@@ -78,7 +87,11 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
                 rssi = n.rssi,
                 frequency = n.frequency,
                 timestamp = n.timestamp,
-                threats = n.threats.map { it.name }
+                threats = n.threats.map { it.name },
+                latitude = if (n.latitude.isFinite()) n.latitude else null,
+                longitude = if (n.longitude.isFinite()) n.longitude else null,
+                altitude = if (n.altitude.isFinite()) n.altitude else null,
+                gpsAccuracy = if (n.gpsAccuracy.isFinite()) n.gpsAccuracy else null,
             )
         }
     }

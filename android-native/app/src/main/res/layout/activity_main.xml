@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Portrait layout.
+  Top section: status card + action buttons (ConstraintLayout handles fixed-size items).
+  Bottom section: a vertical LinearLayout fills all remaining space and holds the
+  stats card plus two equal-height scrollable lists (all networks / threats only).
+-->
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Status Banner: compact rows, single-line with ellipsis so it never
-         pushes buttons off-screen on small or low-density devices. -->
+    <!-- Status Banner -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_status"
         android:layout_width="0dp"
@@ -61,7 +66,7 @@
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Action row: Scan (fills weight) + History -->
+    <!-- Action row: Scan + History -->
     <LinearLayout
         android:id="@+id/layout_actions"
         android:layout_width="0dp"
@@ -105,7 +110,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/layout_actions" />
 
-    <!-- Progress indicator (GONE when not scanning) -->
+    <!-- Progress indicator -->
     <ProgressBar
         android:id="@+id/progress_scan"
         style="?android:attr/progressBarStyleHorizontal"
@@ -134,34 +139,152 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/progress_scan" />
 
-    <!-- Empty state: centred in the result area, sits behind the RecyclerView -->
-    <TextView
-        android:id="@+id/text_empty_state"
+    <!--
+      Results container: fills all space below status / controls.
+      LinearLayout lets the two scroll boxes share height equally via layout_weight.
+    -->
+    <LinearLayout
+        android:id="@+id/layout_results"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:text="@string/empty_state_message"
-        android:textSize="14sp"
-        android:textColor="?android:attr/textColorSecondary"
-        android:gravity="center"
-        android:padding="24dp"
-        android:visibility="visible"
+        android:orientation="vertical"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@id/text_scan_status"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        app:layout_constraintBottom_toBottomOf="parent">
 
-    <!-- Results list: 0dp height so it fills all space below the toolbar area
-         regardless of screen size or density. RecyclerView scrolls itself. -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_networks"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:paddingHorizontal="4dp"
-        android:paddingBottom="8dp"
-        android:clipToPadding="false"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/text_scan_status"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        <!-- Stats card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_stats"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="4dp"
+            app:cardElevation="2dp"
+            app:cardCornerRadius="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="4dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/label_stats_title"
+                        android:textStyle="bold"
+                        android:textSize="13sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_distance_unit"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minHeight="0dp"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp"
+                        android:textSize="11sp"
+                        android:text="@string/button_unit_meters" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/text_stat_this_scan"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:paddingVertical="1dp" />
+
+                <TextView
+                    android:id="@+id/text_stat_session"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:paddingVertical="1dp" />
+
+                <TextView
+                    android:id="@+id/text_stat_all_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:paddingVertical="1dp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- All Networks section (weight = 1) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_all_networks_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="14dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorPrimary"
+                android:text="@string/label_all_networks_header_zero" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_networks"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="4dp"
+                android:paddingBottom="4dp"
+                android:clipToPadding="false" />
+        </LinearLayout>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="12dp"
+            android:background="?android:attr/listDivider" />
+
+        <!-- Threats Detected section (weight = 1) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/text_threats_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="14dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="2dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_error"
+                android:text="@string/label_threats_header_zero" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recycler_threats"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:paddingHorizontal="4dp"
+                android:paddingBottom="8dp"
+                android:clipToPadding="false" />
+        </LinearLayout>
+
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

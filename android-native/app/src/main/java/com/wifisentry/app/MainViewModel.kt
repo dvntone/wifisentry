@@ -16,6 +16,7 @@ import com.wifisentry.core.RootChecker
 import com.wifisentry.core.RootScanData
 import com.wifisentry.core.RootShellScanner
 import com.wifisentry.core.ScanRecord
+import com.wifisentry.core.ScanStats
 import com.wifisentry.core.ScanStorage
 import com.wifisentry.core.ScannedNetwork
 import com.wifisentry.core.ThreatAnalyzer
@@ -38,6 +39,10 @@ class MainViewModel(
     private val _networks     = MutableLiveData<List<ScannedNetwork>>()
     val networks: LiveData<List<ScannedNetwork>> = _networks
 
+    /** Subset of the current network list that are flagged — drives the threats scroll box. */
+    private val _threatNetworks = MutableLiveData<List<ScannedNetwork>>(emptyList())
+    val threatNetworks: LiveData<List<ScannedNetwork>> = _threatNetworks
+
     private val _isScanning   = MutableLiveData(false)
     val isScanning: LiveData<Boolean> = _isScanning
 
@@ -50,7 +55,23 @@ class MainViewModel(
     private val _scanStatus   = MutableLiveData<String>()
     val scanStatus: LiveData<String> = _scanStatus
 
+    /** Aggregated statistics shown in the stats panel. */
+    private val _scanStats = MutableLiveData(ScanStats())
+    val scanStats: LiveData<ScanStats> = _scanStats
+
+    /** When true, distance estimates are shown in feet; when false, metres. */
+    private val _distanceInFeet = MutableLiveData(false)
+    val distanceInFeet: LiveData<Boolean> = _distanceInFeet
+
+    /** Toggle between feet and metres for the distance display. */
+    fun toggleDistanceUnit() {
+        _distanceInFeet.value = _distanceInFeet.value != true
+    }
+
     private val rootShellScanner = RootShellScanner()
+
+    /** Last GPS fix obtained before a scan, used to tag each network. */
+    private var lastKnownLocation: android.location.Location? = null
 
     /** Set by the Activity to receive a callback (on Main) when threats are found. */
     var onThreatsFound: ((flaggedCount: Int, totalCount: Int) -> Unit)? = null
@@ -91,6 +112,8 @@ class MainViewModel(
         continuousMonitoringActive = false
         _isMonitoring.value = false
         sessionNetworks.clear()
+        _threatNetworks.value = emptyList()
+        _scanStats.value = ScanStats()
     }
 
     // ── internal scan logic ───────────────────────────────────────────────
@@ -99,6 +122,9 @@ class MainViewModel(
         if (_isScanning.value == true) return
         _isScanning.value = true
         _scanError.value  = null
+
+        // Refresh GPS fix before the scan so networks are tagged with current position.
+        updateLastKnownLocation(context)
 
         // 1. Trigger WiFi scan; await SCAN_RESULTS_AVAILABLE_ACTION broadcast.
         val raw = scanWithReceiver(context)
@@ -112,10 +138,24 @@ class MainViewModel(
             }
             val history = storage.loadHistory()
             val result  = threatAnalyzer.analyze(raw, history, rootData)
-            if (result.isNotEmpty()) {
-                storage.appendRecord(ScanRecord(System.currentTimeMillis(), result))
+
+            // Tag every network with the last known GPS fix.
+            val loc = lastKnownLocation
+            val tagged = if (loc != null) {
+                result.map { n ->
+                    n.copy(
+                        latitude    = loc.latitude,
+                        longitude   = loc.longitude,
+                        altitude    = loc.altitude,
+                        gpsAccuracy = loc.accuracy,
+                    )
+                }
+            } else result
+
+            if (tagged.isNotEmpty()) {
+                storage.appendRecord(ScanRecord(System.currentTimeMillis(), tagged))
             }
-            result
+            tagged
         }
 
         // 3. Stream results into the UI one-by-one (WiGLE addWiFi pattern).
@@ -125,8 +165,28 @@ class MainViewModel(
             streamOneShotResults(analysed)
         }
 
-        // 4. Publish final status.
+        // 4. Update threat list, stats, and final status.
         val flagged = analysed.count { it.isFlagged }
+        _threatNetworks.value = if (continuousMonitoringActive) {
+            sortNetworks(sessionNetworks.values.filter { it.isFlagged })
+        } else {
+            sortNetworks(analysed.filter { it.isFlagged })
+        }
+
+        val stats = withContext(Dispatchers.IO) {
+            val history      = storage.loadHistory()
+            val allNetworks  = history.flatMap { it.networks }
+            ScanStats(
+                totalThisScan   = analysed.size,
+                threatsThisScan = flagged,
+                sessionUnique   = sessionNetworks.size,
+                sessionThreats  = sessionNetworks.values.count { it.isFlagged },
+                totalAllTime    = allNetworks.size,
+                threatsAllTime  = allNetworks.count { it.isFlagged },
+            )
+        }
+        _scanStats.value = stats
+
         _scanStatus.value = buildStatusString(analysed.size, flagged)
         if (analysed.isEmpty()) {
             _scanError.value = "No networks found. Ensure location services are enabled and try again."
@@ -200,6 +260,24 @@ class MainViewModel(
             compareByDescending<ScannedNetwork> { it.isFlagged }
                 .thenByDescending { it.rssi }
         )
+
+    /**
+     * Fetch the most-recently-updated location from GPS or network providers.
+     * Requires ACCESS_FINE_LOCATION; silently skips if permission is absent.
+     */
+    private fun updateLastKnownLocation(context: Context) {
+        if (!hasLocationPermission(context)) return
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        lastKnownLocation = providers
+            .mapNotNull { provider ->
+                try {
+                    @Suppress("MissingPermission")
+                    lm.getLastKnownLocation(provider)
+                } catch (_: Exception) { null }
+            }
+            .maxByOrNull { it.time }
+    }
 
     /**
      * Trigger a hardware scan and suspend until the system broadcasts

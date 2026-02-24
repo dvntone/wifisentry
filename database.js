@@ -1,22 +1,79 @@
 /**
- * Database module for MongoDB operations using Mongoose.
- * Handles all persistent storage for threats, submissions, and WiFi network tracking.
+ * Database module — MongoDB primary with automatic SQLite fallback.
+ *
+ * DB_TYPE=auto (default): try MongoDB; if the connection fails within
+ *   MONGO_CONNECT_TIMEOUT_MS, transparently switch to the embedded SQLite
+ *   adapter so the app runs with zero external infrastructure.
+ * DB_TYPE=mongodb: require MongoDB (throw on failure).
+ * DB_TYPE=sqlite:  always use the embedded SQLite adapter.
+ *
+ * All callers use the same interface regardless of which adapter is active.
  */
 
 const mongoose = require('mongoose');
 const config = require('./config');
 
+const MONGO_CONNECT_TIMEOUT_MS = 5000;
+
+// ── Active adapter reference (set in connect()) ───────────────────────────────
+let _adapter = null;
+
 /**
- * Connect to MongoDB
+ * Connect to the configured database.
+ * Sets the module-level `threats`, `submissions`, `networks`, `locations`,
+ * `threatLogs` exports to the chosen adapter's implementations.
  */
 const connect = async () => {
+  const dbType = process.env.DB_TYPE || 'auto';
+
+  if (dbType === 'sqlite') {
+    return _useSQLite('DB_TYPE=sqlite');
+  }
+
+  // Try MongoDB
   try {
-    await mongoose.connect(config.mongo.uri);
-    console.log('Connected to MongoDB');
+    await mongoose.connect(config.mongo.uri, {
+      serverSelectionTimeoutMS: MONGO_CONNECT_TIMEOUT_MS,
+      connectTimeoutMS:         MONGO_CONNECT_TIMEOUT_MS,
+    });
+    console.log('[DB] Connected to MongoDB');
+    _useMongoose();
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    if (dbType === 'mongodb') {
+      console.error('[DB] MongoDB connection failed (DB_TYPE=mongodb):', error.message);
+      throw error;
+    }
+    // auto mode — fall back to SQLite
+    console.warn('[DB] MongoDB unavailable, falling back to embedded SQLite:', error.message);
+    _useSQLite('MongoDB unreachable');
   }
 };
+
+function _useSQLite(reason) {
+  const sqlite = require('./database-sqlite');
+  sqlite.connect();
+  _adapter = sqlite;
+  // Proxy module-level exports to the SQLite adapter
+  Object.assign(module.exports, {
+    threats:     sqlite.threats,
+    submissions: sqlite.submissions,
+    networks:    sqlite.networks,
+    locations:   sqlite.locations,
+    threatLogs:  sqlite.threatLogs,
+  });
+  console.log(`[DB] Using embedded SQLite adapter (${reason})`);
+}
+
+function _useMongoose() {
+  // Proxy module-level exports to the Mongoose implementations defined below
+  Object.assign(module.exports, {
+    threats:     _mongoThreats,
+    submissions: _mongoSubmissions,
+    networks:    _mongoNetworks,
+    locations:   _mongoLocations,
+    threatLogs:  _mongoThreatLogs,
+  });
+}
 
 // --- Schemas ---
 
@@ -83,8 +140,11 @@ const Network = mongoose.model('Network', networkSchema);
 const Location = mongoose.model('Location', locationSchema);
 const ThreatLog = mongoose.model('ThreatLog', threatLogSchema);
 
+// Mongoose implementations (used when MongoDB is active)
+let _mongoThreats, _mongoSubmissions, _mongoNetworks, _mongoLocations, _mongoThreatLogs;
+
 // Threat operations
-const threats = {
+_mongoThreats = {
   /**
    * Add a new threat to the catalog
    */
@@ -140,7 +200,7 @@ const threats = {
 };
 
 // User submission operations
-const submissions = {
+_mongoSubmissions = {
   /**
    * Add a new threat submission
    */
@@ -186,7 +246,7 @@ const submissions = {
 };
 
 // WiFi network tracking operations
-const networks = {
+_mongoNetworks = {
   /**
    * Log a detected network
    */
@@ -238,7 +298,7 @@ const networks = {
 };
 
 // Location tracking operations
-const locations = {
+_mongoLocations = {
   /**
    * Log a network location
    */
@@ -266,7 +326,7 @@ const locations = {
 };
 
 // Threat Log operations (Detected threats)
-const threatLogs = {
+_mongoThreatLogs = {
   /**
    * Log a batch of detected threats
    */
@@ -303,11 +363,19 @@ const threatLogs = {
   },
 };
 
+/** Stub that throws a clear error if a DB method is called before connect(). */
+function _notConnected() {
+  return new Proxy({}, {
+    get: (_t, prop) => () => { throw new Error(`Database not connected — call connect() before using database.${prop}()`); },
+  });
+}
+
 module.exports = {
   connect,
-  threats,
-  submissions,
-  networks,
-  locations,
-  threatLogs,
+  // Replaced at runtime by connect() with the active adapter's implementations.
+  threats:     _notConnected(),
+  submissions: _notConnected(),
+  networks:    _notConnected(),
+  locations:   _notConnected(),
+  threatLogs:  _notConnected(),
 };

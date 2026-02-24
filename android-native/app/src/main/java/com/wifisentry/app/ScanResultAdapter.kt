@@ -19,6 +19,18 @@ class ScanResultAdapter :
 
     var onNetworkClick: ((ScannedNetwork) -> Unit)? = null
 
+    /**
+     * When changed, refreshes all visible items so distance labels switch
+     * between feet and metres without requiring a new data submission.
+     */
+    var distanceInFeet: Boolean = false
+        set(value) {
+            if (field != value) {
+                field = value
+                notifyItemRangeChanged(0, itemCount)
+            }
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NetworkViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_network, parent, false)
@@ -26,7 +38,7 @@ class ScanResultAdapter :
     }
 
     override fun onBindViewHolder(holder: NetworkViewHolder, position: Int) {
-        holder.bind(getItem(position), onNetworkClick)
+        holder.bind(getItem(position), onNetworkClick, distanceInFeet)
     }
 
     class NetworkViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -37,8 +49,9 @@ class ScanResultAdapter :
         private val textThreats: TextView     = itemView.findViewById(R.id.text_threats)
         private val textBadge: TextView       = itemView.findViewById(R.id.text_security_badge)
         private val flagIndicator: View       = itemView.findViewById(R.id.flag_indicator)
+        private val textDistance: TextView    = itemView.findViewById(R.id.text_distance)
 
-        fun bind(network: ScannedNetwork, onClick: ((ScannedNetwork) -> Unit)?) {
+        fun bind(network: ScannedNetwork, onClick: ((ScannedNetwork) -> Unit)?, distanceInFeet: Boolean) {
             val ctx: Context = itemView.context
 
             textSsid.text    = network.ssid.ifBlank { ctx.getString(R.string.hidden_ssid) }
@@ -56,6 +69,10 @@ class ScanResultAdapter :
                 else                -> ContextCompat.getColor(ctx, R.color.signal_weak)
             }
             textSignal.setTextColor(signalColor)
+
+            // Estimated distance label
+            val distM = WifiDisplayUtils.rssiToDistanceMeters(network.rssi, network.frequency)
+            textDistance.text = WifiDisplayUtils.formatDistance(distM, distanceInFeet)
 
             // Security badge (WPA3 / WPA2 / WEP / Open)
             val secLabel = WifiDisplayUtils.capabilitiesToSecurityLabel(network.capabilities)
