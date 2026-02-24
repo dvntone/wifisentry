@@ -3,10 +3,13 @@ package com.wifisentry.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.util.TypedValue
 import android.view.View
+import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -81,7 +84,17 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
         binding.buttonDistanceUnit.setOnClickListener { viewModel.toggleDistanceUnit() }
-        binding.buttonSort.setOnClickListener { viewModel.cycleSortOrder() }
+
+        // Column header sort taps
+        binding.layoutColThreat.setOnClickListener  { viewModel.setSort(SortColumn.THREAT) }
+        binding.layoutColSsid.setOnClickListener    { viewModel.setSort(SortColumn.SSID)   }
+        binding.layoutColSignal.setOnClickListener  { viewModel.setSort(SortColumn.SIGNAL) }
+        binding.layoutColChannel.setOnClickListener { viewModel.setSort(SortColumn.CHANNEL) }
+
+        // Column visibility ⋮ menu (both buttons open the same menu)
+        binding.buttonAllColumnsMenu.setOnClickListener    { showColumnMenu(it) }
+        binding.buttonThreatsColumnsMenu.setOnClickListener { showColumnMenu(it) }
+
         binding.textWifiStatus.setOnClickListener {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
         }
@@ -179,12 +192,16 @@ class MainActivity : AppCompatActivity() {
                 getString(if (useFeet) R.string.button_unit_feet else R.string.button_unit_meters)
         }
 
-        viewModel.sortOrder.observe(this) { order ->
-            binding.buttonSort.text = getString(when (order) {
-                SortOrder.BY_THREAT -> R.string.button_sort_threat
-                SortOrder.BY_SIGNAL -> R.string.button_sort_signal
-                SortOrder.BY_SSID   -> R.string.button_sort_ssid
-            })
+        viewModel.sortColumn.observe(this) { col ->
+            updateColumnHeaders(col, viewModel.sortAscending.value ?: true)
+        }
+        viewModel.sortAscending.observe(this) { asc ->
+            updateColumnHeaders(viewModel.sortColumn.value ?: SortColumn.THREAT, asc)
+        }
+        viewModel.visibleColumns.observe(this) { cols ->
+            adapter.visibleColumns      = cols
+            threatAdapter.visibleColumns = cols
+            binding.layoutColChannel.visibility = if (NetworkColumn.CHANNEL in cols) View.VISIBLE else View.GONE
         }
 
         viewModel.manufacturers.observe(this) { mfgrMap ->
@@ -290,6 +307,64 @@ class MainActivity : AppCompatActivity() {
 
     private fun showSnackbar(message: String) {
         Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+    }
+
+    /**
+     * Updates the column-header indicator bars and label text to reflect the
+     * current sort column and direction.
+     *
+     * Active column: indicator bar VISIBLE + label bold + ▲/▼ arrow appended.
+     * Inactive columns: indicator bar INVISIBLE + label normal weight, no arrow.
+     */
+    private fun updateColumnHeaders(col: SortColumn, asc: Boolean) {
+        data class ColHeader(
+            val container: android.view.View,
+            val label: android.widget.TextView,
+            val indicator: android.view.View,
+            val sortCol: SortColumn,
+            val labelRes: Int,
+        )
+        val headers = listOf(
+            ColHeader(binding.layoutColThreat,  binding.textColThreat,  binding.indColThreat,  SortColumn.THREAT,  R.string.col_threat),
+            ColHeader(binding.layoutColSsid,    binding.textColSsid,    binding.indColSsid,    SortColumn.SSID,    R.string.col_ssid),
+            ColHeader(binding.layoutColSignal,  binding.textColSignal,  binding.indColSignal,  SortColumn.SIGNAL,  R.string.col_signal),
+            ColHeader(binding.layoutColChannel, binding.textColChannel, binding.indColChannel, SortColumn.CHANNEL, R.string.col_channel),
+        )
+        headers.forEach { h ->
+            val isActive = h.sortCol == col
+            val base     = getString(h.labelRes)
+            h.label.text = if (isActive) "$base ${if (asc) "▲" else "▼"}" else base
+            h.label.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
+            h.indicator.visibility = if (isActive) View.VISIBLE else View.INVISIBLE
+        }
+    }
+
+    /**
+     * Shows a PopupMenu anchored to [anchor] listing all optional columns with
+     * check-marks.  Both the All Networks and Threats ⋮ buttons call this method.
+     */
+    private fun showColumnMenu(anchor: android.view.View) {
+        val visible = viewModel.visibleColumns.value ?: ALL_COLUMNS
+        val popup   = PopupMenu(this, anchor)
+        popup.menuInflater.inflate(R.menu.menu_column_options, popup.menu)
+        popup.menu.findItem(R.id.col_bssid)?.isChecked          = NetworkColumn.BSSID in visible
+        popup.menu.findItem(R.id.col_channel)?.isChecked        = NetworkColumn.CHANNEL in visible
+        popup.menu.findItem(R.id.col_security_text)?.isChecked  = NetworkColumn.SECURITY_TEXT in visible
+        popup.menu.findItem(R.id.col_distance)?.isChecked       = NetworkColumn.DISTANCE in visible
+        popup.menu.findItem(R.id.col_threats)?.isChecked        = NetworkColumn.THREATS in visible
+        popup.setOnMenuItemClickListener { item ->
+            val col = when (item.itemId) {
+                R.id.col_bssid         -> NetworkColumn.BSSID
+                R.id.col_channel       -> NetworkColumn.CHANNEL
+                R.id.col_security_text -> NetworkColumn.SECURITY_TEXT
+                R.id.col_distance      -> NetworkColumn.DISTANCE
+                R.id.col_threats       -> NetworkColumn.THREATS
+                else                   -> null
+            }
+            col?.let { viewModel.toggleColumn(it) }
+            true
+        }
+        popup.show()
     }
 
     private fun showNetworkDetailDialog(network: ScannedNetwork) {

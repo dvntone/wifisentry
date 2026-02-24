@@ -40,6 +40,10 @@ class HistoryActivity : AppCompatActivity() {
             binding.textEmpty.visibility    = View.VISIBLE
             binding.recyclerHistory.visibility = View.GONE
             binding.buttonExport.isEnabled  = false
+            binding.buttonImport.isEnabled  = true
+            binding.buttonImport.setOnClickListener {
+                startActivity(Intent(this, ImportActivity::class.java))
+            }
             return
         }
 
@@ -48,6 +52,10 @@ class HistoryActivity : AppCompatActivity() {
         binding.recyclerHistory.layoutManager = LinearLayoutManager(this)
         binding.recyclerHistory.adapter   = HistoryAdapter(history)
 
+        binding.buttonImport.isEnabled = true
+        binding.buttonImport.setOnClickListener {
+            startActivity(Intent(this, ImportActivity::class.java))
+        }
         binding.buttonExport.setOnClickListener { showExportDialog(history) }
     }
 

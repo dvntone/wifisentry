@@ -39,6 +39,12 @@ class ScanResultAdapter :
             notifyItemRangeChanged(0, itemCount)
         }
 
+    var visibleColumns: Set<NetworkColumn> = ALL_COLUMNS
+        set(value) {
+            field = value
+            notifyItemRangeChanged(0, itemCount)
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NetworkViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_network, parent, false)
@@ -46,7 +52,7 @@ class ScanResultAdapter :
     }
 
     override fun onBindViewHolder(holder: NetworkViewHolder, position: Int) {
-        holder.bind(getItem(position), onNetworkClick, distanceInFeet, manufacturers)
+        holder.bind(getItem(position), onNetworkClick, distanceInFeet, manufacturers, visibleColumns)
     }
 
     class NetworkViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -58,12 +64,14 @@ class ScanResultAdapter :
         private val textBadge: TextView       = itemView.findViewById(R.id.text_security_badge)
         private val flagIndicator: View       = itemView.findViewById(R.id.flag_indicator)
         private val textDistance: TextView    = itemView.findViewById(R.id.text_distance)
+        private val textChannel: TextView     = itemView.findViewById(R.id.text_channel)
 
         fun bind(
             network: ScannedNetwork,
             onClick: ((ScannedNetwork) -> Unit)?,
             distanceInFeet: Boolean,
             manufacturers: Map<String, String>,
+            visibleColumns: Set<NetworkColumn>,
         ) {
             val ctx: Context = itemView.context
 
@@ -92,7 +100,17 @@ class ScanResultAdapter :
             val distM = WifiDisplayUtils.rssiToDistanceMeters(network.rssi, network.frequency)
             textDistance.text = WifiDisplayUtils.formatDistance(distM, distanceInFeet)
 
-            // Security badge (WPA3 / WPA2 / WEP / Open)
+            // Channel label
+            val channelLabel = WifiDisplayUtils.channelLabel(network.frequency)
+            textChannel.text = channelLabel
+            textChannel.visibility = if (NetworkColumn.CHANNEL in visibleColumns && channelLabel.isNotEmpty()) View.VISIBLE else View.GONE
+
+            // Optional column visibility
+            textBssid.visibility    = if (NetworkColumn.BSSID in visibleColumns) View.VISIBLE else View.GONE
+            textSecurity.visibility = if (NetworkColumn.SECURITY_TEXT in visibleColumns) View.VISIBLE else View.GONE
+            textDistance.visibility = if (NetworkColumn.DISTANCE in visibleColumns) View.VISIBLE else View.GONE
+
+            // Security badge (always visible — compact and important for threat triage)
             val secLabel = WifiDisplayUtils.capabilitiesToSecurityLabel(network.capabilities)
             textBadge.text = secLabel
             val badgeColor = when {
@@ -107,7 +125,7 @@ class ScanResultAdapter :
 
             if (network.isFlagged) {
                 flagIndicator.visibility = View.VISIBLE
-                textThreats.visibility   = View.VISIBLE
+                textThreats.visibility   = if (NetworkColumn.THREATS in visibleColumns) View.VISIBLE else View.GONE
                 textThreats.text = network.threats.joinToString(" · ") { it.displayName(ctx) }
 
                 // Colour-code by highest threat severity for immediate visual triage

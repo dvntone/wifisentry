@@ -320,19 +320,21 @@ class MainViewModel(
     private fun networkKey(n: ScannedNetwork): String =
         if (n.bssid.isNotBlank()) n.bssid else "anon:${n.ssid}"
 
-    private fun sortNetworks(networks: Iterable<ScannedNetwork>): List<ScannedNetwork> =
-        when (_sortOrder.value ?: SortOrder.BY_THREAT) {
-            SortOrder.BY_THREAT -> networks.sortedWith(
-                compareByDescending<ScannedNetwork> { it.isFlagged }
-                    .thenBy { it.highestSeverity?.ordinal ?: Int.MAX_VALUE }
-                    .thenByDescending { it.rssi }
-            )
-            SortOrder.BY_SIGNAL -> networks.sortedByDescending { it.rssi }
-            SortOrder.BY_SSID   -> networks.sortedWith(
-                compareBy<ScannedNetwork> { it.ssid.lowercase() }
-                    .thenByDescending { it.rssi }
-            )
+    private fun sortNetworks(networks: Iterable<ScannedNetwork>): List<ScannedNetwork> {
+        val col = _sortColumn.value ?: SortColumn.THREAT
+        val asc = _sortAscending.value ?: true
+        val comparator: Comparator<ScannedNetwork> = when (col) {
+            SortColumn.THREAT -> compareByDescending<ScannedNetwork> { it.isFlagged }
+                .thenBy { it.highestSeverity?.ordinal ?: Int.MAX_VALUE }
+                .thenByDescending { it.rssi }
+            SortColumn.SIGNAL  -> compareByDescending { it.rssi }
+            SortColumn.SSID    -> compareBy<ScannedNetwork> { it.ssid.lowercase() }
+                .thenByDescending { it.rssi }
+            SortColumn.CHANNEL -> compareBy { it.frequency }
         }
+        val sorted = networks.sortedWith(comparator)
+        return if (asc) sorted else sorted.reversed()
+    }
 
     /**
      * Fetch the most-recently-updated location from GPS or network providers.

@@ -40,6 +40,11 @@
             android:label="@string/title_history"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".ImportActivity"
+            android:exported="false"
+            android:label="@string/import_title" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

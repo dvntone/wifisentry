@@ -137,4 +137,30 @@
     <!-- History expand/collapse -->
     <string name="history_expand">Expand scan record</string>
     <string name="history_tap_hint">Tap to expand</string>
+
+    <!-- Column header labels (Data Table / WiGLE-style) -->
+    <string name="col_threat">Threat</string>
+    <string name="col_ssid">SSID</string>
+    <string name="col_signal">Signal</string>
+    <string name="col_channel">Ch/Band</string>
+    <string name="col_bssid">MAC / Mfgr</string>
+    <string name="col_channel_menu">Channel / Band</string>
+    <string name="col_security_text">Security Info</string>
+    <string name="col_distance">Distance</string>
+    <string name="col_threats">Threat Details</string>
+    <string name="col_menu_content_desc">Column options</string>
+
+    <!-- Import Activity -->
+    <string name="import_title">Import Scan Data</string>
+    <string name="import_explanation_title">Seed your threat database</string>
+    <string name="import_explanation_body">Import your existing WiGLE CSV wardriving data or an OpenCellID database export. Imported networks are merged with your scan history so Wi-Fi Sentry can immediately detect evil-twin attacks, rogue APs, and beacon floods — even before your first live scan.</string>
+    <string name="import_button_wigle">⬆ Choose WiGLE CSV…</string>
+    <string name="import_button_opencellid">⬆ Choose OpenCellID CSV…</string>
+    <string name="import_loading">Importing, please wait…</string>
+    <string name="import_result_title">Import Complete</string>
+    <string name="import_wigle_success">Added %1$d new networks (%2$d parsed, %3$d skipped rows)</string>
+    <string name="import_opencellid_success">Added %1$d new cell towers (%2$d parsed, %3$d skipped rows)</string>
+    <string name="import_error_title">Import Failed</string>
+    <string name="import_error_read">Could not read the selected file. Please check the file is a valid CSV export.</string>
+    <string name="button_import">⬇ Import Data</string>
 </resources>
