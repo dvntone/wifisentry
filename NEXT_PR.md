@@ -49,7 +49,7 @@ beacon-flood, and near-clone detection from the very first scan.
 After `importWigleRecords()` stores the parsed records, all 13 `ThreatAnalyzer`
 checks automatically benefit — no other code changes needed.  GPS coordinates
 from WiGLE records populate `ScannedNetwork.latitude/longitude`, ready for the
-Google Maps integration.
+Google Maps integration and the Moving AP trail visualisation (PR F).
 
 ---
 
@@ -127,6 +127,70 @@ geolocation fallback.
 - `desktop/config/desktop.config.js` already has `features.wireshark: true` flag.
 - Capture backend: routes through `windows-capture-manager.js` so Npcap/WSL2/
   vendor driver is selected automatically.
+
+---
+
+## PR F — Moving AP / Flipper Zero Evasion Detection (Android + Desktop)
+
+**Goal:** Detect when an SSID or MAC address is being broadcast by a mobile
+device (phone hotspot, Flipper Zero, Wi-Fi Pineapple Nano, ESP32 deauther, etc.)
+that is physically moving to avoid detection — e.g. hiding in a car outside the
+building, relocating between floors, or circling the perimeter.
+
+### Detection signals
+
+| Signal | How it indicates movement |
+|--------|--------------------------|
+| **RSSI drift rate** | Static APs drift ≤ ±3 dBm across scans. A moving source shows a directional trend (steadily rising or falling) or high variance exceeding a threshold. |
+| **Disappearance / reappearance bursts** | A moving AP drops out of range then reappears with a different RSSI level — not caused by interference (which would affect many APs simultaneously). |
+| **Estimated distance change** | Use the existing `rssiToDistanceMeters()` function; if estimated distance changes > `minDistanceChangeMeter` (default 5 m) across N scans, flag as drifting. |
+| **Channel changes** | Mobile hotspots and Flipper sometimes rotate channels. Track per-BSSID channel history; ≥ 2 unique channels in a session is suspicious. |
+| **Known mobile / attack-tool OUI** | Cross-reference first 3 octets of BSSID against a curated list: Flipper Zero (Espressif — `10:02:B5`, `D8:3A:DD`, `34:86:5D`), Wi-Fi Pineapple (`00:C0:CA`), ESP32 (`24:6F:28`, `A0:20:A6`), common phone hotspot OUIs (Apple `A6:xx:xx` random, Samsung `E0:CB:4E` etc.). OUI match alone elevates threat level. |
+| **MAC randomisation gap** | Android/iOS randomise MAC per SSID but keep it stable per session. A device cycling random MACs with the same SSID across scans is a strong attack indicator. |
+
+### New files — `core` module
+
+| File | Purpose |
+|------|---------|
+| `core/.../MovingApDetector.kt` | Stateful detector; holds a `BssidHistory` map (sliding window of last N observations per BSSID); exposes `analyze(networks, history): List<ThreatFinding>`; pure logic, no Android deps |
+| `core/.../BssidObservation.kt` | Value class: `(bssid, ssid, rssi, channel, estimatedDistanceM, timestampMs)` — one observation per scan per BSSID |
+| `core/.../MobileOuiDatabase.kt` | Curated OUI list (Flipper, Pineapple, ESP32, common phone hotspot prefixes); `isMobileOrAttackTool(bssid): OuiMatch?`; loaded from a bundled JSON asset so it can be updated without a code release |
+| `core/assets/mobile_oui.json` | Bundled OUI data file (format: `[{"prefix":"10:02:B5","vendor":"Espressif (Flipper Zero)","category":"attack_tool"}]`) |
+| `core/src/test/.../MovingApDetectorTest.kt` | Unit tests: stable AP → no alert; linear RSSI drop → MOVING alert; OUI hit → elevated level; disappear-reappear sequence; MAC cycling |
+
+### Modified files — `core` module
+
+| File | Change |
+|------|--------|
+| `ThreatType.kt` | Add `MOVING_AP`, `FLIPPER_SIGNATURE`, `MOBILE_HOTSPOT_EVASION` threat types |
+| `ThreatAnalyzer.kt` | Instantiate `MovingApDetector`; call `analyze()` after existing checks; merge findings into result list |
+| `Models.kt` | Add `observations: MutableList<BssidObservation>` to `ScannedNetwork` for history replay |
+
+### Modified files — `app` module
+
+| File | Change |
+|------|--------|
+| `MainViewModel.kt` | Append one `BssidObservation` per network per scan cycle before calling `ThreatAnalyzer`; prune observations older than `movingWindowMs` (default 10 min) |
+| `ScanResultAdapter.kt` | Show 📡→ drift icon in list row when `MOVING_AP` or `FLIPPER_SIGNATURE` is active on a network |
+| `res/values/strings.xml` | Threat labels and descriptions for new threat types |
+
+### Desktop counterpart (`wifi-scanner.js`)
+
+| File | Change |
+|------|--------|
+| `wifi-scanner.js` | Add `detectMovingAp(network, history)` check (check 14) using per-BSSID RSSI history already stored in `networkHistory`; mirror Android scoring logic |
+| `evil-twin-detector.js` | Consume `detectMovingAp` result; elevate finding severity when movement is confirmed alongside evil-twin |
+
+### Sensitivity / settings hook (aligns with PR B)
+- `SettingsStorage` key `movingApRssiVarianceThreshold` (default 8 dBm) — tunable per PR B settings page.
+- `movingApMinObservations` (default 3) — minimum scans before movement can be declared.
+- `movingApWindowMs` (default 600 000 ms = 10 min) — sliding window for observations.
+- Developer mode exposes raw per-BSSID RSSI sparkline chart in detail dialog.
+
+### Google Maps hook (aligns with PR C)
+- When Maps is live, plot movement trail as a polyline on the map (one pin per
+  estimated distance point, colour-coded red→orange as threat confidence rises).
+- Show Flipper/attack-tool marker icon instead of standard AP pin.
 
 ---
 
