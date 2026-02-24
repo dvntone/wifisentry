@@ -246,7 +246,7 @@ class MainViewModel(
         val mfgrMap = withContext(Dispatchers.IO) {
             analysed.associate { n ->
                 n.bssid to OuiLookup.lookup(context, n.bssid)
-            }.filterValues { it.isNotEmpty() }
+            }.filterValues { value -> value.isNotEmpty() }
         }
         _manufacturers.value = mfgrMap
 
