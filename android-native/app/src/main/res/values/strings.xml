@@ -65,9 +65,16 @@
     <string name="perm_notif_allow">Allow</string>
     <string name="perm_notif_skip">Skip</string>
 
+    <!-- Permission rationale for location -->
+    <string name="perm_location_title">Location Permission Required</string>
+    <string name="perm_location_message">Wi-Fi Sentry needs precise location permission to scan nearby Wi-Fi networks. Android requires this permission to access Wi-Fi scan results. Your location data stays on your device and is never uploaded.</string>
+    <string name="perm_location_allow">Grant Permission</string>
+    <string name="perm_location_skip">Not Now</string>
+
     <!-- Network detail dialog — distance + GPS -->
     <string name="detail_label_distance">Distance: %s (RSSI estimate)</string>
     <string name="detail_label_gps">GPS: %.6f, %.6f</string>
+    <string name="detail_label_manufacturer">Manufacturer: %s</string>
 
     <!-- Stats panel -->
     <string name="label_stats_title">📊 Scan Statistics</string>
@@ -84,6 +91,11 @@
     <!-- Distance unit toggle -->
     <string name="button_unit_meters">m</string>
     <string name="button_unit_feet">ft</string>
+
+    <!-- Sort order toggle -->
+    <string name="button_sort_threat">⚑ Threat</string>
+    <string name="button_sort_signal">📶 Signal</string>
+    <string name="button_sort_ssid">A–Z SSID</string>
     <string name="dialog_network_detail_title">Network Details</string>
     <string name="dialog_close">Close</string>
     <string name="detail_label_ssid">Network: %s</string>

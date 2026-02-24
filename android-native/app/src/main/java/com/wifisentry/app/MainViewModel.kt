@@ -12,6 +12,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.wifisentry.core.OuiLookup
 import com.wifisentry.core.RootChecker
 import com.wifisentry.core.RootScanData
 import com.wifisentry.core.RootShellScanner
@@ -29,6 +30,16 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+
+/** User-selectable sort order for the All Networks list. */
+enum class SortOrder {
+    /** Flagged networks first, then by descending signal strength (default). */
+    BY_THREAT,
+    /** Strongest signal first regardless of flags. */
+    BY_SIGNAL,
+    /** Alphabetical by SSID. */
+    BY_SSID,
+}
 
 class MainViewModel(
     private val wifiScanner: WifiScanner,
@@ -63,9 +74,30 @@ class MainViewModel(
     private val _distanceInFeet = MutableLiveData(false)
     val distanceInFeet: LiveData<Boolean> = _distanceInFeet
 
+    /** Current sort order for the All Networks list. */
+    private val _sortOrder = MutableLiveData(SortOrder.BY_THREAT)
+    val sortOrder: LiveData<SortOrder> = _sortOrder
+
+    /**
+     * BSSID → manufacturer name resolved via [OuiLookup] after each scan.
+     * Observed by the Activity to pass into both adapters.
+     */
+    private val _manufacturers = MutableLiveData<Map<String, String>>(emptyMap())
+    val manufacturers: LiveData<Map<String, String>> = _manufacturers
+
     /** Toggle between feet and metres for the distance display. */
     fun toggleDistanceUnit() {
         _distanceInFeet.value = _distanceInFeet.value != true
+    }
+
+    /** Cycle through the three sort orders in order. */
+    fun cycleSortOrder() {
+        val entries = SortOrder.entries
+        val next = entries[((_sortOrder.value?.ordinal ?: 0) + 1) % entries.size]
+        _sortOrder.value = next
+        // Re-sort existing list without a new scan
+        val current = sessionNetworks.values.toList()
+        if (current.isNotEmpty()) _networks.value = sortNetworks(current)
     }
 
     private val rootShellScanner = RootShellScanner()
@@ -92,6 +124,11 @@ class MainViewModel(
     fun scan(context: Context) {
         if (_isScanning.value == true) return
         viewModelScope.launch { doScan(context) }
+    }
+
+    /** Trigger a background OUI database refresh from GitHub. */
+    fun refreshOuiDatabase(context: Context) {
+        viewModelScope.launch { OuiLookup.updateFromGitHub(context) }
     }
 
     fun startContinuousMonitoring(context: Context) {
@@ -158,14 +195,22 @@ class MainViewModel(
             tagged
         }
 
-        // 3. Stream results into the UI one-by-one (WiGLE addWiFi pattern).
+        // 3. Resolve OUI manufacturer names on IO, then publish to adapters.
+        val mfgrMap = withContext(Dispatchers.IO) {
+            analysed.associate { n ->
+                n.bssid to OuiLookup.lookup(context, n.bssid)
+            }.filterValues { it.isNotEmpty() }
+        }
+        _manufacturers.value = mfgrMap
+
+        // 4. Stream results into the UI one-by-one (WiGLE addWiFi pattern).
         if (continuousMonitoringActive) {
             streamMonitoringResults(analysed)
         } else {
             streamOneShotResults(analysed)
         }
 
-        // 4. Update threat list, stats, and final status.
+        // 5. Update threat list, stats, and final status.
         val flagged = analysed.count { it.isFlagged }
         _threatNetworks.value = if (continuousMonitoringActive) {
             sortNetworks(sessionNetworks.values.filter { it.isFlagged })
@@ -211,7 +256,7 @@ class MainViewModel(
             _scanStatus.value = "Scanning\u2026 ${visible.size} / ${analysed.size} found"
             delay(STREAM_DELAY_MS)
         }
-        // Final sort: flagged networks float to the top (devsec priority)
+        // Final sort: apply current sort order
         _networks.value = sortNetworks(analysed)
     }
 
@@ -256,10 +301,18 @@ class MainViewModel(
         if (n.bssid.isNotBlank()) n.bssid else "anon:${n.ssid}"
 
     private fun sortNetworks(networks: Iterable<ScannedNetwork>): List<ScannedNetwork> =
-        networks.sortedWith(
-            compareByDescending<ScannedNetwork> { it.isFlagged }
-                .thenByDescending { it.rssi }
-        )
+        when (_sortOrder.value ?: SortOrder.BY_THREAT) {
+            SortOrder.BY_THREAT -> networks.sortedWith(
+                compareByDescending<ScannedNetwork> { it.isFlagged }
+                    .thenBy { it.highestSeverity?.ordinal ?: Int.MAX_VALUE }
+                    .thenByDescending { it.rssi }
+            )
+            SortOrder.BY_SIGNAL -> networks.sortedByDescending { it.rssi }
+            SortOrder.BY_SSID   -> networks.sortedWith(
+                compareBy<ScannedNetwork> { it.ssid.lowercase() }
+                    .thenByDescending { it.rssi }
+            )
+        }
 
     /**
      * Fetch the most-recently-updated location from GPS or network providers.

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.wifisentry.core.ScannedNetwork
+import com.wifisentry.core.ThreatSeverity
 import com.wifisentry.core.ThreatType
 import com.wifisentry.core.WifiDisplayUtils
 
@@ -31,6 +32,13 @@ class ScanResultAdapter :
             }
         }
 
+    /** Optional manufacturer string per BSSID, populated by the Activity after OUI lookup. */
+    var manufacturers: Map<String, String> = emptyMap()
+        set(value) {
+            field = value
+            notifyItemRangeChanged(0, itemCount)
+        }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NetworkViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_network, parent, false)
@@ -38,7 +46,7 @@ class ScanResultAdapter :
     }
 
     override fun onBindViewHolder(holder: NetworkViewHolder, position: Int) {
-        holder.bind(getItem(position), onNetworkClick, distanceInFeet)
+        holder.bind(getItem(position), onNetworkClick, distanceInFeet, manufacturers)
     }
 
     class NetworkViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -51,11 +59,21 @@ class ScanResultAdapter :
         private val flagIndicator: View       = itemView.findViewById(R.id.flag_indicator)
         private val textDistance: TextView    = itemView.findViewById(R.id.text_distance)
 
-        fun bind(network: ScannedNetwork, onClick: ((ScannedNetwork) -> Unit)?, distanceInFeet: Boolean) {
+        fun bind(
+            network: ScannedNetwork,
+            onClick: ((ScannedNetwork) -> Unit)?,
+            distanceInFeet: Boolean,
+            manufacturers: Map<String, String>,
+        ) {
             val ctx: Context = itemView.context
 
             textSsid.text    = network.ssid.ifBlank { ctx.getString(R.string.hidden_ssid) }
-            textBssid.text   = network.bssid
+
+            // Show manufacturer name alongside BSSID when available
+            val mfgr = manufacturers[network.bssid]
+            textBssid.text = if (!mfgr.isNullOrBlank()) "${network.bssid}  ·  $mfgr"
+                             else network.bssid
+
             textSignal.text  = ctx.getString(R.string.signal_format, network.rssi)
             textSecurity.text = if (network.isOpen)
                 ctx.getString(R.string.security_open)
@@ -91,7 +109,27 @@ class ScanResultAdapter :
                 flagIndicator.visibility = View.VISIBLE
                 textThreats.visibility   = View.VISIBLE
                 textThreats.text = network.threats.joinToString(" · ") { it.displayName(ctx) }
-                itemView.setBackgroundColor(ctx.getColor(R.color.flag_background))
+
+                // Colour-code by highest threat severity for immediate visual triage
+                val severity = network.highestSeverity
+                val (bgColor, barColor) = when (severity) {
+                    ThreatSeverity.HIGH -> Pair(
+                        ContextCompat.getColor(ctx, R.color.threat_bg_high),
+                        ContextCompat.getColor(ctx, R.color.threat_bar_high)
+                    )
+                    ThreatSeverity.MEDIUM -> Pair(
+                        ContextCompat.getColor(ctx, R.color.threat_bg_medium),
+                        ContextCompat.getColor(ctx, R.color.threat_bar_medium)
+                    )
+                    else -> Pair(
+                        ContextCompat.getColor(ctx, R.color.threat_bg_low),
+                        ContextCompat.getColor(ctx, R.color.threat_bar_low)
+                    )
+                }
+                itemView.setBackgroundColor(bgColor)
+                flagIndicator.setBackgroundColor(barColor)
+                // Threat label colour matches severity bar
+                textThreats.setTextColor(barColor)
                 itemView.setOnClickListener { onClick?.invoke(network) }
             } else {
                 flagIndicator.visibility = View.GONE
@@ -147,3 +185,4 @@ internal fun ThreatType.detailDescription(ctx: Context): String = when (this) {
     ThreatType.DEAUTH_FLOOD              -> ctx.getString(R.string.threat_detail_deauth_flood)
     ThreatType.PROBE_RESPONSE_ANOMALY    -> ctx.getString(R.string.threat_detail_probe_response_anomaly)
 }
+

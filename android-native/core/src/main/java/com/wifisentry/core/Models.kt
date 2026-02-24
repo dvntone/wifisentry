@@ -40,6 +40,12 @@ data class ScannedNetwork(
     val isOpen: Boolean get() = !capabilities.contains("WPA") && !capabilities.contains("WEP") && !capabilities.contains("SAE")
     /** True when a valid GPS fix is stored on this record. */
     val hasGpsFix: Boolean get() = latitude.isFinite() && longitude.isFinite()
+    /**
+     * The highest (most severe) [ThreatSeverity] across all detected threats,
+     * or null when the network is not flagged.
+     */
+    val highestSeverity: ThreatSeverity?
+        get() = threats.map { it.severity }.minByOrNull { it.ordinal }
 }
 
 /**
@@ -59,6 +65,34 @@ data class ScanStats(
     /** Total flagged networks stored across all scan history. */
     val threatsAllTime: Int = 0,
 )
+
+/**
+ * Severity level assigned to each [ThreatType].
+ * Used for colour-coding list items: HIGH = red, MEDIUM = orange, LOW = amber.
+ */
+enum class ThreatSeverity { HIGH, MEDIUM, LOW }
+
+/** The severity associated with this threat type. */
+val ThreatType.severity: ThreatSeverity
+    get() = when (this) {
+        ThreatType.EVIL_TWIN,
+        ThreatType.DEAUTH_FLOOD,
+        ThreatType.PROBE_RESPONSE_ANOMALY,
+        ThreatType.BEACON_FLOOD,
+        ThreatType.INCONSISTENT_CAPABILITIES -> ThreatSeverity.HIGH
+
+        ThreatType.OPEN_NETWORK,
+        ThreatType.SECURITY_CHANGE,
+        ThreatType.MAC_SPOOFING_SUSPECTED,
+        ThreatType.MULTI_SSID_SAME_OUI,
+        ThreatType.BSSID_NEAR_CLONE,
+        ThreatType.SUSPICIOUS_SIGNAL_STRENGTH,
+        ThreatType.CHANNEL_SHIFT -> ThreatSeverity.MEDIUM
+
+        ThreatType.WPS_VULNERABLE,
+        ThreatType.MULTIPLE_BSSIDS,
+        ThreatType.SUSPICIOUS_SSID -> ThreatSeverity.LOW
+    }
 
 /**
  * Types of threats that can be detected for a Wi-Fi network.

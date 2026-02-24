@@ -61,6 +61,7 @@ class MainActivity : AppCompatActivity() {
 
         NotificationHelper.createChannel(this)
         requestNotificationPermissionIfNeeded()
+        requestLocationPermissionIfNeeded()
 
         // All Networks list
         adapter = ScanResultAdapter()
@@ -80,6 +81,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
         binding.buttonDistanceUnit.setOnClickListener { viewModel.toggleDistanceUnit() }
+        binding.buttonSort.setOnClickListener { viewModel.cycleSortOrder() }
         binding.textWifiStatus.setOnClickListener {
             startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
         }
@@ -90,6 +92,9 @@ class MainActivity : AppCompatActivity() {
         viewModel.onThreatsFound = { flagged, total ->
             NotificationHelper.notifyThreats(this, flagged, total)
         }
+
+        // Kick off a background OUI database refresh on launch
+        viewModel.refreshOuiDatabase(this)
 
         observeViewModel()
         updateStatusBanner()
@@ -174,6 +179,19 @@ class MainActivity : AppCompatActivity() {
                 getString(if (useFeet) R.string.button_unit_feet else R.string.button_unit_meters)
         }
 
+        viewModel.sortOrder.observe(this) { order ->
+            binding.buttonSort.text = getString(when (order) {
+                SortOrder.BY_THREAT -> R.string.button_sort_threat
+                SortOrder.BY_SIGNAL -> R.string.button_sort_signal
+                SortOrder.BY_SSID   -> R.string.button_sort_ssid
+            })
+        }
+
+        viewModel.manufacturers.observe(this) { mfgrMap ->
+            adapter.manufacturers      = mfgrMap
+            threatAdapter.manufacturers = mfgrMap
+        }
+
         viewModel.isScanning.observe(this) { scanning ->
             binding.buttonScan.isEnabled =
                 !scanning && viewModel.isMonitoring.value != true
@@ -250,6 +268,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Show a location-permission rationale dialog on first launch. */
+    private fun requestLocationPermissionIfNeeded() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.perm_location_title)
+                .setMessage(R.string.perm_location_message)
+                .setPositiveButton(R.string.perm_location_allow) { _, _ ->
+                    requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                }
+                .setNegativeButton(R.string.perm_location_skip, null)
+                .show()
+        }
+    }
+
     private fun showSnackbar(resId: Int) {
         Snackbar.make(binding.root, resId, Snackbar.LENGTH_LONG).show()
     }
@@ -271,6 +305,8 @@ class MainActivity : AppCompatActivity() {
         val sb = StringBuilder()
         sb.appendLine(getString(R.string.detail_label_ssid, ssid))
         sb.appendLine(getString(R.string.detail_label_bssid, network.bssid))
+        val mfgr = viewModel.manufacturers.value?.get(network.bssid)
+        if (!mfgr.isNullOrBlank()) sb.appendLine(getString(R.string.detail_label_manufacturer, mfgr))
         sb.appendLine(getString(R.string.detail_label_signal, network.rssi, rssiLabel))
         sb.appendLine(getString(R.string.detail_label_distance, distLabel))
         if (band.isNotBlank()) sb.appendLine(getString(R.string.detail_label_band, band, channel))
@@ -292,5 +328,3 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 }
-
-
