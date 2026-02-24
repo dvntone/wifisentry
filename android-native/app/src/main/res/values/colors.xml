@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="status_ok">#388E3C</color>
+    <color name="status_warning">#F57C00</color>
     <color name="status_error">#D32F2F</color>
     <color name="flag_red">#F44336</color>
     <color name="flag_background">#FFF8E1</color>

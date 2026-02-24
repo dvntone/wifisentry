@@ -73,7 +73,7 @@
 
     <!-- Network detail dialog — distance + GPS -->
     <string name="detail_label_distance">Distance: %s (RSSI estimate)</string>
-    <string name="detail_label_gps">GPS: %.6f, %.6f</string>
+    <string name="detail_label_gps">GPS: %1$.6f, %2$.6f</string>
     <string name="detail_label_manufacturer">Manufacturer: %s</string>
 
     <!-- Stats panel -->
@@ -100,8 +100,8 @@
     <string name="dialog_close">Close</string>
     <string name="detail_label_ssid">Network: %s</string>
     <string name="detail_label_bssid">Address: %s</string>
-    <string name="detail_label_signal">Signal: %d dBm (%s)</string>
-    <string name="detail_label_band">Band: %s  Channel: %d</string>
+    <string name="detail_label_signal">Signal: %1$d dBm (%2$s)</string>
+    <string name="detail_label_band">Band: %1$s  Channel: %2$d</string>
     <string name="detail_label_security">Security: %s</string>
     <string name="detail_threats_header">\nDetected Threats:\n</string>
 
