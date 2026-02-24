@@ -25,7 +25,18 @@ enum class ThreatType {
     OPEN_NETWORK,
     SUSPICIOUS_SSID,
     MULTIPLE_BSSIDS,
-    SECURITY_CHANGE
+    SECURITY_CHANGE,
+    /** Open AP whose SSID was previously observed as secured, appearing with a new BSSID.
+     *  Classic evil-twin / Wi-Fi Pineapple impersonation pattern. */
+    EVIL_TWIN,
+    /** BSSID has the locally-administered bit set — not a real manufacturer MAC.
+     *  Legitimate APs always use globally-administered (OUI-registered) MACs; a
+     *  software-defined or spoofed MAC is a strong rogue-AP indicator. */
+    MAC_SPOOFING_SUSPECTED,
+    /** Previously-unseen BSSID advertising with an unusually strong signal while
+     *  established scan history exists.  Consistent with a rogue device (e.g. a
+     *  Wi-Fi Pineapple) being physically co-located with the user. */
+    SUSPICIOUS_SIGNAL_STRENGTH
 }
 
 /**

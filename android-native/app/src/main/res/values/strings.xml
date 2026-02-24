@@ -33,6 +33,9 @@
     <string name="threat_suspicious_ssid">Suspicious SSID</string>
     <string name="threat_multiple_bssids">Multiple BSSIDs</string>
     <string name="threat_security_change">Security changed</string>
+    <string name="threat_evil_twin">Evil twin / Pineapple</string>
+    <string name="threat_mac_spoofing">MAC spoofing suspected</string>
+    <string name="threat_suspicious_signal">Suspiciously strong signal</string>
 
     <!-- History -->
     <string name="history_empty">No scan history yet.</string>

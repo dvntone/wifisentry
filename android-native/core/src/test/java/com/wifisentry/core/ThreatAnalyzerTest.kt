@@ -21,14 +21,15 @@ class ThreatAnalyzerTest {
 
     private fun network(
         ssid: String = "TestNetwork",
-        bssid: String = "AA:BB:CC:DD:EE:FF",
+        bssid: String = "00:11:22:33:44:55",  // globally-administered by default
         capabilities: String = "[WPA2-PSK-CCMP][ESS]",
+        rssi: Int = -60,
         threats: List<ThreatType> = emptyList()
     ) = ScannedNetwork(
         ssid = ssid,
         bssid = bssid,
         capabilities = capabilities,
-        rssi = -60,
+        rssi = rssi,
         frequency = 2412,
         timestamp = System.currentTimeMillis(),
         threats = threats
@@ -200,5 +201,110 @@ class ThreatAnalyzerTest {
     @Test
     fun `isOpen false for WPA network`() {
         assertFalse(network(capabilities = "[WPA2-PSK-CCMP][ESS]").isOpen)
+    }
+
+    // ── EVIL_TWIN ─────────────────────────────────────────────────────────
+
+    @Test
+    fun `open AP matching historically secured SSID with new BSSID flagged as evil twin`() {
+        val historic = network(ssid = "CoffeeShop", bssid = "00:11:22:33:44:55", capabilities = "[WPA2-PSK-CCMP][ESS]")
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(historic)))
+
+        val current = network(ssid = "CoffeeShop", bssid = "00:AA:BB:CC:DD:11", capabilities = "[ESS]")
+        val result = analyzer.analyze(listOf(current), history)
+
+        assertTrue(result.first().threats.contains(ThreatType.EVIL_TWIN))
+    }
+
+    @Test
+    fun `open AP matching historically secured SSID with same BSSID not flagged as evil twin`() {
+        val bssid = "00:11:22:33:44:55"
+        val historic = network(ssid = "CoffeeShop", bssid = bssid, capabilities = "[WPA2-PSK-CCMP][ESS]")
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(historic)))
+
+        // Same physical AP downgraded its own security — SECURITY_CHANGE, not EVIL_TWIN
+        val current = network(ssid = "CoffeeShop", bssid = bssid, capabilities = "[ESS]")
+        val result = analyzer.analyze(listOf(current), history)
+
+        assertFalse(result.first().threats.contains(ThreatType.EVIL_TWIN))
+    }
+
+    @Test
+    fun `open AP with no matching history not flagged as evil twin`() {
+        val result = analyzer.analyze(
+            listOf(network(ssid = "NewCafe", capabilities = "[ESS]")),
+            emptyList()
+        )
+        assertFalse(result.first().threats.contains(ThreatType.EVIL_TWIN))
+    }
+
+    @Test
+    fun `secured AP with new BSSID not flagged as evil twin`() {
+        val historic = network(ssid = "CorpNet", bssid = "00:11:22:33:44:55", capabilities = "[WPA2-PSK-CCMP][ESS]")
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(historic)))
+
+        val current = network(ssid = "CorpNet", bssid = "00:AA:BB:CC:DD:11", capabilities = "[WPA2-PSK-CCMP][ESS]")
+        val result = analyzer.analyze(listOf(current), history)
+
+        assertFalse(result.first().threats.contains(ThreatType.EVIL_TWIN))
+    }
+
+    // ── MAC_SPOOFING_SUSPECTED ────────────────────────────────────────────
+
+    @Test
+    fun `locally-administered BSSID flagged as suspected MAC spoofing`() {
+        // 0x02 = 0000 0010: bit 1 (locally-administered flag, mask 0x02) is set
+        val result = analyzer.analyze(listOf(network(bssid = "02:00:00:00:00:01")), emptyList())
+        assertTrue(result.first().threats.contains(ThreatType.MAC_SPOOFING_SUSPECTED))
+    }
+
+    @Test
+    fun `globally-administered BSSID not flagged as MAC spoofing`() {
+        // 0x00 = 0000 0000: bit 1 (locally-administered flag, mask 0x02) is clear — real manufacturer OUI
+        val result = analyzer.analyze(listOf(network(bssid = "00:11:22:33:44:55")), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.MAC_SPOOFING_SUSPECTED))
+    }
+
+    // ── SUSPICIOUS_SIGNAL_STRENGTH ────────────────────────────────────────
+
+    @Test
+    fun `strong signal from new BSSID with established history flagged`() {
+        val known = network(bssid = "00:11:22:33:44:55", rssi = -65)
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(known)))
+
+        // New BSSID, very strong signal — rogue device close by
+        val rogue = network(bssid = "00:AA:BB:CC:DD:EE", rssi = -35)
+        val result = analyzer.analyze(listOf(rogue), history)
+
+        assertTrue(result.first().threats.contains(ThreatType.SUSPICIOUS_SIGNAL_STRENGTH))
+    }
+
+    @Test
+    fun `strong signal from previously seen BSSID not flagged`() {
+        val bssid = "00:11:22:33:44:55"
+        val known = network(bssid = bssid, rssi = -65)
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(known)))
+
+        val current = network(bssid = bssid, rssi = -35)
+        val result = analyzer.analyze(listOf(current), history)
+
+        assertFalse(result.first().threats.contains(ThreatType.SUSPICIOUS_SIGNAL_STRENGTH))
+    }
+
+    @Test
+    fun `strong signal on first scan (no history) not flagged`() {
+        val result = analyzer.analyze(listOf(network(bssid = "00:AA:BB:CC:DD:EE", rssi = -35)), emptyList())
+        assertFalse(result.first().threats.contains(ThreatType.SUSPICIOUS_SIGNAL_STRENGTH))
+    }
+
+    @Test
+    fun `weak signal from new BSSID not flagged for suspicious signal`() {
+        val known = network(bssid = "00:11:22:33:44:55", rssi = -65)
+        val history = listOf(ScanRecord(System.currentTimeMillis() - 60_000L, listOf(known)))
+
+        val weakNew = network(bssid = "00:AA:BB:CC:DD:EE", rssi = -75)
+        val result = analyzer.analyze(listOf(weakNew), history)
+
+        assertFalse(result.first().threats.contains(ThreatType.SUSPICIOUS_SIGNAL_STRENGTH))
     }
 }
