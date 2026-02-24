@@ -11,8 +11,8 @@ android {
         applicationId "com.wifisentry.app"
         minSdk 31
         targetSdk 35
-        versionCode 3
-        versionName "0.2.1a"
+        versionCode 4
+        versionName "0.2.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -34,6 +34,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // Sign dev release builds with the debug keystore so the APK can be
+            // sideloaded on a test device.  A production signing config should
+            // replace this when a release keystore is available.
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
