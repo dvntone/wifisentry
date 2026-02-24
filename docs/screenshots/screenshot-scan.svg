@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 720" width="360" height="720" font-family="sans-serif">
+  <!-- Phone body -->
+  <rect width="360" height="720" rx="24" ry="24" fill="#FAFAFA"/>
+
+  <!-- Status bar -->
+  <rect width="360" height="28" fill="#6200EE"/>
+  <text x="18" y="19" font-size="11" fill="#FFFFFF" font-weight="bold">Wi-Fi Sentry</text>
+  <text x="318" y="19" font-size="11" fill="#FFFFFF">9:41</text>
+
+  <!-- Device Status card -->
+  <rect x="12" y="36" width="336" height="64" rx="8" fill="#FFFFFF" filter="url(#shadow)"/>
+  <text x="22" y="54" font-size="12" font-weight="bold" fill="#212121">Device Status</text>
+  <text x="22" y="70" font-size="11" fill="#388E3C">✓ Wi-Fi is enabled</text>
+  <text x="22" y="85" font-size="11" fill="#388E3C">✓ Location permission granted</text>
+  <text x="22" y="100" font-size="11" fill="#388E3C">✓ Location services enabled</text>
+
+  <!-- Action buttons row -->
+  <rect x="12" y="108" width="216" height="40" rx="4" fill="#6200EE"/>
+  <text x="120" y="133" font-size="13" fill="#FFFFFF" text-anchor="middle" font-weight="bold">Scan Networks</text>
+  <rect x="236" y="108" width="112" height="40" rx="4" fill="#FFFFFF" stroke="#6200EE" stroke-width="1.5"/>
+  <text x="292" y="133" font-size="13" fill="#6200EE" text-anchor="middle">History</text>
+
+  <!-- Monitor button -->
+  <rect x="12" y="156" width="336" height="38" rx="4" fill="#FFFFFF" stroke="#6200EE" stroke-width="1.5"/>
+  <text x="180" y="180" font-size="13" fill="#6200EE" text-anchor="middle">▶ Start Continuous Monitoring</text>
+
+  <!-- Stats card -->
+  <rect x="12" y="202" width="336" height="62" rx="8" fill="#FFFFFF" filter="url(#shadow)"/>
+  <text x="22" y="220" font-size="12" font-weight="bold" fill="#212121">📊 Scan Statistics</text>
+  <text x="22" y="236" font-size="11" fill="#424242">This scan: 14 networks · 3 threats</text>
+  <text x="22" y="251" font-size="11" fill="#424242">Session: 14 unique · 3 threats</text>
+  <text x="22" y="266" font-size="11" fill="#424242">All time: 47 total · 9 threats</text>
+
+  <!-- All Networks header -->
+  <text x="18" y="284" font-size="12" font-weight="bold" fill="#6200EE">All Networks (14)</text>
+
+  <!-- Column header bar -->
+  <rect x="0" y="288" width="360" height="30" fill="#EDE7F6"/>
+  <text x="18" y="307" font-size="10" font-weight="bold" fill="#5C5C5C">Threat</text>
+  <text x="90" y="307" font-size="10" font-weight="bold" fill="#5C5C5C">SSID</text>
+  <text x="240" y="307" font-size="10" font-weight="bold" fill="#5C5C5C">Signal</text>
+  <text x="298" y="307" font-size="10" font-weight="bold" fill="#5C5C5C">Ch/Band</text>
+
+  <!-- Network rows -->
+  <!-- Row 1 - clear -->
+  <rect x="8" y="320" width="344" height="36" rx="4" fill="#FFFFFF"/>
+  <rect x="8" y="320" width="4" height="36" rx="2" fill="#388E3C"/>
+  <text x="22" y="335" font-size="11" fill="#212121">HomeNetwork_5G</text>
+  <text x="22" y="349" font-size="10" fill="#757575">AA:BB:CC:DD:EE:FF</text>
+  <text x="250" y="342" font-size="11" fill="#388E3C">-52 dBm</text>
+  <text x="305" y="342" font-size="11" fill="#757575">36 / 5G</text>
+
+  <!-- Row 2 - threat -->
+  <rect x="8" y="360" width="344" height="36" rx="4" fill="#FFEBEE"/>
+  <rect x="8" y="360" width="4" height="36" rx="2" fill="#C62828"/>
+  <text x="22" y="375" font-size="11" fill="#212121">FreePublicWifi</text>
+  <text x="22" y="389" font-size="10" fill="#757575">11:22:33:44:55:66</text>
+  <text x="243" y="382" font-size="11" fill="#388E3C">-61 dBm</text>
+  <text x="305" y="382" font-size="11" fill="#757575">6 / 2.4</text>
+
+  <!-- Row 3 - medium threat -->
+  <rect x="8" y="400" width="344" height="36" rx="4" fill="#FFF3E0"/>
+  <rect x="8" y="400" width="4" height="36" rx="2" fill="#E65100"/>
+  <text x="22" y="415" font-size="11" fill="#212121">CoffeeShop_Guest</text>
+  <text x="22" y="429" font-size="10" fill="#757575">AA:11:22:33:44:55</text>
+  <text x="243" y="422" font-size="11" fill="#F57C00">-74 dBm</text>
+  <text x="305" y="422" font-size="11" fill="#757575">11 / 2.4</text>
+
+  <!-- Row 4 - clear -->
+  <rect x="8" y="440" width="344" height="36" rx="4" fill="#FFFFFF"/>
+  <rect x="8" y="440" width="4" height="36" rx="2" fill="#388E3C"/>
+  <text x="22" y="455" font-size="11" fill="#212121">Neighbor_WiFi</text>
+  <text x="22" y="469" font-size="10" fill="#757575">BB:CC:DD:EE:FF:00</text>
+  <text x="243" y="462" font-size="11" fill="#D32F2F">-86 dBm</text>
+  <text x="305" y="462" font-size="11" fill="#757575">1 / 2.4</text>
+
+  <!-- Divider -->
+  <rect x="12" y="479" width="336" height="1" fill="#E0E0E0"/>
+
+  <!-- Threats section header -->
+  <text x="18" y="496" font-size="12" font-weight="bold" fill="#D32F2F">⚠ Threats Detected (3)</text>
+
+  <!-- Threat row 1 -->
+  <rect x="8" y="502" width="344" height="44" rx="4" fill="#FFEBEE"/>
+  <rect x="8" y="502" width="4" height="44" rx="2" fill="#C62828"/>
+  <text x="22" y="518" font-size="11" font-weight="bold" fill="#B71C1C">Evil twin / Pineapple</text>
+  <text x="22" y="532" font-size="11" fill="#212121">FreePublicWifi</text>
+  <text x="22" y="545" font-size="10" fill="#757575">Open — impersonating known encrypted network</text>
+
+  <!-- Threat row 2 -->
+  <rect x="8" y="550" width="344" height="44" rx="4" fill="#FFF3E0"/>
+  <rect x="8" y="550" width="4" height="44" rx="2" fill="#E65100"/>
+  <text x="22" y="566" font-size="11" font-weight="bold" fill="#BF360C">Multiple BSSIDs</text>
+  <text x="22" y="580" font-size="11" fill="#212121">CoffeeShop_Guest</text>
+  <text x="22" y="593" font-size="10" fill="#757575">Same SSID seen from 3 different MAC addresses</text>
+
+  <!-- Threat row 3 -->
+  <rect x="8" y="598" width="344" height="44" rx="4" fill="#FFFDE7"/>
+  <rect x="8" y="598" width="4" height="44" rx="2" fill="#F9A825"/>
+  <text x="22" y="614" font-size="11" font-weight="bold" fill="#F57F17">Suspicious SSID</text>
+  <text x="22" y="628" font-size="11" fill="#212121">karma_test_net</text>
+  <text x="22" y="641" font-size="10" fill="#757575">SSID matches known attack keyword</text>
+
+  <!-- Bottom nav hint -->
+  <rect x="0" y="692" width="360" height="28" fill="#EEEEEE"/>
+  <text x="180" y="710" font-size="10" fill="#757575" text-anchor="middle">Tap a network to copy, pin, or ask Gemini AI</text>
+
+  <!-- Drop shadow filter -->
+  <defs>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#00000022"/>
+    </filter>
+  </defs>
+</svg>

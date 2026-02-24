@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   bump-version:
@@ -52,6 +53,13 @@ jobs:
           git add package.json
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new-version }} after PR #${{ github.event.pull_request.number }} merge"
           git push origin main
+
+      - name: Dispatch auto-release workflow
+        run: |
+          sleep 3
+          gh workflow run auto-release.yml --ref main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Write step summary
         run: |

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="100" fill="#6200EE"/>
+  <!-- Shield -->
+  <path fill="#FFFFFF" d="M100 30 L44 54 L44 104 C44 138 68 164 100 176 C132 164 156 138 156 104 L156 54 Z"/>
+  <!-- Wi-Fi dot (center) -->
+  <circle cx="100" cy="112" r="8" fill="#6200EE"/>
+  <!-- Inner Wi-Fi arc -->
+  <path fill="none" stroke="#6200EE" stroke-width="7" stroke-linecap="round"
+        d="M78 96 Q78 80 100 80 Q122 80 122 96"/>
+  <!-- Outer Wi-Fi arc -->
+  <path fill="none" stroke="#6200EE" stroke-width="7" stroke-linecap="round"
+        d="M62 82 Q62 56 100 56 Q138 56 138 82"/>
+</svg>
