@@ -13,6 +13,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wifisentry.core.OuiLookup
+import com.wifisentry.core.RootChecker
 import com.wifisentry.core.RootScanData
 import com.wifisentry.core.RootShellScanner
 import com.wifisentry.core.ScanRecord
