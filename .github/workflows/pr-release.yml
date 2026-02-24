@@ -1,0 +1,66 @@
+name: PR Merge — Auto Version Bump
+
+# Triggers on every PR that is merged into main.
+# Bumps the patch version in package.json and pushes to main, which in turn
+# triggers auto-release.yml (watches for package.json changes on main) to
+# create the git tag and GitHub release automatically.
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    name: Bump patch version and trigger release
+    runs-on: ubuntu-latest
+    # Only run when the PR was actually merged, not just closed.
+    if: github.event.pull_request.merged == true
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          CURRENT=$(jq -r '.version' package.json)
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          PATCH=$((PATCH + 1))
+          NEW="${MAJOR}.${MINOR}.${PATCH}"
+          jq ".version = \"${NEW}\"" package.json > package.json.tmp
+          mv package.json.tmp package.json
+          echo "new-version=${NEW}" >> "$GITHUB_OUTPUT"
+          echo "old-version=${CURRENT}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit and push
+        run: |
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new-version }} after PR #${{ github.event.pull_request.number }} merge"
+          git push origin main
+
+      - name: Write step summary
+        run: |
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          echo "## 🚀 Version Bumped — Release Pending" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "PR [#${{ github.event.pull_request.number }}](${PR_URL}) merged into \`main\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Previous version | \`${{ steps.bump.outputs.old-version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| New version | \`${{ steps.bump.outputs.new-version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "The \`auto-release\` workflow will now create tag \`v${{ steps.bump.outputs.new-version }}\` and publish the GitHub Release." >> "$GITHUB_STEP_SUMMARY"

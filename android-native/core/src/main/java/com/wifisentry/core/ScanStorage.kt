@@ -10,10 +10,16 @@ import java.io.File
  *
  * Keeps at most [maxRecords] scan records on disk; older records are dropped
  * when the limit is exceeded.
+ *
+ * The primary constructor accepts a [File] directly, which makes the class
+ * fully testable without a real [Context].  The secondary constructor is the
+ * normal production entry-point.
  */
-class ScanStorage(context: Context, private val maxRecords: Int = MAX_RECORDS) {
+class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECORDS) {
 
-    private val file: File = File(context.filesDir, FILE_NAME)
+    constructor(context: Context, maxRecords: Int = MAX_RECORDS) :
+            this(File(context.filesDir, FILE_NAME), maxRecords)
+
     private val gson = Gson()
 
     /** Load the persisted scan history, newest first. */
