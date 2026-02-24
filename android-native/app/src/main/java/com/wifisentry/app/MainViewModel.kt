@@ -13,7 +13,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.wifisentry.core.OuiLookup
-import com.wifisentry.core.RootChecker
 import com.wifisentry.core.RootScanData
 import com.wifisentry.core.RootShellScanner
 import com.wifisentry.core.ScanRecord
@@ -214,8 +213,9 @@ class MainViewModel(
         val raw = scanWithReceiver(context)
 
         // 2. Root frame capture + history load + threat analysis on IO.
-        val analysed = withContext(Dispatchers.IO) {
-            val rootData = if (RootChecker.isRooted && continuousMonitoringActive) {
+        val (analysed, isRooted) = withContext(Dispatchers.IO) {
+            val rooted = RootChecker.isRooted
+            val rootData = if (rooted && continuousMonitoringActive) {
                 rootShellScanner.scan()
             } else {
                 RootScanData()
@@ -239,7 +239,7 @@ class MainViewModel(
             if (tagged.isNotEmpty()) {
                 storage.appendRecord(ScanRecord(System.currentTimeMillis(), tagged))
             }
-            tagged
+            Pair(tagged, rooted)
         }
 
         // 3. Resolve OUI manufacturer names on IO, then publish to adapters.
@@ -279,7 +279,7 @@ class MainViewModel(
         }
         _scanStats.value = stats
 
-        _scanStatus.value = buildStatusString(analysed.size, flagged)
+        _scanStatus.value = buildStatusString(analysed.size, flagged, isRooted)
         if (analysed.isEmpty()) {
             _scanError.value = "No networks found. Ensure location services are enabled and try again."
         }
@@ -429,9 +429,9 @@ class MainViewModel(
             }
     }
 
-    private fun buildStatusString(total: Int, flagged: Int): String {
+    private fun buildStatusString(total: Int, flagged: Int, rooted: Boolean): String {
         if (total == 0) return ""
-        val rootTag = if (RootChecker.isRooted) " \u00B7 root+" else ""
+        val rootTag = if (rooted) " \u00B7 root+" else ""
         return if (continuousMonitoringActive) {
             val unique = sessionNetworks.size
             "\u25CF LIVE \u00B7 $unique unique \u00B7 $flagged flagged$rootTag"

@@ -222,4 +222,8 @@
     <string name="gemini_key_clear">Clear Saved Key</string>
     <string name="gemini_key_empty">Please enter an API key</string>
     <string name="gemini_key_cleared">Saved API key removed</string>
+
+    <!-- Crash diagnostics dialog -->
+    <string name="crash_report_title">⚠ Previous Crash Detected</string>
+    <string name="crash_report_message">Wi-Fi Sentry crashed during the last session. The error details are shown below — you can long-press to select and copy the text, then share it for support.</string>
 </resources>

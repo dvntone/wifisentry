@@ -76,61 +76,72 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        NotificationHelper.createChannel(this)
-        requestNearbyWifiPermissionIfNeeded()
-        requestNotificationPermissionIfNeeded()
-        requestLocationPermissionIfNeeded()
+        // Show any crash report saved from the previous session so the user
+        // can copy and report diagnostics without needing adb/logcat.
+        showPreviousCrashReportIfAny()
 
-        // All Networks list
-        adapter = ScanResultAdapter()
-        adapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
-        binding.recyclerNetworks.layoutManager = LinearLayoutManager(this)
-        binding.recyclerNetworks.adapter = adapter
+        try {
+            NotificationHelper.createChannel(this)
+            requestNearbyWifiPermissionIfNeeded()
+            requestNotificationPermissionIfNeeded()
+            requestLocationPermissionIfNeeded()
 
-        // Threats Detected list — flagged networks only
-        threatAdapter = ScanResultAdapter()
-        threatAdapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
-        binding.recyclerThreats.layoutManager = LinearLayoutManager(this)
-        binding.recyclerThreats.adapter = threatAdapter
+            // All Networks list
+            adapter = ScanResultAdapter()
+            adapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
+            binding.recyclerNetworks.layoutManager = LinearLayoutManager(this)
+            binding.recyclerNetworks.adapter = adapter
 
-        binding.buttonScan.setOnClickListener { onScanClicked() }
-        binding.buttonMonitor.setOnClickListener { onMonitorClicked() }
-        binding.buttonHistory.setOnClickListener {
-            startActivity(Intent(this, HistoryActivity::class.java))
+            // Threats Detected list — flagged networks only
+            threatAdapter = ScanResultAdapter()
+            threatAdapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
+            binding.recyclerThreats.layoutManager = LinearLayoutManager(this)
+            binding.recyclerThreats.adapter = threatAdapter
+
+            binding.buttonScan.setOnClickListener { onScanClicked() }
+            binding.buttonMonitor.setOnClickListener { onMonitorClicked() }
+            binding.buttonHistory.setOnClickListener {
+                startActivity(Intent(this, HistoryActivity::class.java))
+            }
+            binding.buttonDistanceUnit.setOnClickListener { viewModel.toggleDistanceUnit() }
+
+            // Active analysis button
+            binding.buttonAnalyze.setOnClickListener {
+                viewModel.analyzeHistory(applicationContext)
+            }
+
+            // Column header sort taps
+            binding.layoutColThreat.setOnClickListener  { viewModel.setSort(SortColumn.THREAT) }
+            binding.layoutColSsid.setOnClickListener    { viewModel.setSort(SortColumn.SSID)   }
+            binding.layoutColSignal.setOnClickListener  { viewModel.setSort(SortColumn.SIGNAL) }
+            binding.layoutColChannel.setOnClickListener { viewModel.setSort(SortColumn.CHANNEL) }
+
+            // Column visibility ⋮ menu (both buttons open the same menu)
+            binding.buttonAllColumnsMenu.setOnClickListener    { showColumnMenu(it) }
+            binding.buttonThreatsColumnsMenu.setOnClickListener { showColumnMenu(it) }
+
+            binding.textWifiStatus.setOnClickListener {
+                startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+            }
+            binding.textLocationStatus.setOnClickListener {
+                startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            }
+
+            viewModel.onThreatsFound = { flagged, total ->
+                NotificationHelper.notifyThreats(this, flagged, total)
+            }
+
+            // Kick off a background OUI database refresh on launch
+            viewModel.refreshOuiDatabase(this)
+
+            observeViewModel()
+            updateStatusBanner()
+        } catch (e: Exception) {
+            // Save the report so it persists even if the process is killed, then
+            // show it immediately on this same launch so the user can copy it.
+            WifiSentryApp.saveCrashReport(applicationContext, e)
+            showStartupCrashDialog(e)
         }
-        binding.buttonDistanceUnit.setOnClickListener { viewModel.toggleDistanceUnit() }
-
-        // Active analysis button
-        binding.buttonAnalyze.setOnClickListener {
-            viewModel.analyzeHistory(applicationContext)
-        }
-
-        // Column header sort taps
-        binding.layoutColThreat.setOnClickListener  { viewModel.setSort(SortColumn.THREAT) }
-        binding.layoutColSsid.setOnClickListener    { viewModel.setSort(SortColumn.SSID)   }
-        binding.layoutColSignal.setOnClickListener  { viewModel.setSort(SortColumn.SIGNAL) }
-        binding.layoutColChannel.setOnClickListener { viewModel.setSort(SortColumn.CHANNEL) }
-
-        // Column visibility ⋮ menu (both buttons open the same menu)
-        binding.buttonAllColumnsMenu.setOnClickListener    { showColumnMenu(it) }
-        binding.buttonThreatsColumnsMenu.setOnClickListener { showColumnMenu(it) }
-
-        binding.textWifiStatus.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
-        }
-        binding.textLocationStatus.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-        }
-
-        viewModel.onThreatsFound = { flagged, total ->
-            NotificationHelper.notifyThreats(this, flagged, total)
-        }
-
-        // Kick off a background OUI database refresh on launch
-        viewModel.refreshOuiDatabase(this)
-
-        observeViewModel()
-        updateStatusBanner()
     }
 
     override fun onResume() {
@@ -308,23 +319,16 @@ class MainActivity : AppCompatActivity() {
         binding.buttonMonitor.isEnabled = permOk
     }
 
-    private fun requestNotificationPermissionIfNeeded() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED
-        ) {
-            MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.perm_notif_title)
-                .setMessage(R.string.perm_notif_message)
-                .setPositiveButton(R.string.perm_notif_allow) { _, _ ->
-                    requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                }
-                .setNegativeButton(R.string.perm_notif_skip, null)
-                .show()
-        }
-    }
-
-    /** Show a nearby-Wi-Fi-devices permission rationale dialog on Android 13+. */
+    /**
+     * Show permission-rationale dialogs sequentially so they never stack on top of
+     * each other.  On first launch up to three rationale dialogs may be required
+     * (nearby-Wi-Fi, notifications, location); each one chains to the next via its
+     * dismiss listener so only one dialog is visible at a time.
+     *
+     * Previously all three were shown synchronously in onCreate() which could
+     * present multiple overlapping windows and, on some devices / Android versions,
+     * trigger a WindowManager exception before the Activity window was ready.
+     */
     private fun requestNearbyWifiPermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES)
@@ -337,7 +341,32 @@ class MainActivity : AppCompatActivity() {
                     requestNearbyWifiPermission.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
                 }
                 .setNegativeButton(R.string.perm_nearby_wifi_skip, null)
+                // Chain: once this dialog closes, show the next one.
+                .setOnDismissListener { requestNotificationPermissionIfNeeded() }
                 .show()
+        } else {
+            // Permission already granted or not required — move straight to the next step.
+            requestNotificationPermissionIfNeeded()
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.perm_notif_title)
+                .setMessage(R.string.perm_notif_message)
+                .setPositiveButton(R.string.perm_notif_allow) { _, _ ->
+                    requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                .setNegativeButton(R.string.perm_notif_skip, null)
+                // Chain: once this dialog closes, show the next one.
+                .setOnDismissListener { requestLocationPermissionIfNeeded() }
+                .show()
+        } else {
+            requestLocationPermissionIfNeeded()
         }
     }
 
@@ -355,6 +384,58 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton(R.string.perm_location_skip, null)
                 .show()
         }
+    }
+
+    /**
+     * If a crash occurred in a previous session, show the stack trace in a
+     * scrollable Material dialog so the user can copy it without needing adb.
+     * The report file is deleted after being shown so it only appears once.
+     */
+    private fun showPreviousCrashReportIfAny() {
+        val report = WifiSentryApp.consumeCrashReport(applicationContext) ?: return
+        val ctx = this
+        val scroll = android.widget.ScrollView(ctx)
+        val tv = android.widget.TextView(ctx).apply {
+            text = report
+            textSize = 11f
+            setTextIsSelectable(true)
+            val pad = (12 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+        }
+        scroll.addView(tv)
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(getString(R.string.crash_report_title))
+            .setMessage(getString(R.string.crash_report_message))
+            .setView(scroll)
+            .setPositiveButton(R.string.dialog_close, null)
+            .show()
+    }
+
+    /**
+     * Show the stack trace from [throwable] immediately on this launch so
+     * the user can copy and report it without needing a second app open.
+     * Called from the try-catch in [onCreate] when startup itself crashes.
+     */
+    private fun showStartupCrashDialog(throwable: Throwable) {
+        val sw = java.io.StringWriter()
+        throwable.printStackTrace(java.io.PrintWriter(sw))
+        val scroll = android.widget.ScrollView(this)
+        val tv = android.widget.TextView(this).apply {
+            text = sw.toString()
+            textSize = 11f
+            setTextIsSelectable(true)
+            val pad = (12 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad)
+        }
+        scroll.addView(tv)
+        try {
+            MaterialAlertDialogBuilder(this)
+                .setTitle(getString(R.string.crash_report_title))
+                .setMessage(getString(R.string.crash_report_message))
+                .setView(scroll)
+                .setPositiveButton(R.string.dialog_close, null)
+                .show()
+        } catch (_: Exception) { /* file-based report is the fallback */ }
     }
 
     private fun showSnackbar(resId: Int) {
