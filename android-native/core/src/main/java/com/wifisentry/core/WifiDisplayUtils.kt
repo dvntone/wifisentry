@@ -109,6 +109,8 @@ object WifiDisplayUtils {
             c.contains("WEP")                      -> "WEP (insecure)"
             else                                   -> "Open"
         }
+    }
+
     // ── Distance estimation ───────────────────────────────────────────────
 
     /**
