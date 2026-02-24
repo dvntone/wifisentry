@@ -4,8 +4,6 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import java.io.File
-import java.util.Calendar
-import java.util.Date
 
 /**
  * Lightweight JSON-file-backed persistence for scan history.
@@ -89,15 +87,7 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
         return added
     }
 
-    private fun utcDayKey(epochMs: Long): Long {
-        val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
-        cal.time = Date(epochMs)
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
-    }
+    private fun utcDayKey(epochMs: Long): Long = utcDayBucketMs(epochMs)
 
     // ── DTO classes (safe for Gson serialisation) ─────────────────────────
 

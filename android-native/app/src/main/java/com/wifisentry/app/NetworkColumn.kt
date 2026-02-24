@@ -41,11 +41,11 @@ val ALL_COLUMNS: Set<NetworkColumn> = NetworkColumn.entries.toSet()
  */
 enum class SortColumn(val defaultAscending: Boolean) {
     /** Highest-severity threats first, then by signal strength (default). */
-    THREAT(ascending = true),
+    THREAT(defaultAscending = true),
     /** Strongest signal first (WiGLE's default sort). */
-    SIGNAL(ascending = true),
+    SIGNAL(defaultAscending = true),
     /** Alphabetical by SSID (A → Z). */
-    SSID(ascending = true),
+    SSID(defaultAscending = true),
     /** Ascending channel / frequency number (WiGLE: channelCompare). */
-    CHANNEL(ascending = true),
+    CHANNEL(defaultAscending = true),
 }
