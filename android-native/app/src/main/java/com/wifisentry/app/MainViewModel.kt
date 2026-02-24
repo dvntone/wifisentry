@@ -205,6 +205,7 @@ class MainViewModel(
         if (_isScanning.value == true) return
         _isScanning.value = true
         _scanError.value  = null
+        try {
 
         // Refresh GPS fix before the scan so networks are tagged with current position.
         updateLastKnownLocation(context)
@@ -282,8 +283,13 @@ class MainViewModel(
         if (analysed.isEmpty()) {
             _scanError.value = "No networks found. Ensure location services are enabled and try again."
         }
-        _isScanning.value = false
         if (flagged > 0) onThreatsFound?.invoke(flagged, analysed.size)
+
+        } catch (e: Exception) {
+            _scanError.postValue("Scan failed: ${e.javaClass.simpleName}${e.message?.let { " — $it" } ?: ""}")
+        } finally {
+            _isScanning.postValue(false)
+        }
     }
 
     /**
@@ -394,12 +400,19 @@ class MainViewModel(
             }
         }
 
-        ContextCompat.registerReceiver(
-            context,
-            receiver,
-            IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
-            ContextCompat.RECEIVER_NOT_EXPORTED,
-        )
+        val registered = try {
+            ContextCompat.registerReceiver(
+                context,
+                receiver,
+                IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            true
+        } catch (_: Exception) { false }
+
+        if (!registered) {
+            return withContext(Dispatchers.IO) { wifiScanner.getLatestResults() }
+        }
 
         @Suppress("DEPRECATION")
         val started = withContext(Dispatchers.IO) { wifiScanner.startScan() }
