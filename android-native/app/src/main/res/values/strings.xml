@@ -84,6 +84,7 @@
     <!-- Distance unit toggle -->
     <string name="button_unit_meters">m</string>
     <string name="button_unit_feet">ft</string>
+    <string name="dialog_network_detail_title">Network Details</string>
     <string name="dialog_close">Close</string>
     <string name="detail_label_ssid">Network: %s</string>
     <string name="detail_label_bssid">Address: %s</string>
