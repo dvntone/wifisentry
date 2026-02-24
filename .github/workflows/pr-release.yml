@@ -37,7 +37,9 @@ jobs:
         id: bump
         run: |
           CURRENT=$(jq -r '.version' package.json)
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          # Strip any pre-release suffix (e.g. "1.1.5a" → "1.1.5") before arithmetic
+          SEMVER=$(echo "$CURRENT" | sed 's/[a-zA-Z]*$//')
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$SEMVER"
           PATCH=$((PATCH + 1))
           NEW="${MAJOR}.${MINOR}.${PATCH}"
           jq ".version = \"${NEW}\"" package.json > package.json.tmp

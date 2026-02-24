@@ -38,8 +38,8 @@ jobs:
       - name: Bump version
         id: bump
         run: |
-          # Get current version
-          CURRENT_VERSION=$(jq -r '.version' package.json)
+          # Get current version (strip any trailing pre-release suffix before parsing)
+          CURRENT_VERSION=$(jq -r '.version' package.json | sed 's/[a-zA-Z]*$//')
           echo "Current version: $CURRENT_VERSION"
           
           # Parse semantic version
@@ -68,22 +68,29 @@ jobs:
           # Update package.json
           jq ".version = \"$NEW_VERSION\"" package.json > package.json.tmp
           mv package.json.tmp package.json
-          
           echo "📝 package.json updated with version $NEW_VERSION"
+
+          # Update Android versionName and increment versionCode in app/build.gradle
+          ANDROID_GRADLE=android-native/app/build.gradle
+          CURRENT_ANDROID_CODE=$(awk '/^\s+versionCode\s+[0-9]+/{print $2; exit}' "$ANDROID_GRADLE")
+          NEW_ANDROID_CODE=$((CURRENT_ANDROID_CODE + 1))
+          sed -i "s/versionCode $CURRENT_ANDROID_CODE/versionCode $NEW_ANDROID_CODE/" "$ANDROID_GRADLE"
+          sed -i "s/versionName \"[^\"]*\"/versionName \"$NEW_VERSION\"/" "$ANDROID_GRADLE"
+          echo "📝 android-native/app/build.gradle updated: versionCode=$NEW_ANDROID_CODE, versionName=$NEW_VERSION"
 
       - name: Verify changes (dry-run)
         if: github.event.inputs.dry-run == 'true'
         run: |
           echo "🔍 DRY RUN - Changes that would be made:"
           echo ""
-          git diff package.json
+          git diff package.json android-native/app/build.gradle
           echo ""
           echo "No changes committed (dry-run mode)"
 
       - name: Commit and push (if not dry-run)
         if: github.event.inputs.dry-run == 'false'
         run: |
-          git add package.json
+          git add package.json android-native/app/build.gradle
           git commit -m "chore: Bump version to ${{ steps.bump.outputs.new-version }}"
           git push origin main
           
