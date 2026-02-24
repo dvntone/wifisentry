@@ -135,6 +135,14 @@ async function runScan(techniques) {
         const scannedNetworks = await wifiScanner.scan();
         const scanId = uuidv4();
 
+        // Load recent scan history for history-aware threat checks
+        let scanHistory = [];
+        try {
+            scanHistory = await wifiScanner.getScanHistory(20);
+        } catch (histErr) {
+            console.warn('Could not load scan history:', histErr.message);
+        }
+
         // 1. Real-time AI Analysis of the scan results
         let aiAnalysisResult = {};
         try {
@@ -143,19 +151,33 @@ async function runScan(techniques) {
         } catch (aiError) {
             console.error('AI Analysis failed:', aiError.message);
         }
-        
+
+        // 2. Full heuristic analysis (13 checks, history-aware)
+        let heuristicResult = { annotated: scannedNetworks, allThreats: [] };
+        try {
+            heuristicResult = await wifiScanner.analyzeThreatPatterns(scannedNetworks, scanHistory);
+        } catch (heurErr) {
+            console.error('Heuristic analysis failed:', heurErr.message);
+        }
+
         let findings = [];
         if (techniques.includes('karma')) {
-            findings = findings.concat(detectKarmaAttack(scannedNetworks));
+            findings = findings.concat(detectKarmaAttack(scannedNetworks, scanHistory));
         }
         if (techniques.includes('evil-twin')) {
-            const evilTwinFindings = detectEvilTwin(scannedNetworks);
+            const evilTwinFindings = detectEvilTwin(scannedNetworks, scanHistory);
             evilTwinFindings.forEach(f => f.reason = `Evil Twin/Pineapple detected. ${f.reason}`);
             findings = findings.concat(evilTwinFindings);
         }
 
-        // 2. Store SSID, BSSID, AP, Station, Beacon, and AI results to Database
-        const networksToLog = scannedNetworks.map(net => ({
+        // Merge heuristic threats not already captured by individual technique handlers
+        const heuristicOnly = heuristicResult.allThreats.filter(t =>
+            !findings.some(f => f.ssid === t.ssid && f.bssid === t.bssid)
+        );
+        findings = findings.concat(heuristicOnly);
+
+        // 3. Store SSID, BSSID, AP, Station, Beacon, and AI results to Database
+        const networksToLog = heuristicResult.annotated.map(net => ({
             ssid: net.ssid,
             bssid: net.bssid,
             security: net.security,
@@ -165,9 +187,10 @@ async function runScan(techniques) {
             beaconInterval: net.beaconInterval || 100, // Default if not provided by driver
             stations: [], // Requires Monitor Mode to populate
             scanId: scanId,
+            threats: net.threats || [],
             // Attach specific AI insights if this network was flagged
-            aiAnalysis: aiAnalysisResult.suspicious_networks?.find(s => s.bssid === net.bssid) 
-                ? { risk: 'High', details: 'Flagged by AI as suspicious' } 
+            aiAnalysis: aiAnalysisResult.suspicious_networks?.find(s => s.bssid === net.bssid)
+                ? { risk: 'High', details: 'Flagged by AI as suspicious' }
                 : { risk: 'Low' }
         }));
 
@@ -179,12 +202,12 @@ async function runScan(techniques) {
             await database.threatLogs.logBatch(findings);
         }
 
-        broadcast({ 
-            type: 'scan-result', 
+        broadcast({
+            type: 'scan-result',
             timestamp: new Date().toLocaleTimeString(),
-            networkCount: scannedNetworks.length, 
+            networkCount: scannedNetworks.length,
             findings,
-            networks: networksToLog
+            networks: networksToLog,
         });
     } catch (error) {
         console.error('Scan error:', error);
