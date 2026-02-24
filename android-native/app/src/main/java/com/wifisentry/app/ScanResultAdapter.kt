@@ -48,7 +48,7 @@ class ScanResultAdapter :
                 flagIndicator.visibility = View.VISIBLE
                 textThreats.visibility = View.VISIBLE
                 textThreats.text = network.threats.joinToString(" · ") { it.displayName(ctx) }
-                itemView.setBackgroundColor(Color.parseColor("#FFF8E1"))
+                itemView.setBackgroundColor(ctx.getColor(R.color.flag_background))
             } else {
                 flagIndicator.visibility = View.GONE
                 textThreats.visibility = View.GONE
