@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import LiveScanResults from '../components/LiveScanResults';
 import DependencyChecker from '../components/DependencyChecker';
 import PlatformShowcase from '../components/PlatformShowcase';
@@ -15,6 +15,26 @@ export default function Home() {
     ? `${process.env.NEXT_PUBLIC_API_URL}/api`
     : 'http://localhost:3000/api';
 
+  const fetchThreats = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/cataloged-threats`);
+      const data = await res.json();
+      setThreats(data);
+    } catch (error) {
+      console.error('Failed to fetch threats:', error);
+    }
+  }, [API_BASE]);
+
+  const checkLocationConsent = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/location-consent`);
+      const data = await res.json();
+      setLocationConsent(data.consent);
+    } catch (error) {
+      console.error('Failed to check location consent:', error);
+    }
+  }, [API_BASE]);
+
   useEffect(() => {
     // Probe backend availability — AbortController for broad browser compatibility
     const controller = new AbortController();
@@ -23,34 +43,14 @@ export default function Home() {
       .then(() => setBackendAvailable(true))
       .catch(() => setBackendAvailable(false))
       .finally(() => clearTimeout(timer));
-  }, []);
+  }, [API_BASE]);
 
   useEffect(() => {
     if (backendAvailable) {
       fetchThreats();
       checkLocationConsent();
     }
-  }, [backendAvailable]);
-
-  const checkLocationConsent = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/location-consent`);
-      const data = await res.json();
-      setLocationConsent(data.consent);
-    } catch (error) {
-      console.error('Failed to check location consent:', error);
-    }
-  };
-
-  const fetchThreats = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/cataloged-threats`);
-      const data = await res.json();
-      setThreats(data);
-    } catch (error) {
-      console.error('Failed to fetch threats:', error);
-    }
-  };
+  }, [backendAvailable, fetchThreats, checkLocationConsent]);
 
   const handleTechniqueChange = (technique: string) => {
     setTechniques(prev =>
@@ -200,4 +200,3 @@ export default function Home() {
     </div>
   );
 }
-
