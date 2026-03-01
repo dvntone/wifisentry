@@ -71,6 +71,8 @@ class MainActivity : AppCompatActivity() {
     private val requestNearbyWifiPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
+    private var firstLaunch = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -81,12 +83,15 @@ class MainActivity : AppCompatActivity() {
         showPreviousCrashReportIfAny()
 
         try {
+<<<<<<< HEAD
             NotificationHelper.createChannel(this)
             // requestNearbyWifiPermissionIfNeeded() chains to notification and location
             // via setOnDismissListener so we must NOT call them directly here; doing so
             // would show overlapping dialogs and trigger a WindowManager crash on some devices.
             requestNearbyWifiPermissionIfNeeded()
 
+=======
+>>>>>>> origin/main
             // All Networks list
             adapter = ScanResultAdapter()
             adapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
@@ -142,6 +147,15 @@ class MainActivity : AppCompatActivity() {
             // show it immediately on this same launch so the user can copy it.
             WifiSentryApp.saveCrashReport(applicationContext, e)
             showStartupCrashDialog(e)
+        }
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        if (firstLaunch) {
+            firstLaunch = false
+            // Start the chained permission rationale dialogs after the window is ready.
+            requestNearbyWifiPermissionIfNeeded()
         }
     }
 

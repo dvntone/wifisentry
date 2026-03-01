@@ -26,6 +26,8 @@ class WifiSentryApp : Application() {
     override fun onCreate() {
         super.onCreate()
         installCrashHandler()
+        // Register the notification channel at the application level for safety.
+        NotificationHelper.createChannel(this)
     }
 
     // ── crash handler ──────────────────────────────────────────────────────
