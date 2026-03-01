@@ -1,3 +1,5 @@
+// MainActivity.kt implementation
+
 package com.wifisentry.app
 
 import android.Manifest
@@ -34,6 +36,7 @@ import com.wifisentry.core.NetworkChange
 import com.wifisentry.core.ThreatSeverity
 
 class MainActivity : AppCompatActivity() {
+    private var firstLaunch = true
 
     private lateinit var binding: ActivityMainBinding
     /** Adapter for the "All Networks" scroll box. */
