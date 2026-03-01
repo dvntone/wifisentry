@@ -14,10 +14,6 @@ class WifiSentryApp : Application() {
     override fun onCreate() {
         super.onCreate()
         
-        try {
-            NotificationHelper.createNotificationChannel(this)
-        } catch (_: Exception) {}
-
         // Setup global crash handler
         val oldHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->

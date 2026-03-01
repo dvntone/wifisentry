@@ -76,11 +76,14 @@ class MainActivity : AppCompatActivity() {
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)
         } catch (e: Exception) {
-            // If inflation fails, we cannot even show the custom dialog easily.
-            // But let's try to show a Toast or something if possible.
             WifiSentryApp.saveCrashReport(applicationContext, e)
+            finish()
             return
         }
+
+        try {
+            NotificationHelper.createChannel(this)
+        } catch (_: Exception) {}
 
         // Show any crash report saved from the previous session so the user
         // can copy and report diagnostics without needing adb/logcat.
@@ -135,11 +138,11 @@ class MainActivity : AppCompatActivity() {
             }
 
             viewModel.onThreatsFound = { flagged, total ->
-                NotificationHelper.notifyThreats(this, flagged, total)
+                NotificationHelper.notifyThreats(applicationContext, flagged, total)
             }
 
             // Kick off a background OUI database refresh on launch
-            viewModel.refreshOuiDatabase(this)
+            viewModel.refreshOuiDatabase(applicationContext)
 
             observeViewModel()
             updateStatusBanner()

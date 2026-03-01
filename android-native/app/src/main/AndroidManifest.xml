@@ -10,17 +10,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- POST_NOTIFICATIONS is required on Android 13+ (API 33+) for threat alerts -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
-    <!-- FOREGROUND_SERVICE is required for continuous background monitoring -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- Android 14 requires specific foreground service types -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <!-- NEARBY_WIFI_DEVICES is required on Android 13+ (API 33+) to call startScan() -->
-    <!-- neverForLocation: we scan for security analysis only, not to infer user location -->
-    <uses-permission
-        android:name="android.permission.NEARBY_WIFI_DEVICES"
-        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
 
     <uses-feature
         android:name="android.hardware.wifi"
