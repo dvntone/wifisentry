@@ -82,9 +82,10 @@ class MainActivity : AppCompatActivity() {
 
         try {
             NotificationHelper.createChannel(this)
+            // requestNearbyWifiPermissionIfNeeded() chains to notification and location
+            // via setOnDismissListener so we must NOT call them directly here; doing so
+            // would show overlapping dialogs and trigger a WindowManager crash on some devices.
             requestNearbyWifiPermissionIfNeeded()
-            requestNotificationPermissionIfNeeded()
-            requestLocationPermissionIfNeeded()
 
             // All Networks list
             adapter = ScanResultAdapter()
