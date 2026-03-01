@@ -3,23 +3,41 @@ package com.wifisentry.core
 import java.io.File
 
 /**
- * Detects whether the Android device has root access.
- *
- * Checks are intentionally conservative — they confirm the *su* binary is
- * present and executable but do NOT attempt to run a privileged command.
- * Attempting a privileged command on a freshly-rooted device would trigger a
- * SuperUser / Magisk prompt with no user present to approve it.
- *
- * [isRooted] is computed once (lazy) on first access.  Call it from a
- * background thread to avoid blocking the main thread on slow file-system
- * checks.
+ * Detects whether the Android device has root access, Shizuku (rish) integration,
+ * ADB availability, or Termux environments.
  */
 object RootChecker {
 
     /** True when a *su* binary is found in a well-known location or on PATH. */
     val isRooted: Boolean by lazy { detectRoot() }
+    
+    /** True when Shizuku's rish binary is found, typically in Termux. */
+    val hasShizuku: Boolean by lazy { detectShizuku() }
 
-    private val SU_PATHS = listOf(
+    /** True when ADB binary is available (e.g. in Termux via android-tools). */
+    val hasAdb: Boolean by lazy { detectAdb() }
+
+    /** True when ADB is authorized and connected to at least one device/emulator. */
+    val isAdbConnected: Boolean by lazy { checkAdbConnected() }
+
+    /** True when Termux environment is detected. */
+    val hasTermux: Boolean by lazy { detectTermux() }
+
+    /** Returns the best available privileged shell prefix (e.g. "su", "-c") or null. */
+    fun getPrivilegedPrefix(): List<String>? {
+        if (isRooted) return listOf("su", "-c")
+        if (hasShizuku) {
+            val rishPath = "/data/data/com.termux/files/home/rish"
+            if (File(rishPath).exists()) {
+                return listOf(rishPath, "-c")
+            }
+            return listOf("rish", "-c")
+        }
+        if (hasAdb && isAdbConnected) return listOf("adb", "shell")
+        return null
+    }
+
+    private val SU_PATHS = arrayOf(
         "/system/bin/su",
         "/system/xbin/su",
         "/sbin/su",
@@ -27,25 +45,56 @@ object RootChecker {
         "/data/local/xbin/su",
         "/data/local/bin/su",
         "/data/local/su",
+        "/data/adb/magisk",
+        "/data/adb/ksu"
     )
 
     private fun detectRoot(): Boolean {
-        // 1. Check well-known su locations
-        if (SU_PATHS.any { File(it).exists() }) return true
+        // 1. Fast path: check well-known su locations using File.exists()
+        for (path in SU_PATHS) {
+            if (File(path).exists()) return true
+        }
 
-        // 2. Check if su is on PATH
-        try {
-            val p = ProcessBuilder("which", "su")
+        // 2. Fallback: check if su is on PATH
+        return isCommandAvailable("su")
+    }
+    
+    private fun detectShizuku(): Boolean {
+        if (File("/data/data/com.termux/files/home/rish").exists()) return true
+        return isCommandAvailable("rish")
+    }
+    
+    private fun detectAdb(): Boolean {
+        return isCommandAvailable("adb")
+    }
+
+    private fun checkAdbConnected(): Boolean {
+        if (!hasAdb) return false
+        return try {
+            val p = ProcessBuilder("adb", "devices")
                 .redirectErrorStream(true)
                 .start()
             val output = p.inputStream.bufferedReader().readText().trim()
             p.waitFor()
-            if (output.isNotEmpty()) return true
-        } catch (_: Exception) {}
+            // Check if any device is listed as "device" (not "unauthorized", "offline", etc.)
+            output.lines().drop(1).any { it.contains("\tdevice") }
+        } catch (_: Exception) {
+            false
+        }
+    }
+    
+    private fun detectTermux(): Boolean {
+        return File("/data/data/com.termux/files/usr/bin/bash").exists() ||
+               File("/data/data/com.termux").exists()
+    }
 
-        // 3. Check for Magisk installation directory
-        if (File("/data/adb/magisk").exists()) return true
-
-        return false
+    private fun isCommandAvailable(cmd: String): Boolean = try {
+        val p = ProcessBuilder("which", cmd)
+            .redirectErrorStream(true)
+            .start()
+        val exitCode = p.waitFor()
+        exitCode == 0
+    } catch (_: Exception) {
+        false
     }
 }

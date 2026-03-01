@@ -99,9 +99,33 @@ class MainViewModel(
     private val _isAnalyzing = MutableLiveData(false)
     val isAnalyzing: LiveData<Boolean> = _isAnalyzing
 
+    /** AI assessment result for the most recent scan. */
+    private val _aiAssessment = MutableLiveData<String?>(null)
+    val aiAssessment: LiveData<String?> = _aiAssessment
+
+    /** True while [runAiAssessment] is calling the Gemini API. */
+    private val _isAiRunning = MutableLiveData(false)
+    val isAiRunning: LiveData<Boolean> = _isAiRunning
+
     /** Toggle between feet and metres for the distance display. */
     fun toggleDistanceUnit() {
         _distanceInFeet.value = _distanceInFeet.value != true
+    }
+
+    /**
+     * Run Gemini AI analysis on the current scan results.
+     * @param apiKey The user's Gemini API key (passed from SharedPreferences).
+     */
+    fun runAiAssessment(apiKey: String) {
+        val currentNetworks = _networks.value ?: return
+        if (currentNetworks.isEmpty() || _isAiRunning.value == true) return
+        
+        _isAiRunning.value = true
+        viewModelScope.launch {
+            val result = com.wifisentry.core.GeminiAnalyzer.analyzeScanResults(apiKey, currentNetworks)
+            _aiAssessment.value = result.text ?: "AI Error: ${result.error}"
+            _isAiRunning.value = false
+        }
     }
 
     /**

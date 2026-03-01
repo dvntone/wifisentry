@@ -58,6 +58,24 @@ object GeminiAnalyzer {
                 }
         }
 
+    /**
+     * Specialized batch analysis for a list of scanned networks.
+     */
+    suspend fun analyzeScanResults(apiKey: String, networks: List<ScannedNetwork>): GeminiResult {
+        if (networks.isEmpty()) return GeminiResult(text = "No networks to analyze.")
+        
+        val prompt = buildString {
+            appendLine("Analyze the following Wi-Fi networks for potential spoofing, evil twin, or rogue-AP attacks:")
+            networks.take(15).forEach { n ->
+                val sec = WifiDisplayUtils.capabilitiesToSecurityLabel(n.capabilities)
+                appendLine("- SSID: '${n.ssid}', BSSID: ${n.bssid}, RSSI: ${n.rssi}dBm, Security: $sec, Threats: ${n.threats.joinToString { it.name }}")
+            }
+            appendLine("\nProvide a high-level summary of the overall threat environment and highlight any critical risks.")
+        }
+        
+        return analyze(apiKey, prompt)
+    }
+
     // ── private ────────────────────────────────────────────────────────────
 
     private fun callApi(apiKey: String, prompt: String): GeminiResult {

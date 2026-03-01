@@ -1,0 +1,12 @@
+# wifisentry android-native local.properties example
+# ------------------------------------------------------------
+# For most Android Studio / Gradle environments:
+# sdk.dir=/Users/yourname/Library/Android/sdk
+# 
+# For Linux:
+# sdk.dir=/home/yourname/Android/Sdk
+# 
+# For Termux (if installed via scripts):
+# sdk.dir=/data/data/com.termux/files/home/android-sdk
+# ------------------------------------------------------------
+# Create a copy named 'local.properties' and set your sdk.dir

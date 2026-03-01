@@ -34,7 +34,8 @@ class RootShellScanner(
      * - Any error occurs during capture (monitor mode is cleaned up)
      */
     fun scan(): RootScanData {
-        if (!RootChecker.isRooted) return RootScanData()
+        val privPrefix = RootChecker.getPrivilegedPrefix()
+        if (privPrefix == null) return RootScanData()
         if (!isToolAvailable("iw") || !isToolAvailable("tcpdump")) return RootScanData()
 
         return try {
@@ -57,13 +58,13 @@ class RootShellScanner(
     // ── monitor mode lifecycle ─────────────────────────────────────────────
 
     private fun setupMonitorMode() {
-        su("iw dev $wifiInterface interface add $monitorInterface type monitor")
-        su("ip link set $monitorInterface up")
+        privShell("iw dev $wifiInterface interface add $monitorInterface type monitor")
+        privShell("ip link set $monitorInterface up")
     }
 
     private fun tearDownMonitorMode() {
-        su("ip link set $monitorInterface down")
-        su("iw dev $monitorInterface del")
+        privShell("ip link set $monitorInterface down")
+        privShell("iw dev $monitorInterface del")
     }
 
     private fun tryTearDownMonitorMode() {
@@ -80,7 +81,7 @@ class RootShellScanner(
      * disconnecting clients so they reconnect to a rogue clone.
      */
     private fun captureDeauthFrames(): Int {
-        val output = su(
+        val output = privShell(
             "timeout $captureDurationSeconds" +
             " tcpdump -I -i $monitorInterface --immediate-mode -q" +
             " 'wlan type mgt subtype deauth or wlan type mgt subtype disassoc'" +
@@ -104,7 +105,7 @@ class RootShellScanner(
 
         // Capture beacon (subtype 0x08) and probe-response (subtype 0x05) frames.
         // Output two tab-separated columns: frame subtype decimal, SSID string.
-        val rawOutput = su(
+        val rawOutput = privShell(
             "timeout $captureDurationSeconds" +
             " tshark -I -i $monitorInterface" +
             " -Y 'wlan.fc.type_subtype == 5 or wlan.fc.type_subtype == 8'" +
@@ -132,22 +133,31 @@ class RootShellScanner(
 
     // ── shell helpers ──────────────────────────────────────────────────────
 
-    /** Execute [command] via `su -c` and return stdout. Returns "" on error. */
-    private fun su(command: String): String = try {
-        val process = ProcessBuilder("su", "-c", command)
-            .redirectErrorStream(true)
-            .start()
+    /** Execute [command] via the best privileged shell and return stdout. Returns "" on error. */
+    private fun privShell(command: String): String = try {
+        val prefix = RootChecker.getPrivilegedPrefix() ?: return ""
+        val processBuilder = ProcessBuilder()
+        processBuilder.command(prefix + command)
+        processBuilder.redirectErrorStream(true)
+        val process = processBuilder.start()
         val output = process.inputStream.bufferedReader().readText()
         process.waitFor()
         output
     } catch (_: Exception) { "" }
 
-    private fun isToolAvailable(tool: String): Boolean = try {
-        val p = ProcessBuilder("which", tool).redirectErrorStream(true).start()
-        val out = p.inputStream.bufferedReader().readText().trim()
-        p.waitFor()
-        out.isNotEmpty()
-    } catch (_: Exception) { false }
+    private val toolCache = mutableMapOf<String, Boolean>()
+
+    private fun isToolAvailable(tool: String): Boolean {
+        return toolCache.getOrPut(tool) {
+            try {
+                val p = ProcessBuilder("which", tool).redirectErrorStream(true).start()
+                val exitCode = p.waitFor()
+                exitCode == 0
+            } catch (_: Exception) {
+                false
+            }
+        }
+    }
 
     companion object {
         /** Seconds to capture frames per scan window. */
