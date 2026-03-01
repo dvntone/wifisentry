@@ -64,6 +64,13 @@
             android:label="@string/title_pin_detail"
             android:parentActivityName=".MainActivity" />
 
+        <activity
+            android:name=".DynamicUiActivity"
+            android:exported="false"
+            android:label="Dynamic Dashboard"
+            android:theme="@style/Theme.WifiSentry"
+            android:parentActivityName=".MainActivity" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

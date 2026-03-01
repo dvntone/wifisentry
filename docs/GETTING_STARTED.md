@@ -19,7 +19,8 @@ This will:
 
 Edit `.env` file:
 ```bash
-# Open .env in your editor
+nano .env
+# or use your favorite editor
 ```
 
 **Minimum required:**
@@ -47,6 +48,20 @@ Done! You're running WiFi Sentry.
 
 ## 📚 Choose Your Setup Path
 
-- **Developer**: See Development Setup
-- **Production**: See Production Setup
-- **Troubleshooting**: See Common Issues
+- **Developer**: See [Development Setup](./SETUP/development.md)
+- **Production**: See [Production Setup](./SETUP/production.md)
+- **Docker**: See [Docker Setup](./SETUP/docker.md)
+- **Windows**: See [Windows WSL2 Setup](./SETUP/windows-wsl2.md)
+- **Android**: See [Android Setup](./SETUP/android.md)
+
+---
+
+## 🐛 Something Not Working?
+
+See [Troubleshooting](./TROUBLESHOOTING/common-issues.md)
+
+## 📖 Full Documentation
+
+- [API Reference](./API/rest-api.md)
+- [Component Guide](./COMPONENTS/)
+- [Deployment Guide](./DEPLOYMENT/)

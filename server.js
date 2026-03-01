@@ -77,9 +77,12 @@ fastify.register(require('@fastify/rate-limit'), {
   }),
 });
 
+// Cookie
+fastify.register(require('@fastify/cookie'));
+
 // Session
 fastify.register(require('@fastify/session'), {
-  secret:      config.auth.sessionSecret || 'wifi-sentry-dev-secret-change-in-production',
+  secret:      config.auth.sessionSecret || 'wifi-sentry-dev-secret-key-that-is-at-least-32-chars-long',
   saveUninitialized: false,
   cookie: {
     secure:   config.environment === 'production',

@@ -13,8 +13,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WiFi Sentry",
-  description: "Advanced WiFi threat detection — Evil Twins, Karma Attacks, WiFi Pineapples and more.",
+  title: "WiFi Sentry - Advanced WiFi Threat Detection",
+  description: "Real-time WiFi monitoring, threat detection, and security analysis with AI-powered research",
+  keywords: "WiFi security, threat detection, evil twin, karma attack, WiFi pineapple",
+  authors: [{ name: "WiFi Sentry Team" }],
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "WiFi Sentry" },
 };

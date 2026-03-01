@@ -32,13 +32,15 @@ const LiveScanResults: React.FC<LiveScanResultsProps> = ({ techniques }) => {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
   useEffect(() => {
     let eventSource: EventSource | null = null;
 
     if (isMonitoring) {
       // Connect to the backend SSE stream
       // Assuming backend runs on port 3000. Adjust URL if needed.
-      eventSource = new EventSource('http://localhost:3000/api/monitoring-stream');
+      eventSource = new EventSource(`${API_URL}/api/monitoring-stream`);
 
       eventSource.onmessage = (event) => {
         try {
@@ -75,7 +77,7 @@ const LiveScanResults: React.FC<LiveScanResultsProps> = ({ techniques }) => {
         return;
       }
       setError(null);
-      const response = await fetch('http://localhost:3000/api/start-monitoring', {
+      const response = await fetch(`${API_URL}/api/start-monitoring`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ techniques }),
@@ -89,7 +91,7 @@ const LiveScanResults: React.FC<LiveScanResultsProps> = ({ techniques }) => {
 
   const stopMonitoring = async () => {
     try {
-      await fetch('http://localhost:3000/api/stop-monitoring', { method: 'POST' });
+      await fetch(`${API_URL}/api/stop-monitoring`, { method: 'POST' });
       setIsMonitoring(false);
     } catch (err: any) {
       setError(err.message);

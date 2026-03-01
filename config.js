@@ -8,9 +8,19 @@ module.exports = {
   // Do NOT hardcode secrets; prefer env vars. In production missing critical
   // secrets will cause startup to fail (see bottom of this file).
   auth: {
-    sessionSecret: process.env.SESSION_SECRET || null,
+    sessionSecret: process.env.SESSION_SECRET || (() => {
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('SESSION_SECRET environment variable is required in production');
+        }
+        return 'dev-only-secret-key';
+    })(),
     adminUsername: process.env.ADMIN_USERNAME || 'admin',
-    adminPassword: process.env.ADMIN_PASSWORD || null,
+    adminPassword: process.env.ADMIN_PASSWORD || (() => {
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('ADMIN_PASSWORD environment variable is required in production');
+        }
+        return 'dev-password';
+    })(),
     adminTwoFactorSecret: process.env.ADMIN_2FA_SECRET || null,
   },
 
