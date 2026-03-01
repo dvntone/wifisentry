@@ -23,6 +23,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+
 class HistoryActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityHistoryBinding
@@ -31,6 +35,18 @@ class HistoryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityHistoryBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(
+                left   = systemBars.left,
+                top    = systemBars.top,
+                right  = systemBars.right,
+                bottom = systemBars.bottom
+            )
+            insets
+        }
+        
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         val storage = ScanStorage(applicationContext)

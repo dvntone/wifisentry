@@ -15,6 +15,9 @@ import com.wifisentry.core.WigleParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 
 /**
  * Lets users seed the heuristics engine with data from existing WiGLE or
@@ -46,6 +49,18 @@ class ImportActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityImportBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(
+                left   = systemBars.left,
+                top    = systemBars.top,
+                right  = systemBars.right,
+                bottom = systemBars.bottom
+            )
+            insets
+        }
+        
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         title = getString(R.string.import_title)
 

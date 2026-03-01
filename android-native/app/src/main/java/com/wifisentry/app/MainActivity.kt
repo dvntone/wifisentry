@@ -34,6 +34,9 @@ import com.wifisentry.core.WifiDisplayUtils
 import com.wifisentry.core.WifiScanner
 import com.wifisentry.core.NetworkChange
 import com.wifisentry.core.ThreatSeverity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 
 class MainActivity : AppCompatActivity() {
     private var firstLaunch = true
@@ -75,6 +78,18 @@ class MainActivity : AppCompatActivity() {
         try {
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)
+
+            // Handle WindowInsets for Android 15 edge-to-edge compliance
+            ViewCompat.setOnApplyWindowInsetsListener(binding.root) { v, insets ->
+                val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                v.updatePadding(
+                    left   = systemBars.left,
+                    top    = systemBars.top,
+                    right  = systemBars.right,
+                    bottom = systemBars.bottom
+                )
+                insets
+            }
         } catch (e: Exception) {
             WifiSentryApp.saveCrashReport(applicationContext, e)
             finish()

@@ -5,6 +5,9 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ScrollView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import com.wifisentry.core.UiSchemaManager
 
 class DynamicUiActivity : AppCompatActivity() {
@@ -19,6 +22,17 @@ class DynamicUiActivity : AppCompatActivity() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             setBackgroundColor(android.graphics.Color.parseColor("#111827")) // bg-gray-900
+        }
+        
+        ViewCompat.setOnApplyWindowInsetsListener(scrollView) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(
+                left   = systemBars.left,
+                top    = systemBars.top,
+                right  = systemBars.right,
+                bottom = systemBars.bottom
+            )
+            insets
         }
         
         val rootContainer = FrameLayout(this).apply {
