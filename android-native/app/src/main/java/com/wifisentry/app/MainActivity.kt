@@ -71,6 +71,8 @@ class MainActivity : AppCompatActivity() {
     private val requestNearbyWifiPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
+    private var firstLaunch = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -81,11 +83,6 @@ class MainActivity : AppCompatActivity() {
         showPreviousCrashReportIfAny()
 
         try {
-            NotificationHelper.createChannel(this)
-            requestNearbyWifiPermissionIfNeeded()
-            requestNotificationPermissionIfNeeded()
-            requestLocationPermissionIfNeeded()
-
             // All Networks list
             adapter = ScanResultAdapter()
             adapter.onNetworkClick = { network -> showNetworkActionSheet(network) }
@@ -141,6 +138,15 @@ class MainActivity : AppCompatActivity() {
             // show it immediately on this same launch so the user can copy it.
             WifiSentryApp.saveCrashReport(applicationContext, e)
             showStartupCrashDialog(e)
+        }
+    }
+
+    override fun onPostResume() {
+        super.onPostResume()
+        if (firstLaunch) {
+            firstLaunch = false
+            // Start the chained permission rationale dialogs after the window is ready.
+            requestNearbyWifiPermissionIfNeeded()
         }
     }
 
