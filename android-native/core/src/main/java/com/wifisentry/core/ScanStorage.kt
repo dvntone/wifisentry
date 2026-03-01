@@ -27,9 +27,10 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
         if (!file.exists()) return emptyList()
         return try {
             val json = file.readText()
+            if (json.isBlank()) return emptyList()
             val type = object : TypeToken<List<ScanRecordDto>>() {}.type
-            val dtos: List<ScanRecordDto> = gson.fromJson(json, type) ?: emptyList()
-            dtos.map { it.toModel() }.sortedByDescending { it.timestampMs }
+            val dtos: List<ScanRecordDto>? = gson.fromJson(json, type)
+            dtos?.mapNotNull { it.toModel() }?.sortedByDescending { it.timestampMs } ?: emptyList()
         } catch (e: Exception) {
             emptyList()
         }
@@ -92,13 +93,13 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
     // ── DTO classes (safe for Gson serialisation) ─────────────────────────
 
     private data class NetworkDto(
-        val ssid: String,
-        val bssid: String,
-        val capabilities: String,
-        val rssi: Int,
-        val frequency: Int,
-        val timestamp: Long,
-        val threats: List<String>,
+        val ssid: String?,
+        val bssid: String?,
+        val capabilities: String?,
+        val rssi: Int?,
+        val frequency: Int?,
+        val timestamp: Long?,
+        val threats: List<String>?,
         // GPS fields — null when no fix available so Gson serialises clean JSON (NaN is non-standard).
         val latitude: Double? = null,
         val longitude: Double? = null,
@@ -106,13 +107,13 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
         val gpsAccuracy: Float? = null,
     ) {
         fun toModel() = ScannedNetwork(
-            ssid = ssid,
-            bssid = bssid,
-            capabilities = capabilities,
-            rssi = rssi,
-            frequency = frequency,
-            timestamp = timestamp,
-            threats = threats.mapNotNull { runCatching { ThreatType.valueOf(it) }.getOrNull() },
+            ssid = ssid ?: "",
+            bssid = bssid ?: "",
+            capabilities = capabilities ?: "",
+            rssi = rssi ?: 0,
+            frequency = frequency ?: 0,
+            timestamp = timestamp ?: 0L,
+            threats = threats?.mapNotNull { runCatching { ThreatType.valueOf(it) }.getOrNull() } ?: emptyList(),
             latitude = latitude ?: Double.NaN,
             longitude = longitude ?: Double.NaN,
             altitude = altitude ?: Double.NaN,
@@ -137,13 +138,17 @@ class ScanStorage(private val file: File, private val maxRecords: Int = MAX_RECO
     }
 
     private data class ScanRecordDto(
-        val timestampMs: Long,
-        val networks: List<NetworkDto>
+        val timestampMs: Long?,
+        val networks: List<NetworkDto>?
     ) {
-        fun toModel() = ScanRecord(
-            timestampMs = timestampMs,
-            networks = networks.map { it.toModel() }
-        )
+        fun toModel(): ScanRecord? {
+            val ts = timestampMs ?: return null
+            val nets = networks?.map { it.toModel() } ?: emptyList()
+            return ScanRecord(
+                timestampMs = ts,
+                networks = nets
+            )
+        }
 
         companion object {
             fun fromModel(r: ScanRecord) = ScanRecordDto(

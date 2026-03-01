@@ -28,9 +28,11 @@ object RootChecker {
         if (isRooted) return listOf("su", "-c")
         if (hasShizuku) {
             val rishPath = "/data/data/com.termux/files/home/rish"
-            if (File(rishPath).exists()) {
-                return listOf(rishPath, "-c")
-            }
+            try {
+                if (File(rishPath).exists()) {
+                    return listOf(rishPath, "-c")
+                }
+            } catch (_: Exception) {}
             return listOf("rish", "-c")
         }
         if (hasAdb && isAdbConnected) return listOf("adb", "shell")
@@ -52,7 +54,9 @@ object RootChecker {
     private fun detectRoot(): Boolean {
         // 1. Fast path: check well-known su locations using File.exists()
         for (path in SU_PATHS) {
-            if (File(path).exists()) return true
+            try {
+                if (File(path).exists()) return true
+            } catch (_: Exception) {}
         }
 
         // 2. Fallback: check if su is on PATH
@@ -60,8 +64,12 @@ object RootChecker {
     }
     
     private fun detectShizuku(): Boolean {
-        if (File("/data/data/com.termux/files/home/rish").exists()) return true
-        return isCommandAvailable("rish")
+        return try {
+            if (File("/data/data/com.termux/files/home/rish").exists()) return true
+            isCommandAvailable("rish")
+        } catch (_: Exception) {
+            false
+        }
     }
     
     private fun detectAdb(): Boolean {
@@ -84,8 +92,12 @@ object RootChecker {
     }
     
     private fun detectTermux(): Boolean {
-        return File("/data/data/com.termux/files/usr/bin/bash").exists() ||
-               File("/data/data/com.termux").exists()
+        return try {
+            File("/data/data/com.termux/files/usr/bin/bash").exists() ||
+            File("/data/data/com.termux").exists()
+        } catch (_: Exception) {
+            false
+        }
     }
 
     private fun isCommandAvailable(cmd: String): Boolean = try {

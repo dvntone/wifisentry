@@ -42,7 +42,7 @@ class MainViewModel(
     private val storage: ScanStorage,
 ) : ViewModel() {
 
-    private val _networks     = MutableLiveData<List<ScannedNetwork>>()
+    private val _networks     = MutableLiveData<List<ScannedNetwork>>(emptyList())
     val networks: LiveData<List<ScannedNetwork>> = _networks
 
     /** Subset of the current network list that are flagged — drives the threats scroll box. */
@@ -55,10 +55,10 @@ class MainViewModel(
     private val _isMonitoring = MutableLiveData(false)
     val isMonitoring: LiveData<Boolean> = _isMonitoring
 
-    private val _scanError    = MutableLiveData<String?>()
+    private val _scanError    = MutableLiveData<String?>(null)
     val scanError: LiveData<String?> = _scanError
 
-    private val _scanStatus   = MutableLiveData<String>()
+    private val _scanStatus   = MutableLiveData<String>("")
     val scanStatus: LiveData<String> = _scanStatus
 
     /** Aggregated statistics shown in the stats panel. */
@@ -230,9 +230,8 @@ class MainViewModel(
         _isScanning.value = true
         _scanError.value  = null
         try {
-
-        // Refresh GPS fix before the scan so networks are tagged with current position.
-        updateLastKnownLocation(context)
+            // Refresh GPS fix before the scan so networks are tagged with current position.
+            updateLastKnownLocation(context)
 
         // 1. Trigger WiFi scan; await SCAN_RESULTS_AVAILABLE_ACTION broadcast.
         val raw = scanWithReceiver(context)

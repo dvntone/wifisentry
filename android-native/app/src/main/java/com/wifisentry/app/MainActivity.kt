@@ -69,16 +69,24 @@ class MainActivity : AppCompatActivity() {
     private val requestNearbyWifiPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
-    private var firstLaunch = true
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        
+        try {
+            binding = ActivityMainBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+        } catch (e: Exception) {
+            // If inflation fails, we cannot even show the custom dialog easily.
+            // But let's try to show a Toast or something if possible.
+            WifiSentryApp.saveCrashReport(applicationContext, e)
+            return
+        }
 
         // Show any crash report saved from the previous session so the user
         // can copy and report diagnostics without needing adb/logcat.
-        showPreviousCrashReportIfAny()
+        try {
+            showPreviousCrashReportIfAny()
+        } catch (_: Exception) {}
 
         try {
             // All Networks list
@@ -211,17 +219,17 @@ class MainActivity : AppCompatActivity() {
         viewModel.networks.observe(this) { networks ->
             adapter.submitList(networks)
             binding.textAllNetworksHeader.text =
-                getString(R.string.label_all_networks_header, networks.size)
+                getString(R.string.label_all_networks_header, networks?.size ?: 0)
         }
 
         viewModel.threatNetworks.observe(this) { threats ->
             threatAdapter.submitList(threats)
             binding.textThreatsHeader.text =
-                getString(R.string.label_threats_header, threats.size)
+                getString(R.string.label_threats_header, threats?.size ?: 0)
         }
 
         viewModel.scanStats.observe(this) { stats ->
-            updateStatsCard(stats)
+            stats?.let { updateStatsCard(it) }
         }
 
         viewModel.distanceInFeet.observe(this) { useFeet ->
@@ -280,7 +288,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.analysisChanges.observe(this) { changes ->
-            if (changes.isEmpty()) {
+            if (changes.isNullOrEmpty()) {
                 binding.textChangesSummary.text = getString(R.string.analysis_no_changes)
             } else {
                 val high   = changes.count { it.severity == ThreatSeverity.HIGH }
