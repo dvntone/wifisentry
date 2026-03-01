@@ -11,8 +11,8 @@ android {
         applicationId "com.wifisentry.app"
         minSdk 31
         targetSdk 35
-        versionCode 8
-        versionName "1.2.6a"
+        versionCode 9
+        versionName "1.2.6b"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
