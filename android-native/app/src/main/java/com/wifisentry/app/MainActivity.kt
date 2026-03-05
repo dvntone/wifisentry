@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
                     WifiScanner(applicationContext),
                     ThreatAnalyzer(),
                     ScanStorage(applicationContext),
+                    com.wifisentry.core.BluetoothScanner(applicationContext),
                 ) as T
             }
         }
@@ -75,6 +76,11 @@ class MainActivity : AppCompatActivity() {
 
     private val requestNearbyWifiPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+
+    private val requestBluetoothPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            if (results.all { it.value }) performScan()
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -247,7 +253,21 @@ class MainActivity : AppCompatActivity() {
             requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             return
         }
+        
+        // Request Bluetooth permissions on Android 12+ if needed
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val permissions = mutableListOf(Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT)
+            val missing = permissions.filter { 
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED 
+            }
+            if (missing.isNotEmpty()) {
+                requestBluetoothPermission.launch(missing.toTypedArray())
+                return
+            }
+        }
+
         performScan()
+        viewModel.performBluetoothScan()
     }
 
     private fun onMonitorClicked() {

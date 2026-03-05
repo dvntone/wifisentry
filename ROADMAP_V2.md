@@ -33,3 +33,9 @@ With the structural migration to Fastify and Next.js complete, and the Android A
   - Align `colors.xml` and Material 3 themes with the Web/Desktop dark-tech aesthetic.
   - Introduce a bottom navigation bar or a side drawer to access History, Settings, and Help.
   - Enhance the stats card with custom charting (e.g., MPAndroidChart) for a true "dashboard" feel.
+
+## Pillar 6: Bluetooth & Peripheral Threat Detection
+**Goal:** Expand scanning capabilities to include BLE (Bluetooth Low Energy) devices to detect stalker-tags (AirTags), rogue HID peripherals, and Bluetooth spoofing.
+- **Android:** Integrated `BluetoothLeScanner` with background detection for anomalous proximity patterns.
+- **Web / Desktop:** Utilize `@abandonware/noble` or `web-bluetooth` (where supported) to provide a unified "Local Wireless Environment" map that shows both Wi-Fi and Bluetooth devices in a single high-tech view.
+- **Security Standards:** Integrated SonarCloud for continuous security analysis to ensure code meets OWASP and industry vulnerability standards.

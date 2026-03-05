@@ -98,6 +98,10 @@ export default function Home() {
             {locationConsent ? 'ACTIVE' : 'DISABLED'}
           </p>
         </div>
+        <div className="bg-slate-900 border border-slate-700 p-4 rounded-md shadow-sm">
+          <p className="text-xs text-slate-400 font-mono">BLUETOOTH</p>
+          <p className="text-2xl font-bold text-cyan-400">READY</p>
+        </div>
       </div>
 
       {/* Backend-dependent content */}

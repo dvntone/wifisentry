@@ -24,6 +24,8 @@ import com.wifisentry.core.ThreatAnalyzer
 import com.wifisentry.core.WifiScanner
 import com.wifisentry.core.ChangeAnalyzer
 import com.wifisentry.core.NetworkChange
+import com.wifisentry.core.BluetoothScanner
+import com.wifisentry.core.BluetoothDeviceData
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -40,10 +42,14 @@ class MainViewModel(
     private val wifiScanner: WifiScanner,
     private val threatAnalyzer: ThreatAnalyzer,
     private val storage: ScanStorage,
+    private val bluetoothScanner: BluetoothScanner,
 ) : ViewModel() {
 
     private val _networks     = MutableLiveData<List<ScannedNetwork>>(emptyList())
     val networks: LiveData<List<ScannedNetwork>> = _networks
+
+    private val _bluetoothDevices = MutableLiveData<List<BluetoothDeviceData>>(emptyList())
+    val bluetoothDevices: LiveData<List<BluetoothDeviceData>> = _bluetoothDevices
 
     /** Subset of the current network list that are flagged — drives the threats scroll box. */
     private val _threatNetworks = MutableLiveData<List<ScannedNetwork>>(emptyList())
@@ -190,6 +196,14 @@ class MainViewModel(
     private val sessionNetworks = LinkedHashMap<String, ScannedNetwork>()
 
     // ── public API ────────────────────────────────────────────────────────
+
+    fun isBluetoothEnabled(): Boolean = bluetoothScanner.isEnabled()
+
+    fun performBluetoothScan() {
+        bluetoothScanner.scan { devices ->
+            _bluetoothDevices.postValue(devices)
+        }
+    }
 
     fun scan(context: Context) {
         if (_isScanning.value == true) return
