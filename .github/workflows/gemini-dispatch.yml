@@ -127,13 +127,14 @@ jobs:
     needs: 'dispatch'
     if: |-
       ${{ needs.dispatch.outputs.command == 'review' }}
-    uses: './.github/workflows/gemini-review.yml'
+    uses: './.github/workflows/gemini-actions.yml'
     permissions:
       contents: 'read'
       id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     with:
+      task: 'review'
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
     secrets: 'inherit'
 
@@ -141,13 +142,14 @@ jobs:
     needs: 'dispatch'
     if: |-
       ${{ needs.dispatch.outputs.command == 'triage' }}
-    uses: './.github/workflows/gemini-triage.yml'
+    uses: './.github/workflows/gemini-actions.yml'
     permissions:
       contents: 'read'
       id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     with:
+      task: 'triage'
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
     secrets: 'inherit'
 
@@ -155,13 +157,14 @@ jobs:
     needs: 'dispatch'
     if: |-
       ${{ needs.dispatch.outputs.command == 'invoke' }}
-    uses: './.github/workflows/gemini-invoke.yml'
+    uses: './.github/workflows/gemini-actions.yml'
     permissions:
       contents: 'read'
       id-token: 'write'
       issues: 'write'
       pull-requests: 'write'
     with:
+      task: 'invoke'
       additional_context: '${{ needs.dispatch.outputs.additional_context }}'
     secrets: 'inherit'
 
