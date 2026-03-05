@@ -1,30 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="status_ok">#388E3C</color>
-    <color name="status_warning">#F57C00</color>
-    <color name="status_error">#D32F2F</color>
-    <color name="flag_red">#F44336</color>
-    <color name="flag_background">#FFF8E1</color>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- Cyber Theme Base -->
+    <color name="slate_900">#0f172a</color>
+    <color name="slate_800">#1e293b</color>
+    <color name="cyan_400">#22d3ee</color>
+    <color name="cyan_700">#0e7490</color>
+    <color name="emerald_400">#34d399</color>
+    <color name="emerald_600">#059669</color>
+    
+    <color name="status_ok">@color/emerald_600</color>
+    <color name="status_warning">#f59e0b</color>
+    <color name="status_error">#ef4444</color>
+    <color name="flag_red">#ef4444</color>
+    <color name="flag_background">#1e293b</color>
+    
+    <!-- Overriding old default material colors to fit the theme -->
+    <color name="purple_200">@color/cyan_400</color>
+    <color name="purple_500">@color/cyan_700</color>
+    <color name="purple_700">#083344</color>
+    <color name="teal_200">@color/emerald_400</color>
+    <color name="teal_700">@color/emerald_600</color>
+    
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="signal_good">#388E3C</color>
-    <color name="signal_fair">#F57C00</color>
-    <color name="signal_weak">#D32F2F</color>
-    <color name="badge_open">#D32F2F</color>
-    <color name="badge_wep">#E65100</color>
-    <color name="badge_wpa">#1565C0</color>
-    <color name="badge_wpa3">#2E7D32</color>
-    <!-- Threat severity — indicator bar colours -->
-    <color name="threat_bar_high">#C62828</color>
-    <color name="threat_bar_medium">#E65100</color>
-    <color name="threat_bar_low">#F9A825</color>
-    <!-- Threat severity — card background colours (light mode) -->
-    <color name="threat_bg_high">#FFEBEE</color>
-    <color name="threat_bg_medium">#FFF3E0</color>
-    <color name="threat_bg_low">#FFFDE7</color>
+    
+    <!-- Signals -->
+    <color name="signal_good">@color/emerald_400</color>
+    <color name="signal_fair">#fbbf24</color>
+    <color name="signal_weak">#ef4444</color>
+    
+    <color name="badge_open">#ef4444</color>
+    <color name="badge_wep">#f97316</color>
+    <color name="badge_wpa">#3b82f6</color>
+    <color name="badge_wpa3">@color/emerald_400</color>
+    
+    <!-- Threat severity -->
+    <color name="threat_bar_high">#b91c1c</color>
+    <color name="threat_bar_medium">#c2410c</color>
+    <color name="threat_bar_low">#b45309</color>
+    
+    <!-- Threat background for dark theme -->
+    <color name="threat_bg_high">#450a0a</color>
+    <color name="threat_bg_medium">#431407</color>
+    <color name="threat_bg_low">#451a03</color>
 </resources>

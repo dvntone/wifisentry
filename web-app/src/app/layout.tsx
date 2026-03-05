@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Sidebar from "../components/Sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,16 +14,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WiFi Sentry - Advanced WiFi Threat Detection",
-  description: "Real-time WiFi monitoring, threat detection, and security analysis with AI-powered research",
-  keywords: "WiFi security, threat detection, evil twin, karma attack, WiFi pineapple",
+  title: "WiFi Sentry - Cyber Dashboard",
+  description: "Real-time WiFi monitoring, threat detection, and security analysis.",
+  keywords: "WiFi security, threat detection, evil twin, karma attack",
   authors: [{ name: "WiFi Sentry Team" }],
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "WiFi Sentry" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1e293b",
+  themeColor: "#0f172a", // slate-900
 };
 
 export default function RootLayout({
@@ -32,10 +33,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-950 text-slate-200 flex min-h-screen`}>
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
       </body>
     </html>
   );

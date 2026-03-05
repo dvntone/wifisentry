@@ -21,3 +21,15 @@ With the structural migration to Fastify and Next.js complete, and the Android A
 - **Implementation:** 
   - Standardize the algorithms in `ThreatAnalyzer.kt` (Android) and `evil-twin-detector.js` (Node.js).
   - Create a unified integration test suite (e.g., using Postman/Newman or Jest) that asserts the same raw input data produces the exact same threat severity and categorization across both codebases.
+
+## Pillar 5: Unified High-Tech UX/UI
+**Goal:** Transform the UI across all platforms into a sleek, modern, professional "cybersecurity dashboard".
+- **Design Language:** Dark mode by default, monospace typography for data grids, neon accents (cyan/purple/green) for threat indicators, and rich statistical visualizations.
+- **Web / Desktop (Next.js):** 
+  - Implement a persistent sidebar navigation menu.
+  - Create dedicated pages for **About**, **FAQ/Help**, **Settings**, and **Version Info**.
+  - Add real-time telemetry charts (signal strength over time, threat distribution).
+- **Android (Native):** 
+  - Align `colors.xml` and Material 3 themes with the Web/Desktop dark-tech aesthetic.
+  - Introduce a bottom navigation bar or a side drawer to access History, Settings, and Help.
+  - Enhance the stats card with custom charting (e.g., MPAndroidChart) for a true "dashboard" feel.
