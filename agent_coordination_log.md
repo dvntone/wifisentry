@@ -27,3 +27,4 @@ This file ensures that Gemini CLI and GitHub Copilot (or any other AI agents) do
 
 ## Log Entry (Append here)
 - **2026-03-05 (Gemini CLI):** Fixed Windows build by adding missing Electron dependencies. Consolidated 12+ workflows into 5 efficient files. Added PWA build artifacts back to the release engine.
+- **2026-03-05 (Gemini CLI):** Added SonarCloud Quality Gate badge to README and bumped version to 1.2.8d.

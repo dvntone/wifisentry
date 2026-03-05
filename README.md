@@ -2,6 +2,11 @@
   <img src="docs/logo.svg" alt="Wi-Fi Sentry logo" width="96" height="96"/>
   <h1>Wi-Fi Sentry</h1>
   <p>Real-time Wi-Fi threat detection — on Android, Windows, or any browser.</p>
+  <p>
+    <a href="https://sonarcloud.io/summary/new_code?id=dvntone_wifisentry">
+      <img src="https://sonarcloud.io/api/project_badges/measure?project=dvntone_wifisentry&metric=alert_status" alt="Quality Gate Status" />
+    </a>
+  </p>
 </div>
 
 ## 📥 Download
