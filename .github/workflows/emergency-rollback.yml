@@ -121,7 +121,6 @@ Rollback to: $ROLLBACK_COMMIT"
             
             **Rolled back to:** v${{ github.event.inputs.rollback-version }}
             **Reason:** ${{ github.event.inputs.reason }}
-            **Previous version:** ${{ env.PREVIOUS_VERSION }}
             **Rollback Time:** ${{ github.event.repository.updated_at }}
             
             ### Actions Taken
