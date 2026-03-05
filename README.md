@@ -50,13 +50,13 @@ See [`android-native/README.md`](./android-native/README.md) for the full featur
 
 ## 🏗️ Architecture
 
-| | Android (native) | Web / Desktop |
+| Architecture | Android (native) | Web / Desktop / PWA |
 |---|---|---|
-| Runtime | On-device (no server) | Node.js backend + Next.js frontend |
-| Scanning | Android `WifiManager` | `node-wifi` (`iw` / `iwlist`) |
-| Threat engine | Kotlin `ThreatAnalyzer` | JavaScript heuristics |
-| Storage | JSON in app storage | Firebase / SQLite |
-| AI | Gemini (on-device key) | Gemini API |
+| Runtime | On-device (Kotlin) | Node.js (Fastify) + Next.js |
+| Scanning | Android `WifiManager` | `node-wifi` (Native OS tools) |
+| Threat engine | Kotlin `ThreatAnalyzer` | JavaScript Heuristics |
+| Security | Biometric / OS level | `otplib` (TOTP/2FA) + Fastify Helmet |
+| AI | Gemini 1.5 Flash | Gemini SDK (aiService.js) |
 
 ## 🚀 Web / Desktop Quick Start
 
