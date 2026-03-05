@@ -104,6 +104,13 @@ jobs:
               echo "$DOCS"
               echo ""
             fi
+
+            # Fallback for other commits if no specific types were matched
+            if [ -z "$FEATURES" ] && [ -z "$FIXES" ] && [ -z "$DOCS" ]; then
+              echo "### 🛠️ Changes"
+              git log $COMMIT_RANGE --pretty=format:"- %s" --no-merges | head -n 15
+              echo ""
+            fi
             
             echo "---"
             echo "**Download:** see the assets below."
@@ -189,24 +196,12 @@ jobs:
         with:
           name: changelog
 
-      - name: Get release notes
-        id: notes
-        run: |
-          # Read generated changelog
-          BODY=$(cat changelog.md)
-          
-          # Escape for GitHub API
-          BODY="${BODY//'%'/'%25'}"
-          BODY="${BODY//$'\n'/'%0A'}"
-          BODY="${BODY//$'\r'/'%0D'}"
-          echo "body=$BODY" >> $GITHUB_OUTPUT
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ needs.detect-version.outputs.version }}
           name: WiFi Sentry v${{ needs.detect-version.outputs.version }}
-          body: ${{ steps.notes.outputs.body }}
+          body_path: changelog.md
           draft: false
           prerelease: false
         env:
