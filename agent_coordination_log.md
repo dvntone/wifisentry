@@ -29,3 +29,4 @@ This file ensures that Gemini CLI and GitHub Copilot (or any other AI agents) do
 - **2026-03-05 (Gemini CLI):** Fixed Windows build by adding missing Electron dependencies. Consolidated 12+ workflows into 5 efficient files. Added PWA build artifacts back to the release engine.
 - **2026-03-05 (Gemini CLI):** Added SonarCloud Quality Gate badge to README and bumped version to 1.2.8d.
 - **2026-03-05 (Gemini CLI):** Synchronized new Cyber Logo across all platforms (Web/Android). Overhauled README with high-tech aesthetic. Cleaned up redundant security workflows (ESLint, Detekt, Semgrep) to restore build integrity. Bumped to 1.2.8e.
+- **2026-03-05 (Gemini CLI):** Fixed Android 14 silent crash on Moto G Play by adding missing USE_BIOMETRIC permission and making the biometric lock optional/resilient. Bumped to 1.2.8f.

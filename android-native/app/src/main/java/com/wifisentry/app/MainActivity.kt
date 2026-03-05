@@ -198,9 +198,20 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         updateStatusBanner()
         
-        if (!isAuthenticated) {
+        val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val isBiometricEnabled = prefs.getBoolean("enable_biometric_lock", true)
+
+        if (isBiometricEnabled && !isAuthenticated) {
             binding.root.visibility = View.INVISIBLE
-            showBiometricPrompt()
+            try {
+                showBiometricPrompt()
+            } catch (e: Exception) {
+                android.util.Log.e("SENTRY", "Biometric init failed", e)
+                isAuthenticated = true
+                binding.root.visibility = View.VISIBLE
+            }
+        } else {
+            binding.root.visibility = View.VISIBLE
         }
     }
 
