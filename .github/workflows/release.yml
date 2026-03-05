@@ -165,8 +165,31 @@ jobs:
           name: android-release-apk
           path: android-native/app/build/outputs/apk/dev/release/*.apk
 
+  build-pwa:
+    needs: detect-version
+    if: needs.detect-version.outputs.version-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Build Web Application
+        run: |
+          npm install
+          cd web-app
+          npm install
+          npm run build
+          tar -czf ../wifi-sentry-web-${{ needs.detect-version.outputs.version }}.tar.gz out/
+          zip -r ../wifi-sentry-web-${{ needs.detect-version.outputs.version }}.zip out/
+      - name: Upload PWA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-build
+          path: wifi-sentry-web-*
+
   create-github-release:
-    needs: [detect-version, generate-changelog, build-windows, build-android]
+    needs: [detect-version, generate-changelog, build-windows, build-android, build-pwa]
     runs-on: ubuntu-latest
     steps:
       - name: Download release notes
@@ -184,6 +207,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: android-release-apk
+          path: assets/
+
+      - name: Download PWA build
+        uses: actions/download-artifact@v4
+        with:
+          name: pwa-build
           path: assets/
 
       - name: Create Release

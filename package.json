@@ -1,6 +1,6 @@
 {
   "name": "wifi-sentry",
-  "version": "1.2.8b",
+  "version": "1.2.8c",
   "description": "A WiFi monitoring and security application that detects evil twins, karma attacks, WiFi pineapples, and emerging WiFi spoofing techniques.",
   "main": "server.js",
   "scripts": {
