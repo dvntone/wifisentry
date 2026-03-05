@@ -17,7 +17,10 @@ import android.widget.ScrollView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.biometric.BiometricPrompt
+import androidx.biometric.BiometricManager
 import androidx.core.content.ContextCompat
+import java.util.concurrent.Executor
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -40,6 +43,7 @@ import androidx.core.view.updatePadding
 
 class MainActivity : AppCompatActivity() {
     private var firstLaunch = true
+    private var isAuthenticated = false
 
     private lateinit var binding: ActivityMainBinding
     /** Adapter for the "All Networks" scroll box. */
@@ -187,6 +191,55 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateStatusBanner()
+        
+        if (!isAuthenticated) {
+            binding.root.visibility = View.INVISIBLE
+            showBiometricPrompt()
+        }
+    }
+
+    private fun showBiometricPrompt() {
+        val biometricManager = BiometricManager.from(this)
+        when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)) {
+            BiometricManager.BIOMETRIC_SUCCESS -> { /* Can authenticate */ }
+            else -> {
+                // No biometric hardware or not enrolled, bypass for now
+                isAuthenticated = true
+                binding.root.visibility = View.VISIBLE
+                return
+            }
+        }
+
+        val executor: Executor = ContextCompat.getMainExecutor(this)
+        val biometricPrompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    // If the user cancels or an error occurs, they cannot use the app
+                    if (errorCode == BiometricPrompt.ERROR_USER_CANCELED || errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON) {
+                        finish()
+                    }
+                }
+
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    isAuthenticated = true
+                    binding.root.visibility = View.VISIBLE
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    // Allow them to try again, prompt handles it natively
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("WiFi Sentry Security")
+            .setSubtitle("Log in using your biometric credential")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
     }
 
     private fun onScanClicked() {
