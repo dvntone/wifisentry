@@ -85,6 +85,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("onboarding_complete", false)) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
+
         try {
             binding = ActivityMainBinding.inflate(layoutInflater)
             setContentView(binding.root)

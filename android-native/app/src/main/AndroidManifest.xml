@@ -52,6 +52,12 @@
         </activity>
 
         <activity
+            android:name=".OnboardingActivity"
+            android:exported="false"
+            android:label="Setup WiFi Sentry"
+            android:theme="@style/Theme.WifiSentry" />
+
+        <activity
             android:name=".HistoryActivity"
             android:exported="false"
             android:label="@string/title_history"
