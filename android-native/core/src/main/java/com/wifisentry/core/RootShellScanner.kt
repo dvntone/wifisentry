@@ -134,16 +134,18 @@ class RootShellScanner(
     // ── shell helpers ──────────────────────────────────────────────────────
 
     /** Execute [command] via the best privileged shell and return stdout. Returns "" on error. */
-    private fun privShell(command: String): String = try {
-        val prefix = RootChecker.getPrivilegedPrefix() ?: return ""
-        val processBuilder = ProcessBuilder()
-        processBuilder.command(prefix + command)
-        processBuilder.redirectErrorStream(true)
-        val process = processBuilder.start()
-        val output = process.inputStream.bufferedReader().readText()
-        process.waitFor()
-        output
-    } catch (_: Exception) { "" }
+    private fun privShell(command: String): String {
+        return try {
+            val prefix = RootChecker.getPrivilegedPrefix() ?: return ""
+            val processBuilder = ProcessBuilder()
+            processBuilder.command(prefix + command)
+            processBuilder.redirectErrorStream(true)
+            val process = processBuilder.start()
+            val output = process.inputStream.bufferedReader().readText()
+            process.waitFor()
+            output
+        } catch (_: Exception) { "" }
+    }
 
     private val toolCache = mutableMapOf<String, Boolean>()
 
