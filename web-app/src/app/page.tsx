@@ -75,23 +75,38 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white p-8">
-      <div className="max-w-7xl mx-auto">
-
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold mb-2">🛡️ WiFi Sentry</h1>
-          <p className="text-slate-300">Advanced WiFi Monitoring &amp; Threat Detection</p>
+    <div className="p-8 max-w-7xl mx-auto">
+      {/* Top Stat Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="bg-slate-900 border border-slate-700 p-4 rounded-md shadow-sm">
+          <p className="text-xs text-slate-400 font-mono">THREAT CATALOG</p>
+          <p className="text-2xl font-bold text-cyan-400">{threats.length}</p>
         </div>
+        <div className="bg-slate-900 border border-slate-700 p-4 rounded-md shadow-sm">
+          <p className="text-xs text-slate-400 font-mono">BACKEND STATUS</p>
+          <p className={`text-2xl font-bold ${backendAvailable ? 'text-emerald-400' : 'text-red-500'}`}>
+            {backendAvailable ? 'ONLINE' : 'OFFLINE'}
+          </p>
+        </div>
+        <div className="bg-slate-900 border border-slate-700 p-4 rounded-md shadow-sm">
+          <p className="text-xs text-slate-400 font-mono">ACTIVE SENSORS</p>
+          <p className="text-2xl font-bold text-cyan-400">1</p>
+        </div>
+        <div className="bg-slate-900 border border-slate-700 p-4 rounded-md shadow-sm">
+          <p className="text-xs text-slate-400 font-mono">LOCATION LOCK</p>
+          <p className={`text-2xl font-bold ${locationConsent ? 'text-emerald-400' : 'text-amber-500'}`}>
+            {locationConsent ? 'ACTIVE' : 'DISABLED'}
+          </p>
+        </div>
+      </div>
 
-        {/* Backend-dependent content */}
-        {backendAvailable === false ? (
-          /* ── No backend: show platform showcase ── */
-          <section>
-            <h2 className="text-2xl font-bold mb-6">Get the full experience</h2>
-            <PlatformShowcase />
-          </section>
-        ) : (
+      {/* Backend-dependent content */}
+      {backendAvailable === false ? (
+        <section>
+          <h2 className="text-2xl font-bold mb-6 text-slate-200">System Offline</h2>
+          <PlatformShowcase />
+        </section>
+      ) : (
           /* ── Backend available: show live scanning UI ── */
           <>
             <div className="mb-8">
