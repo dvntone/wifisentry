@@ -19,9 +19,9 @@
     "web:dev": "cd web-app && npm run dev",
     "web:build": "cd web-app && npm run build",
     "desktop:dev": "electron desktop/main.js",
-    "desktop:build-web": "cd web-app && npm run build && cd ..",
-    "desktop:build": "npm run desktop:build-web && electron-builder --publish never",
-    "desktop:build-win": "npm run desktop:build",
+    "desktop:build-web": "npm run web:build",
+    "desktop:build": "electron-builder --publish never",
+    "desktop:build-win": "npm run web:build && npm run desktop:build",
     "mobile:setup": "npx @capacitor/cli@latest init wifi-sentry wifi.sentry && npx @capacitor/cli add android",
     "mobile:sync": "npx @capacitor/cli sync",
     "mobile:build": "cd web-app && npm run build && cd .. && npx @capacitor/cli sync",
@@ -84,7 +84,13 @@
       "wifi-scanner.js",
       "location-tracker.js",
       "*.json",
-      "web-app/out/**/*"
+      {
+        "from": "web-app/out",
+        "to": "web-app/out",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "directories": {
       "buildResources": "desktop/assets",
