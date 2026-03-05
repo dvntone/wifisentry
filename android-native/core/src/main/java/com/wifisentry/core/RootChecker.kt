@@ -20,8 +20,8 @@ object RootChecker {
     /** True when ADB is authorized and connected to at least one device/emulator. */
     val isAdbConnected: Boolean by lazy { checkAdbConnected() }
 
-    /** True when Termux environment is detected. */
-    val hasTermux: Boolean by lazy { detectTermux() }
+    /** True when a supported Terminal environment (Termux, Nethunter, UserLAnd, etc) is detected. */
+    val hasTerminalEnv: Boolean by lazy { detectTerminalEnv() }
 
     /** Returns the best available privileged shell prefix (e.g. "su", "-c") or null. */
     fun getPrivilegedPrefix(): List<String>? {
@@ -91,10 +91,13 @@ object RootChecker {
         }
     }
     
-    private fun detectTermux(): Boolean {
+    private fun detectTerminalEnv(): Boolean {
         return try {
             File("/data/data/com.termux/files/usr/bin/bash").exists() ||
-            File("/data/data/com.termux").exists()
+            File("/data/data/com.termux").exists() ||
+            File("/data/data/com.offsec.nethunter").exists() ||
+            File("/data/data/tech.ula").exists() ||
+            File("/data/data/jackpal.androidterm").exists()
         } catch (_: Exception) {
             false
         }

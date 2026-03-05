@@ -56,11 +56,13 @@ class OnboardingActivity : AppCompatActivity() {
     private fun checkEnvironment() {
         // Run a lightweight check to determine if advanced capabilities might be available.
         val hasRoot = RootChecker.getPrivilegedPrefix() != null
+        val hasTerminal = RootChecker.hasTerminalEnv
         
         val envStatus = buildString {
             appendLine("Root Access: ${if (hasRoot) "✅ Detected" else "❌ Not found"}")
             if (!hasRoot) {
-                appendLine("Shizuku / Termux: Needs setup")
+                appendLine("Terminal Env (Termux/NetHunter): ${if (hasTerminal) "✅ Detected" else "❌ Not found"}")
+                appendLine("Shizuku / ADB: Needs setup")
             } else {
                 appendLine("Advanced Monitor Mode: Available")
             }
