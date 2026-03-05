@@ -1,130 +1,248 @@
-# Copilot Instructions for wifisentry
+# Copilot Instructions — WiFi Sentry
 
-## Quick Start for Copilot Sessions
+> These instructions govern ALL automated coding by GitHub Copilot, Copilot agent PRs, and AI-assisted
+> development in this repository. Read and follow them entirely before making any change.
 
-This repository includes GitHub MCP Server configuration (`.github/mcp.json`) that's automatically loaded when Copilot CLI starts. The MCP server provides direct access to:
-- Repository workflows, branches, and commits
-- GitHub Issues and Pull Requests
-- Code search and repository content
-- Workflow run logs and telemetry
+---
 
-To enable it in your session, use: `/mcp show` or `/mcp enable github` (if previously disabled)
+## 0. First Rule — Check Build Status
 
-## Repository Overview
+**Before writing a single line of code, check `BUILD_STATUS.md` in the repo root.**
 
-This repository defines reusable GitHub Actions workflows and Gemini CLI command configurations for automated issue triage, pull request review, and other AI-assisted tasks. It provides reference implementations for integrating Google's Gemini CLI into GitHub workflows.
+- If any CI workflow marked `FAILING` or `ACTION_REQUIRED` on `main`: fix that first.
+- Never create a PR that adds features on top of a broken build.
+- If you cannot determine build status from the file, inspect the Actions tab before proceeding.
 
-## Architecture
+---
 
-The repository follows a modular structure with two main components:
+## 1. Project Overview
 
-1. **Workflows** (`.github/workflows/`) - Reusable workflow files (using `on: workflow_call`) that orchestrate:
-   - `gemini-triage.yml` - Analyzes issues and applies labels; called on issue creation/update
-   - `gemini-review.yml` - Reviews pull requests using Gemini CLI with GitHub MCP Server access
-   - `gemini-invoke.yml` - General-purpose AI agent for repository tasks; includes manual approval step before execution
-   - `gemini-dispatch.yml` - Event router that listens for PR/issue events and commands
-   - `gemini-scheduled-triage.yml` - Runs batch triage on schedule with pagination for large issue counts
+WiFi Sentry is a professional-grade wireless threat detection platform targeting:
+- Evil Twin, Karma, and rogue access point detection
+- Deauthentication flood, PMKID sniffing, and KRACK detection
+- Active deauth/sniff detection against the user's device
+- GPS-mapped threat visualization
+- AI-assisted live and post-scan analysis (Google Gemini)
+- Red team / Blue team operational modes
+- Terminal-aesthetic UI with direct command input
 
-   **Note**: All core workflows are reusable (`workflow_call`), allowing other repos/workflows to invoke them by reference.
+**Platform targets:**
+- Android (API 31+, Kotlin, Jetpack Compose for new UI, Activities for existing UI)
+- Desktop (Electron + Fastify backend, Windows-first)
+- Web dashboard (Next.js 16, Tailwind CSS)
 
-2. **Command Definitions** (`.github/commands/`) - TOML files that define the AI assistant prompts and behavior:
-   - Maps to corresponding workflow files (e.g., `gemini-triage.toml` ↔ `gemini-triage.yml`)
-   - Contains the system prompt (role, guidelines, instructions) passed to Gemini CLI
-   - Supports environment variable substitution using `!{echo $VARIABLE_NAME}` syntax
-   - Output instructions tell the AI how to write results to `GITHUB_ENV` for subsequent steps
+**Architecture decision (final — do not change without explicit instruction):**
+- MongoDB (Mongoose) is the PRIMARY database. Firebase is OPTIONAL cloud sync only.
+- The Fastify backend is the single source of truth. All platforms call its API.
+- Android native (Kotlin) is the primary sensor. Capacitor is NOT used. Do not add Capacitor.
 
-## Key Conventions & Patterns
+---
 
-### Concurrency Strategy
-- **Triage & Review workflows** use `cancel-in-progress: true` - If multiple triage/review events are triggered, the latest one cancels previous runs
-- **Invoke workflow** uses `cancel-in-progress: false` - Executes sequentially to preserve order of AI-driven changes (important for file modifications that might conflict)
-- Group IDs use `github.event.pull_request.number || github.event.issue.number` to prevent crosstalk between different PRs/issues
+## 2. Android / Kotlin Rules
 
-### Workflow Security
-- **No authentication tokens in environment variables** - Set `GITHUB_TOKEN: ''` when running on untrusted inputs to prevent token leakage in logs
-- **GitHub App tokens** - Use `actions/create-github-app-token` to mint identity tokens with scoped permissions for sensitive operations
-- **Label validation** - The label application step validates selected labels against available labels to prevent injection attacks
-- **Shell tool restrictions** - Only `echo` is enabled for triage/review; `gemini-invoke` enables `cat`, `echo`, `grep`, `head`, `tail` (no command substitution operators allowed)
+### Scanner Chain (Critical — Do Not Break)
+The app uses a priority-based scanner fallback chain. The order is fixed:
 
-### AI Approval Workflow (gemini-invoke)
-- Two-step execution: (1) AI generates a plan/code suggestion, (2) human review before applying
-- The AI proposes changes and writes them to environment variables or workflow artifacts
-- A manual approval step validates the proposed changes before committing/pushing
-- Implements least-privilege principle: approval step creates separate credentials with minimal needed permissions
+```
+1. NexmonScanner      (Broadcom firmware patch, root, ARM64 only — ~6 phone models)
+2. ShizukuWifiScanner (ADB-level privileges, no throttle)
+3. UsbWifiScanner     (External USB adapter via OTG)
+4. RootWifiScanner    (airmon-ng via Termux/Nethunter/UserLAnd/root shell)
+5. StandardWifiScanner (Throttled WifiManager fallback — 4 scans/2min on Android 10+)
+```
 
-### Gemini CLI Integration
-- Workflows use `google-github-actions/run-gemini-cli@v0` action with specific settings:
-  - `maxSessionTurns: 25` - Limits AI conversation depth
-  - `telemetry.enabled: true` - Captures execution telemetry to `.gemini/telemetry.log`
-  - Restricted tool access via `"tools.core": ["run_shell_command(echo)"]` where appropriate
-  - MCP servers configured via `mcpServers` in settings (e.g., GitHub MCP Server in Docker)
+Rules:
+- The app MUST compile and run fully on Standard tier (no root, no Shizuku). All advanced tiers are additive.
+- Each scanner tier MUST be behind a build config flag so it can be disabled independently.
+- `WatchdogService` monitors all scanners. If one fails, it MUST fall back silently to the next tier.
+- Shizuku and Nexmon MUST be optional modules — do not hard-link them as required dependencies.
+- NEVER call scanner operations on the main thread. All scanning runs on background threads/coroutines.
 
-### MCP Server Configuration
-- **GitHub MCP Server** (used in `gemini-review.yml` and `gemini-invoke.yml`):
-  - Runs in Docker: `ghcr.io/github/github-mcp-server:v0.27.0`
-  - Requires `GITHUB_PERSONAL_ACCESS_TOKEN` environment variable (passed from `GITHUB_TOKEN`)
-  - **gemini-review.yml** tools: `add_comment_to_pending_review`, `pull_request_read`, `pull_request_review_write` (read PR, write reviews only)
-  - **gemini-invoke.yml** tools: broader access for `issue_read`, `issue_write`, `pull_request_read`, `pull_request_write`, `repository_read`, `pull_request_create`, `file_read`, `code_search` (allows creating/modifying PRs and issues)
-  - When adding new MCP server tools, verify Docker image availability, confirm tool names match the server implementation, and ensure required credentials are passed
-  - Environment substitution in settings uses `${GITHUB_TOKEN}` syntax (not `!{echo}`)
-  
-### Command Prompts (TOML Files)
-- Define the AI assistant's role, guidelines, and step-by-step instructions
-- Use environment variable substitution with `!{echo $VARIABLE_NAME}` syntax
-- Include explicit security constraints (e.g., forbidding command substitution `$(...)`, `<(...)`, `>(...)`)
-- Convert outputs to comma-separated values (CSV) and append to GitHub environment files
+### Threading Rules (Critical — Was a Past Crash Cause)
+- `RootChecker`, all scanner operations, and `GeminiAnalyzer` MUST run off the main thread.
+- Use Kotlin coroutines (`viewModelScope.launch(Dispatchers.IO)`) for all I/O operations.
+- UI updates MUST use `Dispatchers.Main` or `withContext(Dispatchers.Main)`.
+- NEVER call `WifiManager` from the main thread without null-safety checks.
 
-### Environment Management
-- Workflows output results via `GITHUB_ENV` (typically `/tmp/runner/env`)
-- Selected results (e.g., `SELECTED_LABELS`) are parsed in subsequent steps for action
-- Pagination is used for large API responses (e.g., label fetching uses `per_page: 100`)
+### Kotlin Coding Standards
+- Use explicit types on lambda parameters — do not rely on type inference in `filterValues`, `map`, `flatMap`, etc. (KI-015 caused a build break from this).
+- Use `?.let` and `?: return` patterns for null safety rather than `!!`.
+- Coroutines scope: use `viewModelScope` in ViewModels, `lifecycleScope` in Activities/Fragments.
+- State: use `StateFlow` and `SharedFlow` for observable state. Never use `LiveData` for new code.
+- All new UI components use Jetpack Compose. Do not add new XML layouts.
+- Minimum compile target: API 35. Minimum runtime target: API 31.
 
-## Variable & Secret Configuration
+### Critical Permissions (Do Not Remove)
+The following permissions in `AndroidManifest.xml` are required. Do NOT remove them:
+- `USE_BIOMETRIC` — removing this causes a silent crash on Android 14+ (KI-014)
+- `ACCESS_FINE_LOCATION` — required for WiFi scanning on all Android 10+ devices
+- `ACCESS_WIFI_STATE`, `CHANGE_WIFI_STATE` — required for scanning
+- `FOREGROUND_SERVICE` — required for background scanning service
 
-Required repository variables and secrets for Gemini workflows:
-- **Variables**: `GOOGLE_CLOUD_LOCATION`, `GOOGLE_CLOUD_PROJECT`, `SERVICE_ACCOUNT_EMAIL`, `GCP_WIF_PROVIDER`, `GEMINI_CLI_VERSION`, `GEMINI_MODEL`, `GOOGLE_GENAI_USE_GCA`, `GOOGLE_GENAI_USE_VERTEXAI`, `UPLOAD_ARTIFACTS`, `APP_ID` (optional, for GitHub App auth)
-- **Secrets**: `GEMINI_API_KEY`, `GOOGLE_API_KEY`, `APP_PRIVATE_KEY` (if using GitHub App)
+### Android Dependency Rules
+- Pin ALL Gradle dependency versions exactly. No `+` suffixes. No `latest.release`.
+- When adding a new dependency, add it to `android-native/gradle/libs.versions.toml` first, then reference it.
+- Do not change `compileSdk` or `targetSdk` without explicit instruction.
+- Do not change `minSdk` below 31.
 
-## Making Changes
+---
 
-When modifying workflows:
-1. Update the corresponding `.github/workflows/*.yml` file
-2. If changing AI behavior, update the matching `.github/commands/*.toml` prompt
-3. Test using workflow dispatch or manual trigger before committing
-4. Ensure security constraints are maintained (no token leakage, validated outputs)
-5. Verify variable/secret references match configured repository settings
+## 3. Node.js / Backend Rules
 
-When updating TOML prompts:
-- Maintain consistent role definitions and output format (CSV)
-- Update guidelines section with any new constraints
-- Test with sample inputs to verify expected output behavior
-- Pay special attention to environment variable substitution syntax: `!{echo $VARIABLE_NAME}`
-- Ensure all security directives are maintained (no command substitution, no token exposure)
+### Security (Non-Negotiable)
+Every API change MUST maintain these security controls. If they are not present, add them before your change:
+- `helmet()` middleware on all routes
+- CORS restricted to `process.env.ALLOWED_ORIGINS` (not open)
+- Rate limiting: 100 req/15min general, 5 req/15min on any auth route
+- Joi validation on all POST/PUT/PATCH request bodies
+- All child process `spawn()`/`exec()` calls use array argument form and sanitized inputs
 
-### Testing Workflows Locally
+### URL Configuration
+- NEVER hardcode `localhost`, `127.0.0.1`, or any port number in frontend code.
+- All API base URLs come from `process.env.NEXT_PUBLIC_API_URL` (frontend) or `process.env.API_URL` (backend-to-backend).
+- Add any new environment variables to `.env.example` with a descriptive comment.
 
-Since workflows run on GitHub Actions, use these approaches to test changes:
-- Use workflow dispatch triggers (configured in dispatcher workflows) to run on demand
-- Add debug output to steps to verify variables and outputs are correct
-- Enable `GEMINI_DEBUG` variable for verbose Gemini CLI output
-- Check `.gemini/telemetry.log` artifacts for execution details
-- Validate TOML syntax using a TOML validator before committing
+### Module System
+- Backend uses CommonJS (`require`/`module.exports`). Do not introduce `import`/`export` syntax in backend files.
+- Frontend (Next.js) uses ESM. Do not introduce `require()` in frontend files.
+- Do not mix the two in any single file.
 
-## Common Workflow Modifications
+### Database
+- MongoDB via Mongoose is the database. Do not add Firebase Firestore as a data store.
+- Firebase is permitted only for: push notifications (FCM) and optional cloud sync.
+- Do not add the `dataconnect` directory back. It was intentionally removed.
 
-### Adding a new issue classification workflow
-1. Create `.github/workflows/gemini-new-task.yml` with `workflow_call` trigger
-2. Create `.github/commands/gemini-new-task.toml` with the AI role and instructions
-3. Reference it in `gemini-dispatch.yml` to trigger on specific commands or events
-4. Ensure the TOML includes security constraints and clear output format instructions
+### Dependency Rules
+- Pin ALL npm dependencies exactly (no `^` or `~`). Use `npm install --save-exact`.
+- Do not add a dependency that duplicates functionality already in the project.
+- Run `npm audit` before finalizing any dependency change. Zero high/critical vulnerabilities.
 
-### Expanding MCP Server access
-1. Update the `includeTools` array in the `mcpServers.github` section of the settings JSON
-2. Test the new tool by manually running the workflow with `GEMINI_DEBUG: true`
-3. Verify tool names match the GitHub MCP Server implementation
-4. Document the new tool access requirement in this file
+---
 
-### Debugging AI output
-- AI responses are written to `GITHUB_ENV` as CSV or JSON, parsed in subsequent workflow steps
-- If the AI's output doesn't parse correctly, check the telemetry log (`.gemini/telemetry.log`) for the full AI conversation
-- Use `actions/upload-artifact` to save telemetry logs for inspection if the workflow fails
+## 4. Next.js / Frontend Rules
+
+- All pages are in `app/` directory (Next.js 13+ App Router). Do not add pages to `pages/`.
+- Use Tailwind CSS for all styling. Do not add inline styles or separate CSS files for new components.
+- Use `textContent`, `createElement`, and safe DOM methods. Never use `innerHTML` for user-controlled data.
+- All API calls go through a single client utility. Do not call `fetch()` directly with hardcoded URLs.
+- Dark theme with monospace font and neon accents is the design standard. Do not introduce light theme components.
+
+---
+
+## 5. Electron / Desktop Rules
+
+- The Electron app wraps the Next.js frontend. Do not duplicate UI logic in the Electron main process.
+- All native capabilities (file system, process spawning, Npcap) go through Electron IPC with explicit channel names.
+- Sanitize all data crossing the IPC bridge. Never expose Node.js `require` or `shell` to the renderer.
+- `contextIsolation: true` and `nodeIntegration: false` in all `BrowserWindow` configs. Do not change these.
+
+---
+
+## 6. CI / Workflow Rules
+
+- Do not modify `.github/workflows/` files without explicit instruction.
+- Do not disable or bypass any existing quality gate (SonarCloud, Detekt, ESLint, CodeQL).
+- Every PR must pass all required status checks before merge. Do not merge with failing checks.
+- APK signing secrets (`KEYSTORE_*`) are required for release builds. Do not add alternative signing logic.
+- The `emergency-rollback.yml` workflow must remain functional at all times. If it is broken, fixing it takes priority over all other work.
+
+---
+
+## 7. File Organization Rules
+
+### What belongs where
+```
+/                        — Only: README.md, KNOWN_ISSUES.md, BUILD_STATUS.md, LICENSE, .env.example, Dockerfile, .gitignore, .nvmrc, .gitleaks.toml
+/docs/                   — All other .md documentation files
+/android-native/         — All Kotlin/Android code
+/backend/ (or server.js) — All Node.js/Fastify API code
+/web/                    — All Next.js frontend code
+/desktop/                — All Electron code
+/shared/                 — OUI database, threat signatures, AI prompt templates
+```
+
+### Do Not Create
+- Do not create new `.md` files in the repository root (use `docs/` instead)
+- Do not create files in `dataconnect/` — this directory is removed
+- Do not create a `capacitor.config.ts` — Capacitor is not used
+- Do not create ad-hoc session logs or `REVIEW_SUMMARY.txt` style files
+
+---
+
+## 8. Threat Detection Standards
+
+These are the threat types the app detects. Do not change detection thresholds without explicit instruction:
+
+| Threat | Method | Severity | Threshold |
+|---|---|---|---|
+| Evil Twin | Duplicate SSID + different BSSID | HIGH | Any match |
+| Karma Attack | Probe response to any client SSID | HIGH | Any instance |
+| Deauth Flood (general) | Deauth frame count | HIGH | 15+ frames / 10 seconds |
+| Deauth targeting this device | Deauth frame with device MAC as destination | HIGH | Any instance |
+| PMKID Sniffing | EAPOL M1 from unassociated client | MEDIUM | Any instance |
+| KRACK | Duplicate EAPOL M3 replay counter | HIGH | Any duplicate |
+| WiFi Pineapple | Beacon pattern + OUI match | HIGH | Any match |
+| Rogue HID | Bluetooth peripheral fingerprint | MEDIUM | Anomaly score > 0.7 |
+| MAC Spoofing | OUI mismatch / randomization on known SSID | MEDIUM | Any mismatch |
+
+False positive reduction (AI-assisted):
+- GPS context: same BSSID at 3+ different locations = elevated confidence
+- Time context: factor scan time and location type into risk scoring
+- Scan history: new SSID not seen in last 30 days in this geofence = elevated alert
+
+---
+
+## 9. Red Team / Blue Team Mode
+
+- Blue Team mode: passive detection only. No active probing. No frame injection.
+- Red Team mode: requires biometric authentication before activation. Requires explicit user confirmation before each active operation. All actions logged locally with timestamp.
+- Do not enable Red Team capabilities in the Play Store / public build. They are gated by a `BUILD_FLAVOR` build config flag.
+- Never implement deauth injection, beacon injection, or client deassociation without both: (a) Red Team mode active, and (b) explicit per-action user confirmation.
+
+---
+
+## 10. What NOT to Do (Lessons from Build History)
+
+These mistakes caused the 35+ failed Copilot branches and build failures in this repo's history:
+
+| What not to do | Why |
+|---|---|
+| Add features while CI is red | Compounds failures — you won't know what broke what |
+| Use implicit types in Kotlin lambdas | Caused KI-015 — `filterValues` type inference build break |
+| Call `RootChecker` or scanners on the main thread | Caused KI-014 — silent crash on Android 14 |
+| Remove `USE_BIOMETRIC` permission | Caused silent crash on Android 14 |
+| Hardcode `localhost:3000` in frontend | Breaks every environment except local dev |
+| Use `app.use(cors())` without origin restriction | Opens API to any domain |
+| Use `innerHTML` with data | XSS vulnerability |
+| Use `spawn(cmd, string)` form | Shell injection vulnerability |
+| Add `^` to npm versions or `+` to Gradle versions | Silent breaking updates from upstream |
+| Create new .md files in repo root | Documentation sprawl — use `docs/` |
+| Mix Firebase and MongoDB as primary stores | Architectural conflict causes confusion |
+| Add Capacitor to the project | Abandoned approach — native Kotlin is the decision |
+| Attempt to merge multiple phases at once | Makes failures impossible to isolate |
+| Change `SONAR_TOKEN` or workflow permission scopes | Breaks quality gate |
+
+---
+
+## 11. Asking Before Acting
+
+If you are uncertain about any of the following, stop and create an issue rather than guessing:
+
+- Which scanner tier a new capability belongs in
+- Whether a dependency version is compatible
+- Whether a change could affect the build pipeline
+- Whether a permission is required for Android compatibility
+- Whether a detection threshold should be changed
+- Any change to `.github/workflows/` files
+
+---
+
+## 12. PR Standards
+
+Every Copilot-generated PR must:
+1. Reference the `KNOWN_ISSUES.md` issue ID it addresses (e.g., "Fixes KI-003")
+2. Include a description of what was changed and why
+3. Not mix multiple unrelated changes in one PR
+4. Pass all CI checks before requesting review
+5. Update `BUILD_STATUS.md` session log with a one-line summary of the change
+6. Not leave TODO comments in code without a corresponding entry in `KNOWN_ISSUES.md`
