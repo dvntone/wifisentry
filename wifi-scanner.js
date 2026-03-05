@@ -334,7 +334,7 @@ function initialize() {
     });
     _initialized = true;
   } catch (error) {
-    console.error("Failed to initialize WiFi scanner:", error);
+    console.error('Failed to initialize WiFi scanner:', error);
   }
 }
 
@@ -370,8 +370,8 @@ async function scanAndroid() {
           }
         }
 
-        let ssid = "";
-        let flags = "";
+        let ssid = '';
+        let flags = '';
         if (flagsIndex !== -1) {
           ssid = parts.slice(4, flagsIndex).join(' ');
           flags = parts.slice(flagsIndex).join(' ');
@@ -406,7 +406,7 @@ async function scan() {
   return new Promise((resolve, reject) => {
     wifi.scan((error, networks) => {
       if (error) {
-        console.error("WiFi scan failed:", error);
+        console.error('WiFi scan failed:', error);
         if (error.message.includes('EPERM') || error.message.includes('permission denied')) {
           return reject(new Error('Permission error. Please run the application with administrator/sudo privileges.'));
         }
@@ -565,40 +565,40 @@ async function analyzeThreatPatterns(networks, history = []) {
       threats.push({ type: 'OPEN_NETWORK', severity: 'Low', description: 'Unencrypted access point' });
 
     if (checkSuspiciousKeyword(net.ssid))
-      threats.push({ type: 'SUSPICIOUS_SSID', severity: 'Medium', description: `SSID contains suspicious keyword` });
+      threats.push({ type: 'SUSPICIOUS_SSID', severity: 'Medium', description: 'SSID contains suspicious keyword' });
 
     if (checkMultipleBssids(net, networks, history))
-      threats.push({ type: 'MULTIPLE_BSSIDS', severity: 'High', description: `Same SSID seen with multiple BSSIDs — possible Evil Twin` });
+      threats.push({ type: 'MULTIPLE_BSSIDS', severity: 'High', description: 'Same SSID seen with multiple BSSIDs — possible Evil Twin' });
 
     if (checkSecurityChange(net, history))
-      threats.push({ type: 'SECURITY_CHANGE', severity: 'High', description: `Encryption type changed from previously observed value` });
+      threats.push({ type: 'SECURITY_CHANGE', severity: 'High', description: 'Encryption type changed from previously observed value' });
 
     if (checkEvilTwin(net, history))
-      threats.push({ type: 'EVIL_TWIN', severity: 'Critical', description: `Open AP whose SSID was previously secured — classic Pineapple impersonation` });
+      threats.push({ type: 'EVIL_TWIN', severity: 'Critical', description: 'Open AP whose SSID was previously secured — classic Pineapple impersonation' });
 
     if (checkMacSpoofing(net, knownBssids))
-      threats.push({ type: 'MAC_SPOOFING_SUSPECTED', severity: 'High', description: `Locally-administered MAC address — not a real manufacturer OUI` });
+      threats.push({ type: 'MAC_SPOOFING_SUSPECTED', severity: 'High', description: 'Locally-administered MAC address — not a real manufacturer OUI' });
 
     if (checkSuspiciousRssi(net, knownBssids))
-      threats.push({ type: 'SUSPICIOUS_SIGNAL_STRENGTH', severity: 'High', description: `Brand-new BSSID at unusually close range — consistent with a co-located rogue device` });
+      threats.push({ type: 'SUSPICIOUS_SIGNAL_STRENGTH', severity: 'High', description: 'Brand-new BSSID at unusually close range — consistent with a co-located rogue device' });
 
     if (checkMultiSsidSameOui(net, networks, knownBssids))
-      threats.push({ type: 'MULTI_SSID_SAME_OUI', severity: 'High', description: `5+ SSIDs from one OUI — Pineapple Karma mode or Marauder beacon-spam signature` });
+      threats.push({ type: 'MULTI_SSID_SAME_OUI', severity: 'High', description: '5+ SSIDs from one OUI — Pineapple Karma mode or Marauder beacon-spam signature' });
 
     if (checkBeaconFlood(net, networks, knownBssids))
-      threats.push({ type: 'BEACON_FLOOD', severity: 'High', description: `4+ new BSSIDs from one OUI in a single scan — Marauder/mdk4 beacon flood signature` });
+      threats.push({ type: 'BEACON_FLOOD', severity: 'High', description: '4+ new BSSIDs from one OUI in a single scan — Marauder/mdk4 beacon flood signature' });
 
     if (checkInconsistentCapabilities(net))
-      threats.push({ type: 'INCONSISTENT_CAPABILITIES', severity: 'High', description: `Advertised Wi-Fi standard is physically impossible on the reported frequency band` });
+      threats.push({ type: 'INCONSISTENT_CAPABILITIES', severity: 'High', description: 'Advertised Wi-Fi standard is physically impossible on the reported frequency band' });
 
     if (checkBssidNearClone(net, networks, knownBssids))
-      threats.push({ type: 'BSSID_NEAR_CLONE', severity: 'High', description: `Same SSID with near-identical BSSID on same band or brand-new cross-band clone` });
+      threats.push({ type: 'BSSID_NEAR_CLONE', severity: 'High', description: 'Same SSID with near-identical BSSID on same band or brand-new cross-band clone' });
 
     if (checkWpsVulnerable(net))
-      threats.push({ type: 'WPS_VULNERABLE', severity: 'Medium', description: `AP advertises WPS — vulnerable to Pixie Dust / Reaver PIN brute-force` });
+      threats.push({ type: 'WPS_VULNERABLE', severity: 'Medium', description: 'AP advertises WPS — vulnerable to Pixie Dust / Reaver PIN brute-force' });
 
     if (checkChannelShift(net, history))
-      threats.push({ type: 'CHANNEL_SHIFT', severity: 'High', description: `BSSID previously observed on a different frequency band` });
+      threats.push({ type: 'CHANNEL_SHIFT', severity: 'High', description: 'BSSID previously observed on a different frequency band' });
 
     return { ...net, threats, isFlagged: threats.length > 0 };
   });

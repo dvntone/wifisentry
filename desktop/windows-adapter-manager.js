@@ -275,7 +275,7 @@ class WindowsAdapterManager {
       console.log(`✓ Adapter ${action}d: ${adapterName}`);
       return true;
     } catch (error) {
-      console.error(`Error changing adapter status:`, error.message);
+      console.error('Error changing adapter status:', error.message);
       return false;
     }
   }

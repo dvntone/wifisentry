@@ -3,13 +3,13 @@
 /**
  * Auth routes: login, logout, and 2FA setup/verify.
  * Registers as a Fastify plugin so it has access to fastify.config,
- * fastify.speakeasy, and fastify.qrcode decorators set up in server.js.
+ * fastify.authenticator, and fastify.qrcode decorators set up in server.js.
  */
 
 const path = require('path');
 
 module.exports = async function authRoutes(fastify) {
-  const { config, speakeasy, qrcode } = fastify;
+  const { config, authenticator, qrcode } = fastify;
 
   // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -48,17 +48,16 @@ module.exports = async function authRoutes(fastify) {
   fastify.get('/api/auth/2fa/generate', {
     preHandler: requireAuth,
   }, async (request, reply) => {
-    const secret = speakeasy.generateSecret({
-      name: `WiFi Sentry (${config.auth.adminUsername})`,
-    });
-    request.session.temp2faSecret = secret.base32;
+    const secret = authenticator.generateSecret();
+    const otpauthUrl = authenticator.keyuri(config.auth.adminUsername, 'WiFi Sentry', secret);
+    request.session.temp2faSecret = secret;
 
     return new Promise((resolve, reject) => {
-      qrcode.toDataURL(secret.otpauth_url, (err, dataUrl) => {
+      qrcode.toDataURL(otpauthUrl, (err, dataUrl) => {
         if (err) {
           reject(reply.status(500).send({ message: 'Could not generate QR code.' }));
         } else {
-          resolve(reply.send({ qrCodeUrl: dataUrl, secret: secret.base32 }));
+          resolve(reply.send({ qrCodeUrl: dataUrl, secret }));
         }
       });
     });
@@ -75,7 +74,7 @@ module.exports = async function authRoutes(fastify) {
       return reply.status(400).send({ success: false, message: '2FA setup not started. Please generate a QR code first.' });
     }
 
-    const verified = speakeasy.totp.verify({ secret, encoding: 'base32', token });
+    const verified = authenticator.check(token, secret);
 
     if (verified) {
       delete request.session.temp2faSecret;
@@ -108,11 +107,7 @@ module.exports = async function authRoutes(fastify) {
       return reply.status(401).send({ success: false, message: 'Please log in with your password first.' });
     }
 
-    const verified = speakeasy.totp.verify({
-      secret: config.auth.adminTwoFactorSecret,
-      encoding: 'base32',
-      token,
-    });
+    const verified = authenticator.check(token, config.auth.adminTwoFactorSecret);
 
     if (verified) {
       delete request.session.awaiting2fa;

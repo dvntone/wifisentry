@@ -92,7 +92,13 @@ class MainActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             WifiSentryApp.saveCrashReport(applicationContext, e)
-            finish()
+            // Fallback UI if main inflation fails
+            val tv = android.widget.TextView(this).apply {
+                text = "Startup Error:\n\n${e.message}\n\n${android.util.Log.getStackTraceString(e)}"
+                setPadding(32, 32, 32, 32)
+                setTextIsSelectable(true)
+            }
+            setContentView(tv)
             return
         }
 
@@ -210,7 +216,7 @@ class MainActivity : AppCompatActivity() {
                     }.show()
                 return
             }
-            viewModel.startContinuousMonitoring(this)
+            viewModel.startContinuousMonitoring(applicationContext)
         }
     }
 
@@ -230,7 +236,7 @@ class MainActivity : AppCompatActivity() {
                 }.show()
             return
         }
-        viewModel.scan(this)
+        viewModel.scan(applicationContext)
     }
 
     private fun observeViewModel() {

@@ -415,7 +415,7 @@ class WindowsWSL2AdapterManager {
 
     try {
       // Kill the capture process
-      await this._executeWSLCommand(`pkill -f tcpdump`, true);
+      await this._executeWSLCommand('pkill -f tcpdump', true);
       // or await this._executeWSLCommand(`pkill -f bettercap`, true);
 
       process.status = 'stopped';

@@ -20,7 +20,7 @@ require('dotenv').config();
 
 const path      = require('path');
 const Fastify   = require('fastify');
-const speakeasy = require('speakeasy');
+const { authenticator } = require('otplib');
 const qrcode    = require('qrcode');
 
 const config            = require('./config');
@@ -57,12 +57,12 @@ fastify.register(require('@fastify/cors'), {
 fastify.register(require('@fastify/helmet'), {
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc:  ["'self'", "'unsafe-inline'"],
-      styleSrc:   ["'self'", "'unsafe-inline'", 'https://unpkg.com', 'https://fonts.googleapis.com'],
-      imgSrc:     ["'self'", 'data:', 'https:', 'blob:'],
-      connectSrc: ["'self'", 'ws:', 'wss:'],
-      fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
+      defaultSrc: ['\'self\''],
+      scriptSrc:  ['\'self\'', '\'unsafe-inline\''],
+      styleSrc:   ['\'self\'', '\'unsafe-inline\'', 'https://unpkg.com', 'https://fonts.googleapis.com'],
+      imgSrc:     ['\'self\'', 'data:', 'https:', 'blob:'],
+      connectSrc: ['\'self\'', 'ws:', 'wss:'],
+      fontSrc:    ['\'self\'', 'https://fonts.gstatic.com'],
     },
   },
 });
@@ -100,7 +100,7 @@ fastify.register(require('@fastify/static'), {
 // ── Shared state decorators (accessible in all route plugins) ─────────────────
 
 fastify.decorate('config',               config);
-fastify.decorate('speakeasy',            speakeasy);
+fastify.decorate('authenticator',        authenticator);
 fastify.decorate('qrcode',               qrcode);
 fastify.decorate('aiService',            aiService);
 fastify.decorate('wifiScanner',          wifiScanner);

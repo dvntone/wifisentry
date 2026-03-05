@@ -102,15 +102,15 @@ async function addFirewallRule(port) {
   }
 
   const netshArgs =
-    `advfirewall firewall add rule ` +
+    'advfirewall firewall add rule ' +
     `name="${FIREWALL_RULE_NAME}" ` +
     `dir=in action=allow protocol=TCP localport=${port}`;
 
   // PowerShell Start-Process with -Verb RunAs triggers a UAC elevation prompt.
   const psCommand =
-    `Start-Process -FilePath netsh ` +
+    'Start-Process -FilePath netsh ' +
     `-ArgumentList '${netshArgs}' ` +
-    `-Verb RunAs -Wait`;
+    '-Verb RunAs -Wait';
 
   try {
     await execAsync(`powershell -NoProfile -Command "${psCommand}"`, { timeout: 30000 });
@@ -144,9 +144,9 @@ async function removeFirewallRule() {
   if (os.platform() !== 'win32') return { success: true };
 
   const psCommand =
-    `Start-Process -FilePath netsh ` +
+    'Start-Process -FilePath netsh ' +
     `-ArgumentList 'advfirewall firewall delete rule name="${FIREWALL_RULE_NAME}"' ` +
-    `-Verb RunAs -Wait`;
+    '-Verb RunAs -Wait';
 
   try {
     await execAsync(`powershell -NoProfile -Command "${psCommand}"`, { timeout: 30000 });

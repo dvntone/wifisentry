@@ -3,11 +3,10 @@ const authRoutes = require('../routes/auth');
 const config = require('../config');
 
 // Mock decorators
-const mockSpeakeasy = {
-  generateSecret: jest.fn(() => ({ base32: 'test-secret', otpauth_url: 'otpauth://test' })),
-  totp: {
-    verify: jest.fn(() => true),
-  },
+const mockAuthenticator = {
+  generateSecret: jest.fn(() => 'test-secret'),
+  keyuri: jest.fn(() => 'otpauth://test'),
+  check: jest.fn(() => true),
 };
 const mockQrcode = {
   toDataURL: jest.fn((url, cb) => cb(null, 'data:image/png;base64,test')),
@@ -18,12 +17,11 @@ describe('Auth Routes', () => {
 
   beforeEach(async () => {
     fastify = Fastify();
-    
+
     // Decorate fastify with mocks needed by authRoutes
     fastify.decorate('config', config);
-    fastify.decorate('speakeasy', mockSpeakeasy);
-    fastify.decorate('qrcode', mockQrcode);
-    
+    fastify.decorate('authenticator', mockAuthenticator);
+    fastify.decorate('qrcode', mockQrcode);    
     // Mock session (simple version for testing)
     fastify.addHook('preHandler', (request, reply, done) => {
       request.session = request.session || {};

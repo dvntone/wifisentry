@@ -273,7 +273,7 @@ wifisentry-1/
 ✅ **Git history cleaned** - No `.env` in repository  
 ✅ **HTTPS enforcement** - Properly configured for production via `secure` cookie flag  
 ✅ **Database connection** - Using MongoDB Atlas SRV (encrypted TLS)  
-✅ **2FA support** - Speakeasy/QR code implementation present  
+✅ **2FA support** - otplib/QR code implementation present  
 
 ---
 

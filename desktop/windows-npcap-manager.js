@@ -394,8 +394,8 @@ class WindowsNpcapManager {
     try {
       const { stdout } = await execAsync(
         `"${this.tsharkPath}" -r "${captureFile}" -T fields ` +
-        `-e frame.time -e wlan.sa -e wlan.da -e wlan.ssid -e wlan.fc.type_subtype` +
-        ` -E header=y -E separator=, -c 200`,
+        '-e frame.time -e wlan.sa -e wlan.da -e wlan.ssid -e wlan.fc.type_subtype' +
+        ' -E header=y -E separator=, -c 200',
         { timeout: 30000, maxBuffer: 10 * 1024 * 1024 }
       );
       return { success: true, tool: 'tshark', summary: stdout };

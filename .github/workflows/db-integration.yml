@@ -52,9 +52,9 @@ jobs:
           echo "Verifying MongoDB connectivity..."
           for i in $(seq 1 10); do
             if node -e "
-              const {MongoClient}=require('mongodb');
-              MongoClient.connect(process.env.MONGODB_URI_TEST)
-                .then(c=>{c.close();process.exit(0)})
+              const mongoose=require('mongoose');
+              mongoose.connect(process.env.MONGODB_URI_TEST)
+                .then(c=>{mongoose.disconnect();process.exit(0)})
                 .catch(err=>{console.error(err.message);process.exit(1)});
             "; then
               echo "MongoDB is ready"
