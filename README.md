@@ -1,100 +1,69 @@
 <div align="center">
-  <img src="docs/logo.svg" alt="Wi-Fi Sentry logo" width="96" height="96"/>
-  <h1>Wi-Fi Sentry</h1>
-  <p>Real-time Wi-Fi threat detection — on Android, Windows, or any browser.</p>
+  <img src="docs/logo.svg" alt="Wi-Fi Sentry logo" width="128" height="128"/>
+  <h1>W I F I &nbsp; S E N T R Y</h1>
+  <p><strong>Professional-Grade Wireless Threat Detection & Intelligence</strong></p>
+  <p><i>Android 15+ Native • Windows Desktop • Next.js Cyber-Dashboard</i></p>
   <p>
     <a href="https://sonarcloud.io/summary/new_code?id=dvntone_wifisentry">
       <img src="https://sonarcloud.io/api/project_badges/measure?project=dvntone_wifisentry&metric=alert_status" alt="Quality Gate Status" />
     </a>
+    <img src="https://img.shields.io/badge/version-1.2.8d-0e7490.svg" alt="Version 1.2.8d" />
+    <img src="https://img.shields.io/badge/license-MIT-34d399.svg" alt="License MIT" />
   </p>
 </div>
 
-## 📥 Download
+---
 
-**[⬇️ Latest Release — GitHub Releases page](https://github.com/dvntone/wifisentry/releases/latest)**
+## 📡 System Overview
+WiFi Sentry is a distributed security suite designed to detect and neutralize wireless threats like **Evil Twins, Karma Attacks, and Rogue HID Peripherals**. It combines native low-level hardware access with Google Gemini AI to provide actionable intelligence on your wireless environment.
 
-| Platform | Artifact | Server required? |
+### 🛠️ Consolidated Architecture
+| Component | Technology | Purpose |
 |---|---|---|
-| **Android APK** (native) | `app-dev-release.apk` | ❌ No — fully on-device |
-| Windows Desktop (Electron x64) | `.exe` installer | ❌ No — bundled |
-| Web PWA | `.tar.gz` / `.zip` | ✅ Yes — `npm start` |
-
-> See [CHANGES.md](./CHANGES.md) for a full changelog.
+| **Android Native** | Kotlin / API 35 | Mobile field sensor & standalone detector. |
+| **Desktop App** | Electron / Fastify | High-privilege monitor mode & packet capture. |
+| **PWA Dashboard** | Next.js 16 / Tailwind | Unified "Cyber Terminal" control center. |
+| **AI Engine** | Gemini 1.5 Flash | Behavioral analysis & remediation advice. |
 
 ---
 
-## 📱 Android app
+## 🚀 Installation
 
-<img src="docs/screenshots/screenshot-scan.svg" alt="Wi-Fi Sentry scan screen" width="270" align="right"/>
+### **Android (Mobile Sensor)**
+1. Download the latest `app-dev-release.apk` from [Releases](https://github.com/dvntone/wifisentry/releases).
+2. Sideload to your device.
+3. **Note:** On Android 15, you may need to enable "Allow Restricted Settings" in App Info to grant fine location/bluetooth permissions.
 
-The Android APK is a **fully native app** — no Node.js, no npm, no extra tools, no internet connection required. All scanning and threat analysis runs on-device using Android's built-in `WifiManager`.
-
-**Quick install:**
-1. Download `app-dev-release.apk` from the [Releases page](https://github.com/dvntone/wifisentry/releases/latest)
-2. Enable **Install from unknown sources** in Android Settings
-3. Install and open **Wi-Fi Sentry**
-4. Grant location permission when prompted
-5. Tap **Scan Networks**
-
-See [`android-native/README.md`](./android-native/README.md) for the full feature list and build instructions.
-
-<br clear="right"/>
+### **Desktop (Windows/Linux)**
+1. Download the `.exe` installer (Windows) or the `.tar.gz` (Web/Linux).
+2. Install **Wireshark/Npcap** (required for 802.11 monitor mode).
+3. Launch `WiFi Sentry.exe` to start the local sensor and dashboard.
 
 ---
 
-## ✨ Features
+## 🛡️ V2 Roadmap: The Pillars of Security
 
-- **15 on-device threat heuristics** — Karma, evil twin, Wi-Fi Pineapple, MAC spoofing, beacon flood, BSSID near-clone, and more
-- **Live dual-panel UI** — All networks and flagged threats side-by-side with sortable columns
-- **Continuous monitoring** — Background scanning with OS notifications
-- **Scan history & export** — CSV, plain text, WiGLE CSV v1.4, and m8b formats
-- **AP change analysis** — Detects access-point moves, band shifts, and rogue insertions across scan history
-- **Gemini AI integration** — Tap any flagged network to get an AI-powered threat assessment (free API key, on-device only)
-- **WiGLE import** — Seed your local threat database from existing wardriving data
-- **Web PWA / Electron desktop** — Node.js backend with Next.js dashboard for desktop or browser use
+### **Pillar 1: Biometric Defense**
+Full biometric locking (Fingerprint/PIN) on Android to protect local scan history and API keys from physical unauthorized access.
 
-## 🏗️ Architecture
+### **Pillar 2: AI-Native Intelligence**
+Standardized Gemini prompts across all platforms to detect "low-and-slow" surveillance patterns that static heuristics miss.
 
-| Architecture | Android (native) | Web / Desktop / PWA |
-|---|---|---|
-| Runtime | On-device (Kotlin) | Node.js (Fastify) + Next.js |
-| Scanning | Android `WifiManager` | `node-wifi` (Native OS tools) |
-| Threat engine | Kotlin `ThreatAnalyzer` | JavaScript Heuristics |
-| Security | Biometric / OS level | `otplib` (TOTP/2FA) + Fastify Helmet |
-| AI | Gemini 1.5 Flash | Gemini SDK (aiService.js) |
+### **Pillar 3: Companion Sync**
+Real-time WebSocket streaming. Use your Android device as a remote sensor that feeds live data into your PC's cyber-terminal.
 
-## 🚀 Web / Desktop Quick Start
+### **Pillar 4: Bluetooth Perimeter**
+Expansion into BLE (Bluetooth Low Energy) tracking to detect stalker-tags (AirTags) and rogue HID peripherals.
 
-```bash
-# 1. Install dependencies
-npm install
+### **Pillar 5: Cyber-Dashboard UX**
+A unified "Terminal" aesthetic with Slate-950 backgrounds, monospace typography, and neon teal accents.
 
-# 2. Configure environment (optional — copy and edit)
-cp .env.example .env
+---
 
-# 3. Start backend
-npm start
+## 🧪 Security & Quality
+WiFi Sentry is continuously audited via **SonarCloud** to meet OWASP security standards. No data leaves your device unless you explicitly opt-in to AI Threat Analysis.
 
-# 4. Start frontend (new terminal)
-cd web-app && npm run dev
-```
-
-Dashboard at **http://localhost:3000**. See [INSTALLATION.md](./INSTALLATION.md) for full prerequisites and troubleshooting.
-
-## 🚦 Roadmap
-
-- [x] Native Android APK — no server required
-- [x] Gemini AI per-network threat assessment
-- [x] WiGLE import / export
-- [ ] Bluetooth threat detection
-- [ ] Real-time WebSocket alerts
-- [ ] Machine learning threat classification
-- [ ] 5G network analysis
-
-## 📄 License & Contributing
-
-MIT — see [LICENSE](./LICENSE).
-
-Contributions welcome: fork → feature branch → PR.
-
-For bugs or questions open a [GitHub Issue](https://github.com/dvntone/wifisentry/issues).
+---
+<div align="center">
+  <p>© 2026 WiFi Sentry Team • Secure the Airwaves</p>
+</div>

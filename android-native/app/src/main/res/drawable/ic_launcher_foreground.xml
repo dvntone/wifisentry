@@ -1,31 +1,41 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <!-- Shield outline — proportions matched to docs/logo.svg (200×200 → 108×108, scale 0.54) -->
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    <!-- Cyber Hexagon Background -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M54,16 L24,29 L24,56 C24,75 37,89 54,95 C71,89 84,75 84,56 L84,29 Z" />
-    <!-- Outer Wi-Fi arc -->
+        android:fillColor="#0f172a"
+        android:strokeColor="#22d3ee"
+        android:strokeWidth="4"
+        android:pathData="M100 5 L182.27 52.5 L182.27 147.5 L100 195 L17.73 147.5 L17.73 52.5 Z" />
+    
+    <!-- Outer Glow -->
     <path
-        android:fillAlpha="0"
-        android:fillColor="#6200EE"
-        android:strokeColor="#6200EE"
+        android:strokeColor="#22d3ee"
+        android:strokeWidth="2"
         android:strokeLineCap="round"
-        android:strokeWidth="3"
-        android:pathData="M33,44 Q33,30 54,30 Q75,30 75,44" />
-    <!-- Inner Wi-Fi arc -->
+        android:pathData="M40 65 L25 55 M160 65 L175 55 M100 15 L100 30 M100 185 L100 170" />
+
+    <!-- Angular Shield -->
     <path
-        android:fillAlpha="0"
-        android:fillColor="#6200EE"
-        android:strokeColor="#6200EE"
-        android:strokeLineCap="round"
+        android:fillColor="#1e293b"
+        android:strokeColor="#22d3ee"
         android:strokeWidth="3"
-        android:pathData="M42,52 Q42,43 54,43 Q66,43 66,52" />
-    <!-- Wi-Fi dot -->
+        android:pathData="M100 40 L55 60 L55 105 C55 135 75 160 100 170 C125 160 145 135 145 105 L145 60 Z" />
+    
+    <!-- Cyber Wi-Fi Signal Dot -->
     <path
-        android:fillColor="#6200EE"
-        android:pathData="M54,61 m-4,0 a4,4 0 0,1 8,0 a4,4 0 0,1 -8,0" />
+        android:fillColor="#34d399"
+        android:pathData="M96 125 L104 125 L104 133 L96 133 Z" />
+    
+    <!-- Arcs -->
+    <path
+        android:strokeColor="#22d3ee"
+        android:strokeWidth="5"
+        android:pathData="M80 110 L100 95 L120 110" />
+    <path
+        android:strokeColor="#22d3ee"
+        android:strokeWidth="5"
+        android:pathData="M65 95 L100 70 L135 95" />
 </vector>

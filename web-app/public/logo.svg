@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- Cyber Hexagon Background -->
+  <path d="M100 5 L182.27 52.5 L182.27 147.5 L100 195 L17.73 147.5 L17.73 52.5 Z" fill="#0f172a" stroke="#22d3ee" stroke-width="4"/>
+  
+  <!-- Outer Glow/Circuit Pattern -->
+  <path d="M40 65 L25 55 M160 65 L175 55 M100 15 L100 30 M100 185 L100 170" stroke="#22d3ee" stroke-width="2" stroke-linecap="round opacity="0.5"/>
+
+  <!-- Angular Shield -->
+  <path fill="#1e293b" stroke="#22d3ee" stroke-width="3" 
+        d="M100 40 L55 60 L55 105 C55 135 75 160 100 170 C125 160 145 135 145 105 L145 60 Z"/>
+  
+  <!-- Cyber Wi-Fi Signal (Angular) -->
+  <!-- Dot -->
+  <rect x="96" y="125" width="8" height="8" fill="#34d399" transform="rotate(45 100 129)"/>
+  
+  <!-- Arc 1 -->
+  <path fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="square"
+        d="M80 110 L100 95 L120 110"/>
+        
+  <!-- Arc 2 -->
+  <path fill="none" stroke="#22d3ee" stroke-width="5" stroke-linecap="square"
+        d="M65 95 L100 70 L135 95"/>
+</svg>
