@@ -11,8 +11,8 @@ android {
         applicationId "com.wifisentry.app"
         minSdk 31
         targetSdk 35
-        versionCode 22
-        versionName "1.2.8j"
+        versionCode 23
+        versionName "1.2.8k"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -27,6 +27,14 @@ android {
             dimension "environment"
             applicationIdSuffix ".dev"
             versionNameSuffix "-dev"
+        }
+    }
+
+    signingConfigs {
+        debug {
+            // Use the default debug keystore that Gradle expects
+            // This is usually at ~/.android/debug.keystore on local machines
+            // but for CI, we can define it or let it use the default.
         }
     }
 
