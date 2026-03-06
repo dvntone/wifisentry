@@ -42,6 +42,7 @@ dist/
 build/
 .next/
 out/
+public/_next/
 
 # Testing
 coverage/

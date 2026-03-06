@@ -349,7 +349,7 @@ class WindowsNpcapManager {
     if (options.packetCount > 0)      args.push('-c', String(options.packetCount));
     if (options.filter)               args.push('-f', options.filter);
 
-    const child = spawn(`"${tool}"`, args, { shell: true, detached: true, stdio: 'ignore' });
+    const child = spawn(tool, args, { shell: false, detached: true, stdio: 'ignore' });
     child.unref();
 
     const processId = `npcap-${timestamp}`;

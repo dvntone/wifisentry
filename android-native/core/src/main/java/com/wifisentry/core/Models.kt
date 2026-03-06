@@ -79,7 +79,8 @@ val ThreatType.severity: ThreatSeverity
         ThreatType.DEAUTH_FLOOD,
         ThreatType.PROBE_RESPONSE_ANOMALY,
         ThreatType.BEACON_FLOOD,
-        ThreatType.INCONSISTENT_CAPABILITIES -> ThreatSeverity.HIGH
+        ThreatType.INCONSISTENT_CAPABILITIES,
+        ThreatType.KRACK -> ThreatSeverity.HIGH
 
         ThreatType.OPEN_NETWORK,
         ThreatType.SECURITY_CHANGE,
@@ -87,7 +88,8 @@ val ThreatType.severity: ThreatSeverity
         ThreatType.MULTI_SSID_SAME_OUI,
         ThreatType.BSSID_NEAR_CLONE,
         ThreatType.SUSPICIOUS_SIGNAL_STRENGTH,
-        ThreatType.CHANNEL_SHIFT -> ThreatSeverity.MEDIUM
+        ThreatType.CHANNEL_SHIFT,
+        ThreatType.PMKID_SNIFFING -> ThreatSeverity.MEDIUM
 
         ThreatType.WPS_VULNERABLE,
         ThreatType.MULTIPLE_BSSIDS,
@@ -177,7 +179,22 @@ enum class ThreatType {
      *  signature: the rogue device answers client probe requests for any SSID
      *  but never spontaneously beacons for those SSIDs itself.
      *  Requires root + monitor mode + tshark. */
-    PROBE_RESPONSE_ANOMALY
+    PROBE_RESPONSE_ANOMALY,
+
+    /** An EAPOL Message-1 (WPA2 4-way handshake initiation) was received from
+     *  a MAC address that has not been recorded as an associated client of the
+     *  target AP.  This is the PMKID offline-capture technique: an attacker
+     *  forces the AP to send M1 (which contains the PMKID) without completing
+     *  association, then brute-forces the PSK offline.
+     *  Requires root + monitor mode + EAPOL frame capture. */
+    PMKID_SNIFFING,
+
+    /** A duplicate WPA2 4-way handshake Message-3 replay counter was detected
+     *  from the same AP.  KRACK (Key Reinstallation Attack) forces nonce reuse
+     *  by retransmitting M3; duplicate replay counters are the definitive
+     *  on-device indicator.
+     *  Requires root + monitor mode + EAPOL frame capture. */
+    KRACK,
 }
 
 /**
@@ -205,6 +222,63 @@ fun ScanResult.toScannedNetwork(threats: List<ThreatType> = emptyList()): Scanne
         wifiStandard = wifiStandard
     )
 }
+
+// ── Frame-level data models (require root + monitor mode) ─────────────────────
+
+/**
+ * A captured 802.11 Deauthentication or Disassociation management frame.
+ * Sourced from tshark / tcpdump output when the device is in monitor mode.
+ */
+data class DeauthFrame(
+    val sourceMac: String,
+    val destMac: String,
+    val bssid: String,
+    val reasonCode: Int,
+    val timestampMs: Long,
+)
+
+/**
+ * A captured EAPOL (802.1X) frame from the WPA2 4-way handshake.
+ * Used for PMKID harvest detection (M1) and KRACK detection (M3 replay).
+ */
+data class EapolFrame(
+    val sourceMac: String,
+    val bssid: String,
+    /** 1–4 for the WPA2 4-way handshake message number. */
+    val messageNumber: Int,
+    val replayCounter: Long,
+    val nonce: ByteArray,
+    val timestampMs: Long,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is EapolFrame) return false
+        return sourceMac == other.sourceMac && bssid == other.bssid &&
+               messageNumber == other.messageNumber && replayCounter == other.replayCounter &&
+               nonce.contentEquals(other.nonce) && timestampMs == other.timestampMs
+    }
+    override fun hashCode(): Int {
+        var r = sourceMac.hashCode()
+        r = 31 * r + bssid.hashCode()
+        r = 31 * r + messageNumber
+        r = 31 * r + replayCounter.hashCode()
+        r = 31 * r + nonce.contentHashCode()
+        r = 31 * r + timestampMs.hashCode()
+        return r
+    }
+}
+
+/**
+ * A threat detected at the frame level (deauth flood, PMKID, KRACK).
+ * Produced by [ThreatEngine]'s frame-analysis methods rather than by scan analysis.
+ */
+data class FrameThreatEvent(
+    val threatType: ThreatType,
+    val bssid: String,
+    val ssid: String,
+    val description: String,
+    val timestampMs: Long = System.currentTimeMillis(),
+)
 
 /**
  * Category of change detected between two observations of the same AP.
