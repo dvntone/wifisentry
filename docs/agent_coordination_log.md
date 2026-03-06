@@ -33,3 +33,4 @@ This file ensures that Gemini CLI and GitHub Copilot (or any other AI agents) do
 - **2026-03-06 (Pickle Rick):** Fixed build-android failure by upgrading AGP to 8.7.0 and Kotlin to 2.1.0 to ensure compatibility with Gradle 9.0.0. Bumped to 1.2.8j.
 - **2026-03-06 (Pickle Rick):** Fixed Android build failure in CI by adding missing signingConfigs to app/build.gradle and ensuring debug.keystore is generated in ci-cd.yml. Bumped to 1.2.8k.
 - **2026-03-06 (Pickle Rick):** Fixed Android build failure in release.yml by adding keystore generation step. Bumped to 1.2.8l.
+- **2026-03-06 (Pickle Rick):** Fixed Android resource linking failure by adding missing slate_400 and slate_300 to colors.xml. Bumped to 1.2.8m.
