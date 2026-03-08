@@ -7,6 +7,26 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
+const Joi = require('joi');
+
+// ── Validation schemas ────────────────────────────────────────────────────────
+
+const selectAdapterSchema = Joi.object({
+  adapterId:   Joi.string().max(128).required(),
+  adapterName: Joi.string().max(256).optional(),
+  platform:    Joi.string().valid('windows', 'android').required(),
+});
+
+const updateSettingsSchema = Joi.object({
+  platform: Joi.string().valid('windows', 'android').required(),
+  settings: Joi.object({
+    useExternalAdapter:     Joi.boolean().optional(),
+    autoDetectAdapters:     Joi.boolean().optional(),
+    monitoringMode:         Joi.string().valid('default', 'monitor', 'promiscuous').optional(),
+    rootAccessEnabled:      Joi.boolean().optional(),
+    adapterRefreshInterval: Joi.number().integer().min(1000).max(60000).optional(),
+  }).required(),
+});
 
 module.exports = async function adapterRoutes(fastify) {
   // ── GET /api/adapters ───────────────────────────────────────────────────
@@ -64,7 +84,9 @@ module.exports = async function adapterRoutes(fastify) {
   fastify.put('/api/adapters/settings', async (request, reply) => {
     const userId = request.session?.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Not authenticated' });
-    const { platform, settings } = request.body;
+    const { error, value } = updateSettingsSchema.validate(request.body);
+    if (error) return reply.status(400).send({ error: error.details[0].message });
+    const { platform, settings } = value;
     if (platform === 'android' && settings?.rootAccessEnabled) {
       const hasRoot = await checkAndroidRootAccess();
       if (!hasRoot) return reply.status(403).send({ error: 'Root access not available on this device' });
@@ -77,8 +99,9 @@ module.exports = async function adapterRoutes(fastify) {
   fastify.post('/api/adapters/select', async (request, reply) => {
     const userId = request.session?.user?.id;
     if (!userId) return reply.status(401).send({ error: 'Not authenticated' });
-    const { adapterId, adapterName, platform } = request.body;
-    if (!adapterId || !platform) return reply.status(400).send({ error: 'Missing required fields' });
+    const { error, value } = selectAdapterSchema.validate(request.body);
+    if (error) return reply.status(400).send({ error: error.details[0].message });
+    const { adapterId, adapterName, platform } = value;
     const adapterSettings = { settingsId: uuidv4(), userId, platform, selectedAdapter: { id: adapterId, name: adapterName, timestamp: new Date() } };
     return reply.send({ success: true, message: `Selected adapter: ${adapterName}`, settings: adapterSettings });
   });

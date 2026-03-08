@@ -5,6 +5,13 @@
  * Wraps dependency-checker and platform-installer modules.
  */
 
+const Joi = require('joi');
+
+const installScriptSchema = Joi.object({
+  toolIds: Joi.array().items(Joi.string().alphanum().max(64)).max(20).default([]),
+  update:  Joi.boolean().default(true),
+});
+
 module.exports = async function dependencyRoutes(fastify) {
   const { dependencyChecker, platformInstaller } = fastify;
 
@@ -62,7 +69,9 @@ module.exports = async function dependencyRoutes(fastify) {
 
   fastify.post('/api/setup/install-script', async (request, reply) => {
     try {
-      const { toolIds = [], update = true } = request.body;
+      const { error, value } = installScriptSchema.validate(request.body);
+      if (error) return reply.status(400).send({ error: error.details[0].message });
+      const { toolIds, update } = value;
       return reply.send(platformInstaller.generateInstallScript(toolIds, { update }));
     } catch (err) {
       return reply.status(500).send({ error: 'Failed to generate installation script', details: err.message });
