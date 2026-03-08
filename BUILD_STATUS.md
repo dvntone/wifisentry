@@ -76,6 +76,10 @@
 - Updated `android-native/README.md` "Project versioning" section to reflect new versionCode/versionName
 - Updated root `README.md` version badge, `docs/agent_coordination_log.md` current version, and `docs/ARCHITECTURE_BLUEPRINT.md` version header
 
+### 2026-03-08 — Fix Detekt workflow SHA verification failure
+- Fixed incorrect jq path in `.github/workflows/detekt.yml`: `tagCommit` is a field on `release`, not on `releaseAssets`; changed `.data.repository.release.releaseAssets.tagCommit.oid` → `.data.repository.release.tagCommit.oid`
+- Resolves Detekt scan failure from workflow run #22818467132 (job #66187371553): "Release tag doesn't match expected commit SHA"
+
 ### 2026-03-08 — Fix CodeQL build failures
 - Fixed Kotlin compilation error: added missing `import android.content.Context` to `MainActivity.kt`
 - Fixed exhaustive `when` expressions in `ScanResultAdapter.kt`: added `PMKID_SNIFFING` and `KRACK` branches to `displayName()` and `detailDescription()`
