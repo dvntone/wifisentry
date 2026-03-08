@@ -300,10 +300,11 @@ function generateInstallScript(toolIds, options = {}) {
   }
 
   // Install each tool — only allow known-safe tool identifiers
+  const unknownTools = [];
   for (const toolId of toolIds) {
     const pkgName = helper.tools[toolId];
     if (!pkgName) {
-      // Silently skip unknown tools — never interpolate untrusted names
+      unknownTools.push(toolId);
       continue;
     }
     commands.push({
@@ -312,7 +313,7 @@ function generateInstallScript(toolIds, options = {}) {
     });
   }
 
-  return {
+  const result = {
     success: true,
     platform: env.platform,
     packageManager: helper.name,
@@ -327,6 +328,12 @@ function generateInstallScript(toolIds, options = {}) {
       isLinux: env.platform === 'linux'
     }
   };
+
+  if (unknownTools.length > 0) {
+    result.warnings = [`Unknown tool IDs ignored: ${unknownTools.join(', ')}`];
+  }
+
+  return result;
 }
 
 /**

@@ -17,7 +17,7 @@ const loginSchema = Joi.object({
 });
 
 const tokenSchema = Joi.object({
-  token: Joi.string().alphanum().max(10).required(),
+  token: Joi.string().alphanum().max(32).required(),
 });
 
 module.exports = async function authRoutes(fastify) {

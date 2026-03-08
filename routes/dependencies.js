@@ -8,7 +8,7 @@
 const Joi = require('joi');
 
 const installScriptSchema = Joi.object({
-  toolIds: Joi.array().items(Joi.string().alphanum().max(64)).max(20).default([]),
+  toolIds: Joi.array().items(Joi.string().pattern(/^[a-z0-9_-]+$/i).max(64)).max(20).default([]),
   update:  Joi.boolean().default(true),
 });
 

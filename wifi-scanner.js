@@ -346,7 +346,10 @@ function initialize() {
  */
 async function scanAndroid() {
   return new Promise((resolve, reject) => {
-    const rishPath = path.join(process.env.HOME || '/tmp', 'rish');
+    if (!process.env.HOME) {
+      return reject(new Error('Android scan failed: HOME environment variable is not set'));
+    }
+    const rishPath = path.join(process.env.HOME, 'rish');
     execFile(rishPath, ['-c', 'cmd -w wifi list-scan-results'], (error, stdout, stderr) => {
       if (error) {
         return reject(new Error(`Android scan failed: ${stderr || error.message}`));
