@@ -44,6 +44,8 @@
     <string name="threat_channel_shift">Band shift (BSSID moved to different band)</string>
     <string name="threat_deauth_flood">Deauth flood detected (root+)</string>
     <string name="threat_probe_response_anomaly">Karma / Pineapple probe-response (root+)</string>
+    <string name="threat_pmkid_sniffing">PMKID capture attempt (root+)</string>
+    <string name="threat_krack">KRACK key reinstallation (root+)</string>
 
     <!-- Continuous monitoring -->
     <string name="button_start_monitoring">▶ Start Continuous Monitoring</string>
@@ -127,6 +129,8 @@
     <string name="threat_detail_channel_shift">This router was previously seen on a different frequency band, suggesting a rogue device may be impersonating it.</string>
     <string name="threat_detail_deauth_flood">Unusual disconnect signals were detected, a technique attackers use to force your device off a real network onto a fake one.</string>
     <string name="threat_detail_probe_response_anomaly">A hidden device is responding to any network name your phone searches for, which is the defining signature of rogue hotspot tools.</string>
+    <string name="threat_detail_pmkid_sniffing">An unauthenticated device sent a handshake initiation to capture the PMKID hash, which can be used to crack the Wi-Fi password offline.</string>
+    <string name="threat_detail_krack">A duplicate handshake message was detected, which is the signature of a key reinstallation attack that can decrypt your Wi-Fi traffic.</string>
 
     <!-- History export -->
     <string name="button_export">⬆ Export History</string>

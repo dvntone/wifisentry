@@ -184,6 +184,8 @@ internal fun ThreatType.displayName(ctx: Context): String = when (this) {
     ThreatType.CHANNEL_SHIFT             -> ctx.getString(R.string.threat_channel_shift)
     ThreatType.DEAUTH_FLOOD              -> ctx.getString(R.string.threat_deauth_flood)
     ThreatType.PROBE_RESPONSE_ANOMALY    -> ctx.getString(R.string.threat_probe_response_anomaly)
+    ThreatType.PMKID_SNIFFING            -> ctx.getString(R.string.threat_pmkid_sniffing)
+    ThreatType.KRACK                     -> ctx.getString(R.string.threat_krack)
 }
 
 internal fun ThreatType.detailDescription(ctx: Context): String = when (this) {
@@ -202,5 +204,7 @@ internal fun ThreatType.detailDescription(ctx: Context): String = when (this) {
     ThreatType.CHANNEL_SHIFT             -> ctx.getString(R.string.threat_detail_channel_shift)
     ThreatType.DEAUTH_FLOOD              -> ctx.getString(R.string.threat_detail_deauth_flood)
     ThreatType.PROBE_RESPONSE_ANOMALY    -> ctx.getString(R.string.threat_detail_probe_response_anomaly)
+    ThreatType.PMKID_SNIFFING            -> ctx.getString(R.string.threat_detail_pmkid_sniffing)
+    ThreatType.KRACK                     -> ctx.getString(R.string.threat_detail_krack)
 }
 
