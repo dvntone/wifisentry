@@ -150,6 +150,13 @@
 - **Affected:** `REVIEW_SUMMARY.txt`, `agent_coordination_log.md`
 - **Note:** These are AI-generated session artifacts, not versioned project files. Move `agent_coordination_log.md` to `docs/` and delete `REVIEW_SUMMARY.txt`.
 
+### KI-023 [FIXED] Microsoft C++ Code Analysis CI Failing (Missing CMakeLists.txt)
+- **Fixed in:** PR #64 — added minimal `CMakeLists.txt` to repository root
+- **Affected:** `.github/workflows/msvc.yml` — `Configure CMake` step
+- **Symptom:** `CMake Error: The source directory does not appear to contain CMakeLists.txt.` — workflow fails on every push/PR.
+- **Root cause:** The `msvc.yml` workflow runs `cmake -B build` but the project has no C++ code and therefore no `CMakeLists.txt`. The workflow was added as a GitHub security template without adapting it to this JavaScript/Android/Kotlin project.
+- **Fix:** Added a minimal `CMakeLists.txt` (`project(WifiSentry LANGUAGES NONE)`) so CMake configures successfully. The MSVC Code Analysis action finds no C++ sources and produces a clean empty SARIF report.
+
 ---
 
 ## Archive (Resolved > 30 Days)
