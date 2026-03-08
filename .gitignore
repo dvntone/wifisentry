@@ -55,3 +55,21 @@ temp/
 # Secret scan results
 gitleaks-report.json
 .gitleaks-report.json
+
+# Flutter / Dart (not part of this project — Kotlin-only Android)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+analysis_options.yaml
+pubspec.lock
+pubspec.yaml
+*.iml
+/android/
+/lib/
+/ios/
+/web/
+test/widget_test.dart
+
+# MongoDB Compass playground files
+playground-*.mongodb.js
