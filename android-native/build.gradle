@@ -2,4 +2,12 @@ plugins {
     id 'com.android.application' version '8.7.0' apply false
     id 'com.android.library' version '8.7.0' apply false
     id 'org.jetbrains.kotlin.android' version '2.1.0' apply false
+    id 'org.sonarqube' version '7.2.3.7755'
+}
+
+sonar {
+    properties {
+        property "sonar.projectKey", "dvntone_wifisentry"
+        property "sonar.organization", "dvntone"
+    }
 }
