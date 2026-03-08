@@ -35,23 +35,25 @@ module.exports = async function scanRoutes(fastify) {
       const scannedNetworks = await wifiScanner.scan();
       const scanId = uuidv4();
 
-      // Load recent scan history for history-aware threat checks
+      // Load scan history and run AI analysis in parallel (both are independent of each other)
       let scanHistory = [];
-      try {
-        scanHistory = await wifiScanner.getScanHistory(20);
-      } catch (histErr) {
-        fastify.log.warn({ err: histErr }, 'Could not load scan history');
-      }
-
-      // Real-time AI analysis
       let aiAnalysisResult = {};
       try {
-        aiAnalysisResult = await aiService.analyzeDetectionResults(scannedNetworks);
-      } catch (aiErr) {
-        fastify.log.error({ err: aiErr }, 'AI Analysis failed');
+        [scanHistory, aiAnalysisResult] = await Promise.all([
+          wifiScanner.getScanHistory(20).catch(histErr => {
+            fastify.log.warn({ err: histErr }, 'Could not load scan history');
+            return [];
+          }),
+          aiService.analyzeDetectionResults(scannedNetworks).catch(aiErr => {
+            fastify.log.error({ err: aiErr }, 'AI Analysis failed');
+            return {};
+          }),
+        ]);
+      } catch (parallelErr) {
+        fastify.log.error({ err: parallelErr }, 'Parallel pre-scan tasks failed');
       }
 
-      // Full heuristic analysis (13 checks, history-aware)
+      // Full heuristic analysis (13 checks, history-aware) — requires scanHistory
       let heuristicResult = { annotated: scannedNetworks, allThreats: [] };
       try {
         heuristicResult = await wifiScanner.analyzeThreatPatterns(scannedNetworks, scanHistory);
@@ -72,10 +74,11 @@ module.exports = async function scanRoutes(fastify) {
 
       }
 
-      // Merge heuristic threats not already captured
-      const heuristicOnly = heuristicResult.allThreats.filter(t =>
-        !findings.some(f => f.ssid === t.ssid && f.bssid === t.bssid)
-      );
+      // Merge heuristic threats not already captured — use Set for O(1) lookup.
+      // '\0' is used as delimiter since it cannot appear in SSID or BSSID values.
+      const findingsKey = (f) => `${f.ssid}\0${f.bssid}`;
+      const findingsSet = new Set(findings.map(findingsKey));
+      const heuristicOnly = heuristicResult.allThreats.filter(t => !findingsSet.has(findingsKey(t)));
       findings = findings.concat(heuristicOnly);
 
       const networksToLog = heuristicResult.annotated.map(net => ({

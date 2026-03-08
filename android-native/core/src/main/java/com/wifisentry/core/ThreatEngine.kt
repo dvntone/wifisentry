@@ -215,12 +215,12 @@ class ThreatEngine(
     ): Boolean {
         if (ssid.isBlank()) return false
         val bssids = mutableSetOf<String>()
-        currentScan.filter { it.ssid == ssid && it.bssid.isNotBlank() }.forEach { bssids += it.bssid }
+        currentScan.filter { it.ssid == ssid && it.bssid.isNotBlank() }.mapTo(bssids) { it.bssid }
         val cutoff = System.currentTimeMillis() - recentWindowMs
         history.filter { it.timestampMs >= cutoff }
             .flatMap { it.networks }
             .filter { it.ssid == ssid && it.bssid.isNotBlank() }
-            .forEach { bssids += it.bssid }
+            .mapTo(bssids) { it.bssid }
         return bssids.size > 1
     }
 
