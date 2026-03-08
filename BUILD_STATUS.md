@@ -1,37 +1,39 @@
 # WiFi Sentry — Build Status
 
-> Last updated: 2026-03-05
+> Last updated: 2026-03-08
 > Update this file at the START and END of every development session.
 > Rule: Never write new code on top of a broken build. Fix red first.
 
 ---
 
-## Current Health: DEGRADED
+## Current Health: IMPROVING
 
 | Component | Status | Last Good Commit | Notes |
 |---|---|---|---|
-| Android APK | UNKNOWN | `52f6bf4` | Release workflow failing — APK may not be building |
-| Node.js Backend | UNKNOWN | `52f6bf4` | Not tested post-cleanup |
-| Next.js Frontend | UNKNOWN | `52f6bf4` | Not tested post-cleanup |
-| Electron Desktop | UNKNOWN | `52f6bf4` | Not tested |
-| DB Integration Tests | PASSING | `52f6bf4` | `db-integration.yml` — green |
-| SonarCloud | FAILING | last green unknown | `sonarcloud.yml` failing on main |
-| Release Pipeline | FAILING | last green unknown | `release.yml` failing on main |
-| Emergency Rollback | FAILING | last green unknown | `emergency-rollback.yml` failing |
+| Android APK | BUILDING | `c9416cf` | CI/CD Android build passing; release signing still unverified |
+| Node.js Backend | PASSING | `c9416cf` | Fastify with helmet, CORS, rate-limiting — security controls verified |
+| Next.js Frontend | BUILDING | `c9416cf` | Ubuntu CI build passing; Google Fonts blocked in sandbox env |
+| Electron Desktop | FIXING | current PR | `desktop:build-win` failure fixed (prior PR); remaining code quality fixes in this PR |
+| DB Integration Tests | PASSING | `c9416cf` | `db-integration.yml` — green |
+| SonarCloud | FAILING | last green unknown | `sonarcloud.yml` — verify SONAR_TOKEN secret |
+| Release Pipeline | FAILING | last green unknown | `release.yml` — verify KEYSTORE_* signing secrets |
+| Emergency Rollback | FAILING | last green unknown | `emergency-rollback.yml` — investigate |
 
 ---
 
-## CI Workflow Status (as of 2026-03-05)
+## CI Workflow Status (as of 2026-03-08)
 
-### wifisentry/main @ `52f6bf4`
+### wifisentry/main @ `c9416cf`
 
 | Workflow | Result | Action Required |
 |---|---|---|
 | Gemini Scheduled Issue Triage | SUCCESS | None |
 | DB Integration Tests | SUCCESS | None |
-| Release - Build & Deploy | FAILURE | Inspect logs — likely signing key issue |
+| CI/CD - Build & Test (Ubuntu) | PASSING | None |
+| CI/CD - Build & Test (Windows Desktop) | FIXED | `desktop:build-win` no longer rebuilds web app |
+| Release - Build & Deploy | FAILURE | Verify KEYSTORE_* secrets in repo settings |
 | SonarCloud Analysis | FAILURE | Verify SONAR_TOKEN secret is set |
-| Emergency Rollback | FAILURE | Inspect logs |
+| Emergency Rollback | FAILURE | Investigate logs |
 
 ---
 
@@ -55,7 +57,17 @@
 
 ## Session Log
 
-### 2026-03-08 — Add engineering roadmap
+### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
+- Fixed invalid semver version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
+- Fixed escaped template literals in `web-app/src/app/playground/page.tsx` (lines 55, 61): `\${...}` → `${...}`; tab buttons were rendering literal `${...}` text instead of active class
+- Fixed XSS vulnerability in `playground/page.tsx`: replaced `dangerouslySetInnerHTML={{ __html: renderedContent }}` with sandboxed `<iframe sandbox="" srcDoc={...}>` to isolate user-controlled HTML
+- Removed invalid Next.js 16 config option `eslint.ignoreDuringBuilds` from `web-app/next.config.ts` (not in `NextConfig` type — was causing `tsc --noEmit` errors)
+
+### 2026-03-08 — Fix desktop:build-win CI failure (Cannot find module '@tailwindcss/postcss')
+- Root cause: `desktop:build-win` script was `npm run web:build && npm run desktop:build`, causing the Windows CI step to re-run the Next.js build without web-app node_modules installed
+- Fixed `desktop:build-win` to `npm run desktop:build` (CI downloads pre-built web artifacts; no rebuild needed)
+- Fixed `build:all` script: was calling `desktop:build-web` which just re-ran `web:build` and never built the Electron app; now correctly calls `desktop:build`
+- Fixed `web-app/package.json`: pinned all dependency versions exactly (removed `^`/`~`), removed unused `@dataconnect/generated` dead dependency
 - Created `docs/ROADMAP.md` with Now/Next/Later buckets covering CI/CD improvements, Android code quality, and repo hygiene
 - PR addresses CI run #22810673223 / job #66167117143: compilation errors in `MainActivity.kt` (Context import) and `ScanResultAdapter.kt` (exhaustive when) were already resolved in prior PR #41; roadmap documents the strategy to prevent recurrence
 
