@@ -1,6 +1,6 @@
 # WiFi Sentry - Architecture & Design Blueprint
 
-**Version:** 1.2.8a
+**Version:** 1.2.9
 **Purpose:** This document serves as the master blueprint for the WiFi Sentry project. In the event of major refactoring, code loss, or platform migration, this file contains the core logic, structural patterns, and UI/UX design language required to rebuild the system to exact specifications.
 
 ---
