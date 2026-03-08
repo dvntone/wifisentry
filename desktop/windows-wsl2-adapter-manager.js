@@ -72,14 +72,16 @@ function sanitizeUsername(name) {
 
 /**
  * Validate a BPF filter expression for shell safety.
- * Allows alphanumeric characters, spaces, and BPF-specific operators/punctuation.
- * Rejects shell metacharacters that could enable injection.
- * @param {string} filter - BPF filter expression (e.g., 'tcp port 80')
+ * Allows alphanumeric characters, spaces, and BPF-specific operators/punctuation
+ * including `!` (negation), `<`/`>` (byte comparisons), and parentheses.
+ * Rejects shell metacharacters: semicolons, pipes, ampersands, dollar signs,
+ * backticks, backslashes, quotes, and control characters.
+ * @param {string} filter - BPF filter expression (e.g., 'tcp port 80', '!arp', 'len > 100')
  * @returns {string} - Validated BPF filter
  * @throws {Error} If the filter contains dangerous characters
  */
 function sanitizeBpfFilter(filter) {
-  if (typeof filter !== 'string' || /[;|&$`\\!><\r\n\t\0"']/.test(filter)) {
+  if (typeof filter !== 'string' || /[;|&$`\\\r\n\t\0"']/.test(filter)) {
     throw new Error(`Invalid BPF filter: ${String(filter).substring(0, 80)}`);
   }
   return filter;
@@ -390,7 +392,8 @@ class WindowsWSL2AdapterManager {
           `/tmp/wifi-sentry-capture-${timestamp}.pcap`
         );
 
-        let tcpdumpCmd = `tcpdump -i ${interfaceName} -P in`;
+        // Build tcpdump argument list — no shell string, no sh -c
+        const tcpdumpArgs = ['-i', interfaceName, '-P', 'in'];
 
         // Add packet count if specified
         if (options.packetCount > 0) {
@@ -398,17 +401,17 @@ class WindowsWSL2AdapterManager {
           if (!Number.isFinite(count) || count <= 0) {
             throw new Error('Invalid packet count');
           }
-          tcpdumpCmd += ` -c ${count}`;
+          tcpdumpArgs.push('-c', String(count));
         }
 
         // Add BPF filter if specified (validate BPF syntax characters)
         if (options.filter) {
           const safeFilter = sanitizeBpfFilter(options.filter);
-          tcpdumpCmd += ` "${safeFilter}"`;
+          tcpdumpArgs.push(safeFilter);
         }
 
         // Add output file
-        tcpdumpCmd += ` -w "${outputFile}"`;
+        tcpdumpArgs.push('-w', outputFile);
 
         console.log('[Promiscuous] Starting tcpdump capture');
 
@@ -421,8 +424,8 @@ class WindowsWSL2AdapterManager {
           status: 'running',
         });
 
-        // Execute tcpdump in WSL2 (non-blocking)
-        this._executeWSLCommandAsync(tcpdumpCmd, true);
+        // Execute tcpdump in WSL2 directly (non-blocking, no sh -c)
+        this._executeWSLCommandDirectAsync(['tcpdump', ...tcpdumpArgs], true);
 
         return {
           success: true,
@@ -550,9 +553,13 @@ class WindowsWSL2AdapterManager {
 
   /**
    * Execute command in WSL2 environment
+   * Enforces a 30-second timeout and a 10 MB combined stdout+stderr cap.
    * @private
    */
   async _executeWSLCommand(command, useSudo = false) {
+    const TIMEOUT_MS = 30000;
+    const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB
+
     try {
       const distro = sanitizeDistroName(this.wslDistro);
       const user = sanitizeUsername(this.wslusername);
@@ -566,10 +573,47 @@ class WindowsWSL2AdapterManager {
         const child = spawn('wsl', args, { stdio: ['ignore', 'pipe', 'pipe'] });
         let stdout = '';
         let stderr = '';
-        child.stdout.on('data', (chunk) => { stdout += chunk; });
-        child.stderr.on('data', (chunk) => { stderr += chunk; });
-        child.on('error', reject);
+        let totalBytes = 0;
+        let settled = false;
+
+        const killWith = (err) => {
+          if (settled) return;
+          settled = true;
+          try { child.kill(); } catch (_) { /* ignore */ }
+          reject(err);
+        };
+
+        const timer = setTimeout(() => {
+          killWith(new Error('WSL2 command timed out after 30 seconds'));
+        }, TIMEOUT_MS);
+
+        child.stdout.on('data', (chunk) => {
+          totalBytes += chunk.length;
+          if (totalBytes > MAX_OUTPUT_BYTES) {
+            killWith(new Error('WSL2 command output exceeded 10 MB limit'));
+            return;
+          }
+          stdout += chunk;
+        });
+
+        child.stderr.on('data', (chunk) => {
+          totalBytes += chunk.length;
+          if (totalBytes > MAX_OUTPUT_BYTES) {
+            killWith(new Error('WSL2 command output exceeded 10 MB limit'));
+            return;
+          }
+          stderr += chunk;
+        });
+
+        child.on('error', (err) => {
+          clearTimeout(timer);
+          killWith(err);
+        });
+
         child.on('close', (code) => {
+          clearTimeout(timer);
+          if (settled) return;
+          settled = true;
           if (stderr && !stderr.includes('Warning')) {
             console.warn('[WSL2] stderr:', stderr);
           }
@@ -598,6 +642,32 @@ class WindowsWSL2AdapterManager {
       wslArgs.push('sudo');
     }
     wslArgs.push('--', 'sh', '-c', command);
+
+    const child = spawn('wsl', wslArgs, {
+      detached: true,
+      stdio: 'ignore',
+    });
+
+    child.unref();
+    return child.pid;
+  }
+
+  /**
+   * Execute an explicit command+args array in WSL2 asynchronously (non-blocking).
+   * Invokes the command directly via `wsl ... -- cmd arg1 arg2 ...` with no shell.
+   * @param {string[]} cmdArgs - Array where cmdArgs[0] is the command and the rest are arguments
+   * @param {boolean} useSudo - Whether to prefix the command with sudo
+   * @returns {number|undefined} The PID of the spawned process (for optional external tracking)
+   * @private
+   */
+  _executeWSLCommandDirectAsync(cmdArgs, useSudo = false) {
+    const distro = sanitizeDistroName(this.wslDistro);
+    const user = sanitizeUsername(this.wslusername);
+    const wslArgs = ['-d', distro, '-u', user];
+    if (useSudo) {
+      wslArgs.push('sudo');
+    }
+    wslArgs.push('--', ...cmdArgs);
 
     const child = spawn('wsl', wslArgs, {
       detached: true,
