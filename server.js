@@ -53,18 +53,26 @@ fastify.register(require('@fastify/cors'), {
   methods:     ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 });
 
-// Security headers
+// Security headers — CSP is intentionally disabled here and applied per-context
+// below. The public/ directory serves a pre-built Next.js static export whose
+// HTML files contain inline <script> bootstrap blocks generated at build time.
+// Because those files are immutable static assets, nonce injection at request
+// time is not feasible. The strict Content-Security-Policy is therefore applied
+// only on /api/* routes (which return JSON and never render HTML) via the
+// onSend hook that follows this registration.
 fastify.register(require('@fastify/helmet'), {
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ['\'self\''],
-      scriptSrc:  ['\'self\''],
-      styleSrc:   ['\'self\'', 'https://unpkg.com', 'https://fonts.googleapis.com'],
-      imgSrc:     ['\'self\'', 'data:', 'https:', 'blob:'],
-      connectSrc: ['\'self\'', 'ws:', 'wss:'],
-      fontSrc:    ['\'self\'', 'https://fonts.gstatic.com'],
-    },
-  },
+  contentSecurityPolicy: false,
+});
+
+// Strict CSP applied to all API responses only (see comment above for reasoning).
+const API_CSP =
+  "default-src 'self'; script-src 'self'; style-src 'self' https://unpkg.com https://fonts.googleapis.com; img-src 'self' data: https: blob:; connect-src 'self' ws: wss:; font-src 'self' https://fonts.gstatic.com";
+
+fastify.addHook('onSend', (request, reply, payload, done) => {
+  if (request.url.startsWith('/api')) {
+    reply.header('Content-Security-Policy', API_CSP);
+  }
+  done(null, payload);
 });
 
 // Rate limiting — general (100 req / 15 min)
