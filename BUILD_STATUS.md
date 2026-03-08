@@ -57,6 +57,9 @@
 
 ## Session Log
 
+### 2026-03-08 — Textlint setup for BUILD_STATUS
+- Added local textlint config and no-op rule so `textlint --fix BUILD_STATUS.md` runs cleanly
+
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid SemVer version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
 - Fixed escaped template literals in `web-app/src/app/playground/page.tsx` (lines 55, 61): `\${...}` → `${...}`; tab buttons were rendering literal `${...}` text instead of active class
