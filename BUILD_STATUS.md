@@ -34,6 +34,7 @@
 | Release - Build & Deploy | FAILURE | Verify KEYSTORE_* secrets in repository settings |
 | SonarCloud Analysis | FAILURE | Verify SONAR_TOKEN secret is set |
 | Emergency Rollback | FAILURE | Investigate logs |
+| Semgrep | NEW | Add SEMGREP_APP_TOKEN + SEMGREP_DEPLOYMENT_ID secrets; see Secrets Checklist |
 
 ---
 
@@ -56,6 +57,15 @@
 ---
 
 ## Session Log
+
+### 2026-03-08 — Security hardening: API auth, WSL2 consolidation, Semgrep workflow
+- Consolidated WSL2 command injection fixes from PRs #51, #58, #62 into single hardened implementation
+- Added 5 input sanitizers to `desktop/windows-wsl2-adapter-manager.js` (interface, filepath, distro, user, BPF filter)
+- Fixed BPF regex to allow valid operators; replaced all exec/string concat with spawn() array args; 30s timeout + 10MB cap
+- Added `requireAuth` preHandler to 6 unauthenticated endpoints: `/api/location-consent`, `/api/log-location`, `/api/submit-technique`, `/api/start-monitoring`, `/api/stop-monitoring`, `/api/export-wigle`
+- Added prompt injection sanitization to `/api/submit-technique` (strip control chars, max 2000 chars)
+- Consolidated duplicate Semgrep workflow PRs #68 and #71 into single `.github/workflows/semgrep.yml`
+- Fixed fork PR secret failure (skip job on fork PRs), SARIF upload guard (`hashFiles` check), documented new secrets in Secrets Checklist
 
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid SemVer version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
@@ -148,6 +158,8 @@ Go to: `https://github.com/dvntone/wifisentry/settings/secrets/actions`
 | `SONAR_TOKEN` | SonarCloud analysis | Verify |
 | `GEMINI_API_KEY` | AI features (runtime) | Verify |
 | `MONGODB_URI` | Backend database | Verify |
+| `SEMGREP_APP_TOKEN` | Semgrep static analysis | Add — required for semgrep.yml |
+| `SEMGREP_DEPLOYMENT_ID` | Semgrep deployment tracking | Add — required for semgrep.yml |
 
 Go to: `https://github.com/dvntone/wifisentry/settings/variables/actions`
 
