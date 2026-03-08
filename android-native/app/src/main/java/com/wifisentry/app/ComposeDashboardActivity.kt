@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -339,13 +340,17 @@ private fun NetworkCard(network: ScannedNetwork) {
         ThreatSeverity.LOW    -> NeonAmber
         null                  -> Color.Transparent
     }
+    val borderModifier = if (network.isFlagged) {
+        Modifier.border(1.dp, borderColor, RoundedCornerShape(6.dp))
+    } else {
+        Modifier
+    }
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(borderModifier),
         shape    = RoundedCornerShape(6.dp),
         colors   = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        border   = if (network.isFlagged) {
-            androidx.compose.foundation.BorderStroke(1.dp, borderColor)
-        } else null,
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // SSID + RSSI row
