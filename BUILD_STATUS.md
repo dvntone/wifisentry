@@ -55,6 +55,12 @@
 
 ## Session Log
 
+### 2026-03-08 — Fix CodeQL build failures
+- Fixed Kotlin compilation error: added missing `import android.content.Context` to `MainActivity.kt`
+- Fixed exhaustive `when` expressions in `ScanResultAdapter.kt`: added `PMKID_SNIFFING` and `KRACK` branches to `displayName()` and `detailDescription()`
+- Added string resources for PMKID sniffing and KRACK threat types in `strings.xml`
+- Resolves CodeQL autobuild failure from workflow run #22810214602
+
 ### 2026-03-05 — Initial assessment
 - Reviewed all docs and CI history
 - Identified 22 known issues (see KNOWN_ISSUES.md)
