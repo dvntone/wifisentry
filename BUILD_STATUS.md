@@ -10,52 +10,145 @@
 
 | Component | Status | Last Good Commit | Notes |
 |---|---|---|---|
-| Android APK | BUILDING | `c9416cf` | CI/CD Android build passing; release signing still unverified |
-| Node.js Backend | PASSING | `c9416cf` | Fastify with helmet, CORS, rate-limiting — security controls verified |
-| Next.js Frontend | BUILDING | `c9416cf` | Ubuntu CI build passing; Google Fonts blocked in sandbox env |
-| Electron Desktop | FIXING | current PR | `desktop:build-win` failure fixed (prior PR); remaining code quality fixes in this PR |
-| DB Integration Tests | PASSING | `c9416cf` | `db-integration.yml` — green |
+| Android APK | BUILDING | `4f7e154` | CI/CD Android build passing on main |
+| Node.js Backend | PASSING | `4f7e154` | Fastify with helmet, CORS, rate-limiting — security controls verified |
+| Next.js Frontend | BUILDING | `4f7e154` | Ubuntu CI build passing; Google Fonts blocked in sandbox env |
+| Electron Desktop | BUILDING | `4f7e154` | `desktop:build-win` fixed in prior PR |
+| DB Integration Tests | PASSING | `4f7e154` | `db-integration.yml` — green on main |
+| Release Pipeline | PASSING | `98feab1` | `release.yml` — latest run succeeded (PR #44 merge) |
+| Detekt | PASSING | `6ff81d5` | `detekt.yml` — green; jq path fix merged in PR #49 |
+| Secret Scan (gitleaks) | PASSING | `6ff81d5` | `secret-scan.yml` — green |
+| CodeQL Advanced | PASSING | `88828c0` | `codeql.yml` — last completed run succeeded |
 | SonarCloud | FAILING | last green unknown | `sonarcloud.yml` — verify SONAR_TOKEN secret |
-| Release Pipeline | FAILING | last green unknown | `release.yml` — verify KEYSTORE_* signing secrets |
-| Emergency Rollback | FAILING | last green unknown | `emergency-rollback.yml` — investigate |
+| Emergency Rollback | FAILING | last green unknown | `emergency-rollback.yml` — all runs fail |
+| MSVC Code Analysis | FAILING | never green | `msvc.yml` — new workflow, consistently failing |
 
 ---
 
 ## CI Workflow Status (as of 2026-03-08)
 
-### wifisentry/main @ `c9416cf`
+### wifisentry/main @ `4f7e154`
 
 | Workflow | Result | Action Required |
 |---|---|---|
-| Gemini Scheduled Issue Triage | SUCCESS | None |
+| CI/CD - Build & Test | SUCCESS | None |
 | DB Integration Tests | SUCCESS | None |
-| CI/CD - Build & Test (Ubuntu) | PASSING | None |
-| CI/CD - Build & Test (Windows Desktop) | FIXED | `desktop:build-win` no longer rebuilds web app |
-| Release - Build & Deploy | FAILURE | Verify KEYSTORE_* secrets in repo settings |
+| Release - Build & Deploy | SUCCESS | None (latest run at `98feab1` passed) |
+| Gemini Scheduled Issue Triage | SUCCESS | None |
+| Gemini Dispatch | SUCCESS | None |
+| Detekt | SUCCESS | None (jq path fix merged in PR #49) |
+| Secret Scan (gitleaks) | SUCCESS | None |
+| CodeQL Advanced | SUCCESS | None (last completed run passed) |
 | SonarCloud Analysis | FAILURE | Verify SONAR_TOKEN secret is set |
-| Emergency Rollback | FAILURE | Investigate logs |
+| Emergency Rollback | FAILURE | All runs fail — investigate logs |
+| Microsoft C++ Code Analysis | FAILURE | New workflow — consistently failing, needs investigation |
 
 ---
 
 ## Known Broken Areas (Do Not Build On Top Of)
 
-1. **Release pipeline** — APKs are not being published. Before adding any new features to Android, fix KI-001 first.
-2. **SonarCloud** — Quality gate is dark. Fix KI-002 before any security-sensitive code changes.
-3. **Emergency Rollback** — Safety net is broken. Fix KI-019 before any production deployments.
+1. **SonarCloud** — Quality gate is dark. Fix KI-002 before any security-sensitive code changes.
+2. **Emergency Rollback** — Safety net is broken. Fix KI-019 before any production deployments.
+3. **MSVC Code Analysis** — New workflow, all runs fail. Investigate `msvc.yml` configuration.
 
 ---
 
 ## What Is Safe to Work On Right Now
 
+- Android feature work (CI/CD, release, and Detekt all green)
+- Backend API changes (Node.js backend passing, DB integration tests green)
+- Frontend UI changes (Next.js build passing)
+- Desktop improvements (build-win fixed)
 - `docs/` reorganization (no code changes, zero build risk)
 - Deleting obsolete root files (KI-010) — no code changes
-- Writing new `.md` tracking files
-- Updating `copilot-instructions.md`
-- Reading and analyzing code structure
+
+---
+
+## Open PRs — Recommended Merge Order (as of 2026-03-08)
+
+9 open PRs. Dependency chains, file overlaps, and conflicts analyzed below.
+
+### Dependency Graph
+
+```
+main
+├── PR #48 (fix-sonarcloud-vulnerabilities)
+│   ├── PR #51 (update-wifi-sentry-actions)
+│   │   └── PR #58 (fix-sanitize-bpf-filter)
+│   └── PR #59 (fix-unused-exec-import-csp-issue)
+├── PR #60 (remediation-required) ← base is copilot/fix-release-tag-comparison (MERGED as PR #49) — retarget to main
+├── PR #62 (fix-quality-gate-failure)
+├── PR #64 (fix-not-found-issue)
+├── PR #66 (update-build-gradle-sonarqube-plugin)
+└── PR #67 (update-status-pr) [DRAFT]
+```
+
+### Conflicts Identified
+
+| Conflict | PRs | Issue | Resolution |
+|---|---|---|---|
+| `windows-wsl2-adapter-manager.js` | #48 vs #62 | Both rewrite WSL2 security (sanitizers, spawn, exec removal) | **Choose one.** PR #48 also fixes XSS, CSP, scanner, hardcoded secret. PR #62 is WSL2-only but standalone. |
+| MSVC workflow approach | #51 vs #64 | #51 removes `msvc.yml` (no C++ code); #64 adds `CMakeLists.txt` to make it work | **Choose one.** #51 (remove) is correct — project has no C++ code. Close #64. |
+| `wifi-scanner.js` | #48 vs #51 vs #60 | All modify `exec` → `execFile` import; #60 adds HOME check | Stacked — merge in order #48 → #51. #60 needs rebase. |
+
+### Recommended Merge Order
+
+**Step 1 — Security chain (merge in strict order):**
+
+| Order | PR | Title | Base | Files Changed | Action |
+|---|---|---|---|---|---|
+| 1 | #48 | Fix security vulnerabilities: XSS, cmd injection, CSP, hardcoded secret | `main` | 7 files | **Merge** |
+| 2 | #59 | Scope strict CSP to API routes; remove unused exec import | `#48` branch | 1 file (server.js) | **Merge** (auto-retargets after #48) |
+| 3 | #51 | Remove MSVC workflow; fix WSL2 cmd injection | `#48` branch | 4 files | **Merge** (auto-retargets after #48) |
+| 4 | #58 | Fix BPF filter regex, spawn guardrails, tcpdump injection | `#51` branch | 1 file | **Merge** (auto-retargets after #51) |
+
+**Step 2 — Close superseded/conflicting:**
+
+| PR | Title | Action | Reason |
+|---|---|---|---|
+| #62 | Fix SonarCloud quality gate: WSL2 cmd injection | **Close** | Superseded by #48 + #51 + #58 (same `windows-wsl2-adapter-manager.js` fixes, done more incrementally) |
+| #64 | Add CMakeLists.txt for MSVC CI | **Close** | Conflicts with #51 which removes `msvc.yml` entirely (correct approach — no C++ code) |
+
+**Step 3 — Independent PRs (merge in any order):**
+
+| Order | PR | Title | Base | Action |
+|---|---|---|---|---|
+| 5 | #60 | Security remediation: Joi validation, cmd injection, bounds checking | ⚠️ **Retarget to `main`** (base `copilot/fix-release-tag-comparison` was merged as PR #49) | **Retarget base → main**, then merge |
+| 6 | #66 | Add org.sonarqube plugin to Android build.gradle | `main` | **Merge** |
+| 7 | #67 | Update BUILD_STATUS.md and KNOWN_ISSUES.md | `main` | **Merge** (this PR) |
+
+### File Touch Map (overlap analysis)
+
+```
+windows-wsl2-adapter-manager.js  → PR #48, #51, #58, #62 (CONFLICT: #62 vs chain)
+wifi-scanner.js                  → PR #48, #51, #60
+server.js                        → PR #48, #59
+BUILD_STATUS.md                  → PR #48, #51, #64, #67
+dependency-checker.js            → PR #48
+NetworkMap.tsx                   → PR #48
+routes/*.js, api/adapters.js     → PR #60
+platform-installer.js            → PR #60
+android-native/build.gradle      → PR #66
+.github/workflows/msvc.yml       → PR #51 (remove), #64 (add CMakeLists.txt)
+KNOWN_ISSUES.md                  → PR #64, #67
+```
 
 ---
 
 ## Session Log
+
+### 2026-03-08 — Status PR update: refresh CI/CD statuses
+- Updated BUILD_STATUS.md component table and CI workflow table to reflect current GitHub Actions results
+- Release pipeline now PASSING on main (`98feab1`, PR #44 merge) — updated from FAILURE; KI-001 resolved
+- Added newly tracked workflows: Detekt (PASSING), Secret Scan (PASSING), CodeQL Advanced (PASSING), MSVC Code Analysis (FAILING)
+- Electron Desktop status updated from FIXING to BUILDING (desktop:build-win fix confirmed)
+- Updated last good commit references from `c9416cf` to `4f7e154` (latest main HEAD after PR #49 merge)
+- Updated "Known Broken Areas" section: removed release pipeline, added MSVC Code Analysis
+- Expanded "What Is Safe to Work On" to include Android feature work, backend API changes, and frontend UI changes
+- Updated KNOWN_ISSUES.md: marked KI-001 as FIXED (release pipeline passing)
+- Added "Open PRs — Recommended Merge Order" section: dependency graph, conflict analysis, 7-step merge plan
+- Identified PRs #62 and #64 as superseded/conflicting (should be closed)
+- Identified PR #60 needs base retargeted to `main` (its base `copilot/fix-release-tag-comparison` was merged as PR #49)
 
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid semver version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
