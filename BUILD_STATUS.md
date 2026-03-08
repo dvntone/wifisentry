@@ -32,6 +32,7 @@
 | CI/CD - Build & Test (Ubuntu) | PASSING | None |
 | CI/CD - Build & Test (Windows Desktop) | FIXED | `desktop:build-win` no longer rebuilds web app |
 | Release - Build & Deploy | FAILURE | Verify KEYSTORE_* secrets in repo settings |
+| Semgrep Code Scanning | NEW | Added workflow; first run pending (needs SEMGREP_* secrets) |
 | SonarCloud Analysis | FAILURE | Verify SONAR_TOKEN secret is set |
 | Emergency Rollback | FAILURE | Investigate logs |
 
@@ -56,6 +57,11 @@
 ---
 
 ## Session Log
+
+### 2026-03-08 — Add Semgrep workflow (ready PRs)
+- Cherry-picked ready PR #68 (Semgrep code scanning workflow) into the combined branch.
+- Other open PRs remain pending/failing lint; merge order unchanged until they are green.
+- Baseline `npm test` fails: `jest` missing (dependencies not installed in sandbox).
 
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid semver version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
