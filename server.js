@@ -58,8 +58,8 @@ fastify.register(require('@fastify/helmet'), {
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ['\'self\''],
-      scriptSrc:  ['\'self\'', '\'unsafe-inline\''],
-      styleSrc:   ['\'self\'', '\'unsafe-inline\'', 'https://unpkg.com', 'https://fonts.googleapis.com'],
+      scriptSrc:  ['\'self\''],
+      styleSrc:   ['\'self\'', 'https://unpkg.com', 'https://fonts.googleapis.com'],
       imgSrc:     ['\'self\'', 'data:', 'https:', 'blob:'],
       connectSrc: ['\'self\'', 'ws:', 'wss:'],
       fontSrc:    ['\'self\'', 'https://fonts.gstatic.com'],
@@ -82,7 +82,7 @@ fastify.register(require('@fastify/cookie'));
 
 // Session
 fastify.register(require('@fastify/session'), {
-  secret:      config.auth.sessionSecret || 'wifi-sentry-dev-secret-key-that-is-at-least-32-chars-long',
+  secret:      config.auth.sessionSecret,
   saveUninitialized: false,
   cookie: {
     secure:   config.environment === 'production',
