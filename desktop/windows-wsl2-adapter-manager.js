@@ -579,6 +579,7 @@ class WindowsWSL2AdapterManager {
         const killWith = (err) => {
           if (settled) return;
           settled = true;
+          clearTimeout(timer);
           try { child.kill(); } catch (_) { /* ignore */ }
           reject(err);
         };
