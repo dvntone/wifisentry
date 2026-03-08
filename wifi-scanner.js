@@ -222,11 +222,13 @@ function checkBeaconFlood(net, currentScan, knownBssids) {
   if (knownBssids.size === 0) return false;
   const oui = ouiOf(net.bssid);
   if (!oui) return false;
-  const newBssidsFromOui = currentScan
-    .filter(n => ouiOf(n.bssid) === oui && n.bssid)
-    .map(n => n.bssid)
-    .filter((b, i, arr) => arr.indexOf(b) === i)  // unique
-    .filter(b => !knownBssids.has(b));
+  const newBssidsFromOui = [
+    ...new Set(
+      currentScan
+        .filter(n => ouiOf(n.bssid) === oui && n.bssid)
+        .map(n => n.bssid)
+    ),
+  ].filter(b => !knownBssids.has(b));
   return newBssidsFromOui.length >= BEACON_FLOOD_THRESHOLD;
 }
 
@@ -465,17 +467,18 @@ function detectKarmaAttacks(networks) {
   const karmaIndicators = [];
   const commonBaitNetworks = [
     'xfinitywifi',
-    'Verizon',
-    'T-Mobile WiFi',
-    'ATT WiFi',
+    'verizon',
+    't-mobile wifi',
+    'att wifi',
     'linksys',
-    'NETGEAR',
-    'Open WiFi',
+    'netgear',
+    'open wifi',
   ];
 
   for (const network of networks) {
+    const ssidLower = (network.ssid || '').toLowerCase();
     for (const bait of commonBaitNetworks) {
-      if (network.ssid.toLowerCase().includes(bait.toLowerCase())) {
+      if (ssidLower.includes(bait)) {
         karmaIndicators.push({
           ssid: network.ssid,
           bssid: network.bssid,
@@ -487,7 +490,7 @@ function detectKarmaAttacks(networks) {
       }
     }
 
-    if (network.security === 'OPEN' && network.ssid.toLowerCase().includes('wifi')) {
+    if (network.security === 'OPEN' && ssidLower.includes('wifi')) {
       karmaIndicators.push({
         ssid: network.ssid,
         bssid: network.bssid,

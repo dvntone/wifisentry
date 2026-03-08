@@ -95,6 +95,7 @@ const submissionSchema = new mongoose.Schema({
   status: { type: String, default: 'pending' },
   researchResult: mongoose.Schema.Types.Mixed,
 }, { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } });
+submissionSchema.index({ status: 1 });
 
 const networkSchema = new mongoose.Schema({
   ssid: String,
@@ -109,6 +110,10 @@ const networkSchema = new mongoose.Schema({
   scanId: String,
   detectedAt: { type: Date, default: Date.now },
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+networkSchema.index({ detectedAt: -1 });
+networkSchema.index({ ssid: 1 });
+networkSchema.index({ bssid: 1 });
+networkSchema.index({ scanId: 1 });
 
 const locationSchema = new mongoose.Schema({
   bssid: String,
@@ -122,6 +127,8 @@ const locationSchema = new mongoose.Schema({
   userConsented: Boolean,
   timestamp: { type: Date, default: Date.now },
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+locationSchema.index({ bssid: 1 });
+locationSchema.index({ timestamp: -1 });
 
 const threatLogSchema = new mongoose.Schema({
   ssid: String,
@@ -131,6 +138,8 @@ const threatLogSchema = new mongoose.Schema({
   description: String,
   detectedAt: { type: Date, default: Date.now },
 }, { toJSON: { virtuals: true }, toObject: { virtuals: true } });
+threatLogSchema.index({ detectedAt: -1 });
+threatLogSchema.index({ threatType: 1 });
 
 // --- Models ---
 

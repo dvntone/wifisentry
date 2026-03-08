@@ -164,23 +164,13 @@ async function getNearbyNetworks(latitude, longitude, radiusKm = 1) {
   try {
     const allLocations = await database.locations.getAll();
 
-    return allLocations.filter(location => {
-      const distance = calculateDistance(
-        latitude,
-        longitude,
-        location.latitude,
-        location.longitude
-      );
-      return distance <= radiusKm;
-    }).map(location => ({
-      ...location,
-      distance: calculateDistance(
-        latitude,
-        longitude,
-        location.latitude,
-        location.longitude
-      ),
-    })).sort((a, b) => a.distance - b.distance);
+    return allLocations
+      .map(location => ({
+        ...location,
+        distance: calculateDistance(latitude, longitude, location.latitude, location.longitude),
+      }))
+      .filter(location => location.distance <= radiusKm)
+      .sort((a, b) => a.distance - b.distance);
   } catch (error) {
     console.error('Error finding nearby networks:', error);
     throw error;
