@@ -76,6 +76,11 @@
 - Updated `android-native/README.md` "Project versioning" section to reflect new versionCode/versionName
 - Updated root `README.md` version badge, `docs/agent_coordination_log.md` current version, and `docs/ARCHITECTURE_BLUEPRINT.md` version header
 
+### 2026-03-08 — Remove MSVC C++ Analysis workflow (no C++ code in project)
+- Removed `.github/workflows/msvc.yml` — Microsoft C++ Code Analysis workflow was failing with "CMakeLists.txt not found" because the project has no C++ code
+- Workflow was incompatible with this JS/Android codebase and provided no analysis value
+- Resolves CI failure from workflow run #22818467119 / job #66187371006
+
 ### 2026-03-08 — Fix CodeQL build failures
 - Fixed Kotlin compilation error: added missing `import android.content.Context` to `MainActivity.kt`
 - Fixed exhaustive `when` expressions in `ScanResultAdapter.kt`: added `PMKID_SNIFFING` and `KRACK` branches to `displayName()` and `detailDescription()`

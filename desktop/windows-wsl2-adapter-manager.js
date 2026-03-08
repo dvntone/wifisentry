@@ -11,9 +11,6 @@
  */
 
 const { execSync, spawn } = require('child_process');
-const { promisify } = require('util');
-const { exec } = require('child_process');
-const execAsync = promisify(exec);
 const path = require('path');
 const os = require('os');
 
@@ -71,6 +68,21 @@ function sanitizeUsername(name) {
     throw new Error(`Invalid username: ${String(name).substring(0, 50)}`);
   }
   return name;
+}
+
+/**
+ * Validate a BPF filter expression for shell safety.
+ * Allows alphanumeric characters, spaces, and BPF-specific operators/punctuation.
+ * Rejects shell metacharacters that could enable injection.
+ * @param {string} filter - BPF filter expression (e.g., 'tcp port 80')
+ * @returns {string} - Validated BPF filter
+ * @throws {Error} If the filter contains dangerous characters
+ */
+function sanitizeBpfFilter(filter) {
+  if (typeof filter !== 'string' || /[;|&$`\\!><\r\n\t\0"']/.test(filter)) {
+    throw new Error(`Invalid BPF filter: ${String(filter).substring(0, 80)}`);
+  }
+  return filter;
 }
 
 class WindowsWSL2AdapterManager {
@@ -389,9 +401,9 @@ class WindowsWSL2AdapterManager {
           tcpdumpCmd += ` -c ${count}`;
         }
 
-        // Add BPF filter if specified (sanitize shell metacharacters)
+        // Add BPF filter if specified (validate BPF syntax characters)
         if (options.filter) {
-          const safeFilter = sanitizeFilePath(options.filter);
+          const safeFilter = sanitizeBpfFilter(options.filter);
           tcpdumpCmd += ` "${safeFilter}"`;
         }
 
@@ -550,18 +562,24 @@ class WindowsWSL2AdapterManager {
       }
       args.push('--', 'sh', '-c', command);
 
-      const fullCommand = `wsl ${args.map(a => `"${a}"`).join(' ')}`;
-
-      const { stdout, stderr } = await execAsync(fullCommand, {
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000,
+      return await new Promise((resolve, reject) => {
+        const child = spawn('wsl', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (chunk) => { stdout += chunk; });
+        child.stderr.on('data', (chunk) => { stderr += chunk; });
+        child.on('error', reject);
+        child.on('close', (code) => {
+          if (stderr && !stderr.includes('Warning')) {
+            console.warn('[WSL2] stderr:', stderr);
+          }
+          if (code !== 0) {
+            reject(new Error(`WSL2 command exited with code ${code}: ${stderr.trim()}`));
+          } else {
+            resolve(stdout.trim());
+          }
+        });
       });
-
-      if (stderr && !stderr.includes('Warning')) {
-        console.warn('[WSL2] stderr:', stderr);
-      }
-
-      return stdout.trim();
     } catch (error) {
       console.error('[WSL2] Command failed:', error.message);
       throw new Error(`WSL2 command failed: ${error.message}`);
