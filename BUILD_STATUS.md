@@ -55,6 +55,10 @@
 
 ## Session Log
 
+### 2026-03-08 — Add engineering roadmap
+- Created `docs/ROADMAP.md` with Now/Next/Later buckets covering CI/CD improvements, Android code quality, and repo hygiene
+- PR addresses CI run #22810673223 / job #66167117143: compilation errors in `MainActivity.kt` (Context import) and `ScanResultAdapter.kt` (exhaustive when) were already resolved in prior PR #41; roadmap documents the strategy to prevent recurrence
+
 ### 2026-03-08 — Fix CodeQL build failures
 - Fixed Kotlin compilation error: added missing `import android.content.Context` to `MainActivity.kt`
 - Fixed exhaustive `when` expressions in `ScanResultAdapter.kt`: added `PMKID_SNIFFING` and `KRACK` branches to `displayName()` and `detailDescription()`
