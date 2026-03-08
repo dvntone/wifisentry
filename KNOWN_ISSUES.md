@@ -136,10 +136,9 @@
 - **Symptom:** Concludes with `failure` on latest main commit.
 - **Note:** This is a safety net workflow. A broken rollback means there is no automated recovery path if a bad release goes out.
 
-### KI-020 [OPEN] Unpinned Dependency Versions
-- **Affected:** Root `package.json`, `android-native/gradle/libs.versions.toml`
-- **Symptom:** `^` prefixes in npm and `+` ranges in Gradle allow silent breaking updates.
-- **Fix needed:** Pin all versions exactly. Run `npm shrinkwrap` or use `package-lock.json` strictly.
+### KI-020 [FIXED] Unpinned Dependency Versions
+- **Fixed in:** Current commit — removed all `^`/`~` prefixes from root `package.json`
+- **Bumped:** `electron-updater` 6.1.1→6.8.3, `fastify` 5.8.1→5.8.2, `electron` 34.3.0→34.5.8, `eslint` 10.0.2→10.0.3, `nodemon` 3.0.2→3.1.14, `@eslint/js` 9.16.0→9.39.4
 
 ### KI-021 [OPEN] Mixed CommonJS/ESM Module Patterns
 - **Affected:** Backend JS files
@@ -155,3 +154,13 @@
 ## Archive (Resolved > 30 Days)
 
 _Nothing archived yet._
+
+---
+
+## Recently Fixed
+
+### KI-023 [FIXED] CMake CI Failure — Missing CMakeLists.txt
+- **Fixed in:** Current commit (PR #64)
+- **Symptom:** `CMake Error: The source directory does not appear to contain CMakeLists.txt`
+- **Root cause:** The MSVC GitHub Actions security template ran `cmake -B build` but this JS/Android project had no C++ sources and no `CMakeLists.txt`.
+- **Fix:** Added minimal `CMakeLists.txt` with `LANGUAGES NONE` — CMake configures cleanly and produces an empty (passing) SARIF report.
