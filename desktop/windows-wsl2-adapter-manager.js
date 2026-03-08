@@ -566,10 +566,37 @@ class WindowsWSL2AdapterManager {
         const child = spawn('wsl', args, { stdio: ['ignore', 'pipe', 'pipe'] });
         let stdout = '';
         let stderr = '';
+        let finished = false;
+        const timeoutMs = 30000;
+        const timeoutId = setTimeout(() => {
+          if (finished) {
+            return;
+          }
+          finished = true;
+          try {
+            child.kill();
+          } catch (e) {
+            // Best-effort kill; ignore kill errors
+          }
+          reject(new Error(`WSL2 command timed out after ${timeoutMs} ms`));
+        }, timeoutMs);
+
         child.stdout.on('data', (chunk) => { stdout += chunk; });
         child.stderr.on('data', (chunk) => { stderr += chunk; });
-        child.on('error', reject);
+        child.on('error', (err) => {
+          if (finished) {
+            return;
+          }
+          finished = true;
+          clearTimeout(timeoutId);
+          reject(err);
+        });
         child.on('close', (code) => {
+          if (finished) {
+            return;
+          }
+          finished = true;
+          clearTimeout(timeoutId);
           if (stderr && !stderr.includes('Warning')) {
             console.warn('[WSL2] stderr:', stderr);
           }
