@@ -57,6 +57,11 @@
 
 ## Session Log
 
+### 2026-03-08 — Remove inapplicable msvc.yml CMake/C++ workflow (fixes CI run #22819306663)
+- Root cause: `.github/workflows/msvc.yml` was a GitHub-generated Microsoft C++ Code Analysis template that ran `cmake -B <build>` expecting a `CMakeLists.txt` in the repo root
+- This project has zero C++ code (Kotlin/Android + Node.js + Next.js + Electron); the workflow was never applicable
+- Removed `msvc.yml` entirely — resolves the "CMake Error: source directory does not contain CMakeLists.txt" CI failure
+
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid semver version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
 - Fixed escaped template literals in `web-app/src/app/playground/page.tsx` (lines 55, 61): `\${...}` → `${...}`; tab buttons were rendering literal `${...}` text instead of active class
