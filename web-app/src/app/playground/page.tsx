@@ -52,13 +52,13 @@ export default function UIPlayground() {
         <div className="flex space-x-2">
           <button 
             onClick={() => setActiveTab('editor')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors \${activeTab === 'editor' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'editor' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'}`}
           >
             Code
           </button>
           <button 
             onClick={() => setActiveTab('preview')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors \${activeTab === 'preview' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'preview' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'}`}
           >
             Preview
           </button>
@@ -85,7 +85,12 @@ export default function UIPlayground() {
           </div>
         ) : (
           <div className="flex-1 bg-gray-100 overflow-auto">
-             <div dangerouslySetInnerHTML={{ __html: renderedContent }} />
+            <iframe
+              sandbox=""
+              srcDoc={renderedContent}
+              className="w-full h-full border-none"
+              title="UI Preview"
+            />
           </div>
         )}
       </div>
