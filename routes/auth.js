@@ -7,6 +7,18 @@
  */
 
 const path = require('path');
+const Joi  = require('joi');
+
+// ── Validation schemas ────────────────────────────────────────────────────────
+
+const loginSchema = Joi.object({
+  username: Joi.string().max(128).required(),
+  password: Joi.string().max(256).required(),
+});
+
+const tokenSchema = Joi.object({
+  token: Joi.string().alphanum().max(32).required(),
+});
 
 module.exports = async function authRoutes(fastify) {
   const { config, authenticator, qrcode } = fastify;
@@ -67,7 +79,9 @@ module.exports = async function authRoutes(fastify) {
     preHandler: requireAuth,
     config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
-    const { token } = request.body;
+    const { error, value } = tokenSchema.validate(request.body);
+    if (error) return reply.status(400).send({ success: false, message: error.details[0].message });
+    const { token } = value;
     const secret = request.session.temp2faSecret;
 
     if (!secret) {
@@ -86,7 +100,9 @@ module.exports = async function authRoutes(fastify) {
   fastify.post('/api/auth/login', {
     config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
-    const { username, password } = request.body;
+    const { error, value } = loginSchema.validate(request.body);
+    if (error) return reply.status(400).send({ success: false, message: error.details[0].message });
+    const { username, password } = value;
     if (username === config.auth.adminUsername && password === config.auth.adminPassword) {
       if (config.auth.adminTwoFactorSecret) {
         request.session.awaiting2fa = true;
@@ -101,7 +117,9 @@ module.exports = async function authRoutes(fastify) {
   fastify.post('/api/auth/2fa/verify', {
     config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
-    const { token } = request.body;
+    const { error, value } = tokenSchema.validate(request.body);
+    if (error) return reply.status(400).send({ success: false, message: error.details[0].message });
+    const { token } = value;
 
     if (!request.session.awaiting2fa) {
       return reply.status(401).send({ success: false, message: 'Please log in with your password first.' });

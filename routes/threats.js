@@ -4,6 +4,13 @@
  * Threat routes: AI-catalogued threats, user submissions, threat logs.
  */
 
+const Joi = require('joi');
+
+const submitTechniqueSchema = Joi.object({
+  name:        Joi.string().max(256).required(),
+  description: Joi.string().max(4096).required(),
+});
+
 module.exports = async function threatRoutes(fastify) {
   const { aiService, database } = fastify;
 
@@ -17,10 +24,11 @@ module.exports = async function threatRoutes(fastify) {
   // ── Submit new threat technique for AI research ───────────────────────────
 
   fastify.post('/api/submit-technique', async (request, reply) => {
-    const { name, description } = request.body;
-    if (!name || !description) {
-      return reply.status(400).send({ error: 'Technique name and description are required.' });
+    const { error, value } = submitTechniqueSchema.validate(request.body);
+    if (error) {
+      return reply.status(400).send({ error: error.details[0].message });
     }
+    const { name, description } = value;
     try {
       const newThreat = await aiService.researchTechnique({ name, description, source: 'User Submission' });
       return reply.status(201).send(newThreat);

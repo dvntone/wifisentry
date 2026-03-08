@@ -9,6 +9,23 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
+const Joi = require('joi');
+
+// ── Validation schemas ────────────────────────────────────────────────────────
+
+const ALLOWED_TECHNIQUES = ['karma', 'evil-twin', 'deauth', 'pmkid', 'krack', 'beacon-flood', 'mac-spoof'];
+
+const startMonitoringSchema = Joi.object({
+  techniques: Joi.array()
+    .items(Joi.string().valid(...ALLOWED_TECHNIQUES))
+    .min(1)
+    .required(),
+});
+
+const exportWigleSchema = Joi.object({
+  startDate: Joi.date().iso().optional(),
+  endDate:   Joi.date().iso().optional(),
+});
 
 module.exports = async function scanRoutes(fastify) {
   const {
@@ -139,10 +156,11 @@ module.exports = async function scanRoutes(fastify) {
   // ── Start / stop monitoring ──────────────────────────────────────────────
 
   fastify.post('/api/start-monitoring', async (request, reply) => {
-    const { techniques } = request.body;
-    if (!techniques || techniques.length === 0) {
-      return reply.status(400).send({ error: 'No monitoring techniques selected.' });
+    const { error, value } = startMonitoringSchema.validate(request.body);
+    if (error) {
+      return reply.status(400).send({ error: error.details[0].message });
     }
+    const { techniques } = value;
 
     if (fastify.monitoringInterval) {
       clearInterval(fastify.monitoringInterval);
@@ -167,7 +185,7 @@ module.exports = async function scanRoutes(fastify) {
 
   fastify.get('/api/scan-history', async (request, reply) => {
     try {
-      const limit = parseInt(request.query.limit) || 50;
+      const limit = Math.min(Math.max(parseInt(request.query.limit, 10) || 50, 1), 500);
       const networks = await wifiScanner.getScanHistory(limit);
       return reply.send(networks);
     } catch (err) {
@@ -219,7 +237,11 @@ module.exports = async function scanRoutes(fastify) {
 
   fastify.post('/api/export-wigle', async (request, reply) => {
     try {
-      const { startDate, endDate } = request.body;
+      const { error, value } = exportWigleSchema.validate(request.body);
+      if (error) {
+        return reply.status(400).send({ error: error.details[0].message });
+      }
+      const { startDate, endDate } = value;
       const networks = await database.networks.getRecent(1000);
       const filtered = networks.filter(n => {
         if (startDate && new Date(n.detectedAt) < new Date(startDate)) return false;
