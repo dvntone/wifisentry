@@ -50,7 +50,10 @@ function detectEnvironment() {
 }
 
 /**
- * Installation helpers for different platforms
+ * Installation helpers for different platforms.
+ *
+ * Tool names are validated against known-safe identifiers inside
+ * generateInstallScript() before being interpolated into shell commands.
  */
 const platformHelpers = {
   // Linux/Debian
@@ -269,7 +272,8 @@ function getEnvironmentHelper() {
 }
 
 /**
- * Generate platform-specific installation script
+ * Generate platform-specific installation script.
+ * Only tools defined in the platform helper's tools map are allowed.
  */
 function generateInstallScript(toolIds, options = {}) {
   const env = getEnvironmentHelper();
@@ -295,18 +299,21 @@ function generateInstallScript(toolIds, options = {}) {
     });
   }
 
-  // Install each tool
+  // Install each tool — only allow known-safe tool identifiers
+  const unknownTools = [];
   for (const toolId of toolIds) {
     const pkgName = helper.tools[toolId];
-    if (pkgName) {
-      commands.push({
-        description: `Install ${toolId}`,
-        command: helper.getInstallCommand(pkgName)
-      });
+    if (!pkgName) {
+      unknownTools.push(toolId);
+      continue;
     }
+    commands.push({
+      description: `Install ${toolId}`,
+      command: helper.getInstallCommand(pkgName)
+    });
   }
 
-  return {
+  const result = {
     success: true,
     platform: env.platform,
     packageManager: helper.name,
@@ -321,6 +328,12 @@ function generateInstallScript(toolIds, options = {}) {
       isLinux: env.platform === 'linux'
     }
   };
+
+  if (unknownTools.length > 0) {
+    result.warnings = [`Unknown tool IDs ignored: ${unknownTools.join(', ')}`];
+  }
+
+  return result;
 }
 
 /**
