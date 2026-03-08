@@ -404,10 +404,10 @@ class WindowsWSL2AdapterManager {
    * Build a tcpdump command string with validated options
    * @param {string} interfaceName - Sanitized network interface name
    * @param {object} options - Capture options
+   * @param {number} timestamp - Timestamp for output file naming
    * @returns {{ cmd: string, outputFile: string }} The command and output file path
    */
-  _buildTcpdumpCommand(interfaceName, options) {
-    const timestamp = Date.now();
+  _buildTcpdumpCommand(interfaceName, options, timestamp) {
     const outputFile = sanitizeFilePath(
       options.outputFile ||
       `/tmp/wifi-sentry-capture-${timestamp}.pcap`
@@ -462,12 +462,13 @@ class WindowsWSL2AdapterManager {
 
     try {
       if (this.supportedTools.tcpdump) {
+        const timestamp = Date.now();
         const { cmd: tcpdumpCmd, outputFile } =
-          this._buildTcpdumpCommand(interfaceName, options);
+          this._buildTcpdumpCommand(interfaceName, options, timestamp);
 
         console.log('[Promiscuous] Starting tcpdump capture');
 
-        const processId = `capture-${Date.now()}`;
+        const processId = `capture-${timestamp}`;
         this.monitoringProcesses.set(processId, {
           interface: interfaceName,
           tool: 'tcpdump',
