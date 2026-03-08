@@ -71,6 +71,13 @@
 - Created `docs/ROADMAP.md` with Now/Next/Later buckets covering CI/CD improvements, Android code quality, and repo hygiene
 - PR addresses CI run #22810673223 / job #66167117143: compilation errors in `MainActivity.kt` (Context import) and `ScanResultAdapter.kt` (exhaustive when) were already resolved in prior PR #41; roadmap documents the strategy to prevent recurrence
 
+### 2026-03-08 — Fix CMakeLists.txt not found (Microsoft C++ Code Analysis CI failure) — Fixes KI-023
+- Root cause: `msvc.yml` workflow runs `cmake -B build` but the project has no `CMakeLists.txt` (it is JavaScript/Android/Kotlin — no C++ code)
+- Added minimal `CMakeLists.txt` (`project(WifiSentry LANGUAGES NONE)`) to repository root so CMake configure step succeeds
+- MSVC Code Analysis will run on an empty project and produce a clean SARIF report
+- Resolves job run 66189507306 failure: "CMake Error: The source directory does not appear to contain CMakeLists.txt"
+- Tracked as KI-023 in KNOWN_ISSUES.md
+
 ### 2026-03-08 — Android version bump 1.2.8 → 1.2.9
 - Bumped `versionCode` 25 → 26 and `versionName` "1.2.8" → "1.2.9" in `android-native/app/build.gradle`
 - Updated `android-native/README.md` "Project versioning" section to reflect new versionCode/versionName
