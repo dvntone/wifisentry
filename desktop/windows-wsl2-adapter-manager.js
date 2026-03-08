@@ -401,7 +401,7 @@ class WindowsWSL2AdapterManager {
           tcpdumpCmd += ` -c ${count}`;
         }
 
-        // Add BPF filter if specified (validate BPF syntax characters)
+        // Add BPF filter if specified (sanitize for shell safety, not BPF syntax correctness)
         if (options.filter) {
           const safeFilter = sanitizeBpfFilter(options.filter);
           tcpdumpCmd += ` "${safeFilter}"`;
