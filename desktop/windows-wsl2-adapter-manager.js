@@ -11,9 +11,6 @@
  */
 
 const { execSync, spawn } = require('child_process');
-const { promisify } = require('util');
-const { exec } = require('child_process');
-const execAsync = promisify(exec);
 const path = require('path');
 const os = require('os');
 
@@ -71,6 +68,58 @@ function sanitizeUsername(name) {
     throw new Error(`Invalid username: ${String(name).substring(0, 50)}`);
   }
   return name;
+}
+
+/**
+ * Validate a BPF filter expression.
+ * Rejects shell metacharacters that could enable injection while
+ * allowing valid BPF syntax (alphanumerics, spaces, parens, comparisons, etc.).
+ * @param {string} filter - BPF filter to validate
+ * @returns {string} - Validated filter
+ * @throws {Error} If the filter contains dangerous characters
+ */
+function sanitizeBpfFilter(filter) {
+  if (typeof filter !== 'string' || /[;|&$`\\!\r\n]/.test(filter)) {
+    throw new Error(`Invalid BPF filter: ${String(filter).substring(0, 50)}`);
+  }
+  return filter;
+}
+
+/**
+ * Execute a command via spawn and return stdout as a promise.
+ * @param {string} command - The executable to run
+ * @param {string[]} args - Arguments array
+ * @param {object} options - Spawn options
+ * @returns {Promise<{stdout: string, stderr: string}>}
+ */
+function spawnAsync(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { ...options, stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => { stdout += data; });
+    child.stderr.on('data', (data) => { stderr += data; });
+
+    child.on('error', (err) => reject(err));
+    child.on('close', (code) => {
+      if (code !== 0) {
+        const err = new Error(`Command failed with exit code ${code}: ${stderr}`);
+        err.code = code;
+        err.stderr = stderr;
+        reject(err);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+
+    if (options.timeout) {
+      setTimeout(() => {
+        child.kill();
+        reject(new Error('Command timed out'));
+      }, options.timeout);
+    }
+  });
 }
 
 class WindowsWSL2AdapterManager {
@@ -378,20 +427,28 @@ class WindowsWSL2AdapterManager {
           `/tmp/wifi-sentry-capture-${timestamp}.pcap`
         );
 
-        let tcpdumpCmd = `tcpdump -i ${interfaceName} -P in`;
-
-        // Add packet count if specified
+        // Validate packet count early before building the command
+        let packetCount = 0;
         if (options.packetCount > 0) {
-          const count = parseInt(options.packetCount, 10);
-          if (!Number.isFinite(count) || count <= 0) {
+          packetCount = parseInt(options.packetCount, 10);
+          if (!Number.isFinite(packetCount) || packetCount <= 0) {
             throw new Error('Invalid packet count');
           }
-          tcpdumpCmd += ` -c ${count}`;
         }
 
-        // Add BPF filter if specified (sanitize shell metacharacters)
+        // Validate BPF filter early
+        let safeFilter = '';
         if (options.filter) {
-          const safeFilter = sanitizeFilePath(options.filter);
+          safeFilter = sanitizeBpfFilter(options.filter);
+        }
+
+        let tcpdumpCmd = `tcpdump -i ${interfaceName} -P in`;
+
+        if (packetCount > 0) {
+          tcpdumpCmd += ` -c ${packetCount}`;
+        }
+
+        if (safeFilter) {
           tcpdumpCmd += ` "${safeFilter}"`;
         }
 
@@ -550,10 +607,7 @@ class WindowsWSL2AdapterManager {
       }
       args.push('--', 'sh', '-c', command);
 
-      const fullCommand = `wsl ${args.map(a => `"${a}"`).join(' ')}`;
-
-      const { stdout, stderr } = await execAsync(fullCommand, {
-        maxBuffer: 10 * 1024 * 1024,
+      const { stdout, stderr } = await spawnAsync('wsl', args, {
         timeout: 30000,
       });
 

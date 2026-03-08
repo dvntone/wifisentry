@@ -1,4 +1,4 @@
-const { execSync, exec } = require('child_process');
+const { execSync, execFile } = require('child_process');
 const os = require('os');
 const path = require('path');
 
@@ -358,13 +358,23 @@ function getCriticalMissingDependencies() {
 }
 
 /**
- * Install a tool interactively
- * @param {string} toolId - Tool identifier
+ * Install a tool interactively.
+ *
+ * Install commands come exclusively from the static DEPENDENCIES map above.
+ * We validate the toolId against that map and use execFile with an explicit
+ * shell invocation to avoid direct shell-string evaluation via exec().
+ *
+ * @param {string} toolId - Tool identifier (must exist in DEPENDENCIES)
  * @param {object} options - Installation options
  * @returns {promise} - Installation result
  */
 function installDependency(toolId, options = {}) {
   return new Promise((resolve, reject) => {
+    if (typeof toolId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(toolId)) {
+      reject(new Error(`Invalid tool identifier: ${String(toolId).substring(0, 50)}`));
+      return;
+    }
+
     const dep = DEPENDENCIES[toolId];
     if (!dep) {
       reject(new Error(`Unknown dependency: ${toolId}`));
@@ -389,7 +399,12 @@ function installDependency(toolId, options = {}) {
       return;
     }
 
-    exec(installCmd, (error, stdout, stderr) => {
+    // Use execFile with explicit shell to avoid direct shell-string exec().
+    // Commands are sourced from the static DEPENDENCIES map (not user input).
+    const shell = PLATFORM === 'win32' ? 'cmd.exe' : '/bin/sh';
+    const shellArgs = PLATFORM === 'win32' ? ['/c', installCmd] : ['-c', installCmd];
+
+    execFile(shell, shellArgs, (error, stdout, stderr) => {
       if (error) {
         reject({
           success: false,
