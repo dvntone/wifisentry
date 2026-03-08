@@ -401,6 +401,47 @@ class WindowsWSL2AdapterManager {
   }
 
   /**
+   * Build a tcpdump command string with validated options
+   * @param {string} interfaceName - Sanitized network interface name
+   * @param {object} options - Capture options
+   * @param {number} timestamp - Timestamp for output file naming
+   * @returns {{ cmd: string, outputFile: string }} The command and output file path
+   */
+  _buildTcpdumpCommand(interfaceName, options, timestamp) {
+    const outputFile = sanitizeFilePath(
+      options.outputFile ||
+      `/tmp/wifi-sentry-capture-${timestamp}.pcap`
+    );
+
+    let packetCount = 0;
+    if (options.packetCount > 0) {
+      packetCount = parseInt(options.packetCount, 10);
+      if (!Number.isFinite(packetCount) || packetCount <= 0) {
+        throw new Error('Invalid packet count');
+      }
+    }
+
+    let safeFilter = '';
+    if (options.filter) {
+      safeFilter = sanitizeBpfFilter(options.filter);
+    }
+
+    let cmd = `tcpdump -i ${interfaceName} -P in`;
+
+    if (packetCount > 0) {
+      cmd += ` -c ${packetCount}`;
+    }
+
+    if (safeFilter) {
+      cmd += ` "${safeFilter}"`;
+    }
+
+    cmd += ` -w "${outputFile}"`;
+
+    return { cmd, outputFile };
+  }
+
+  /**
    * Start packet capture in promiscuous mode
    * @param {string} interfaceName - Network interface name
    * @param {object} options - Capture options
@@ -422,38 +463,8 @@ class WindowsWSL2AdapterManager {
     try {
       if (this.supportedTools.tcpdump) {
         const timestamp = Date.now();
-        const outputFile = sanitizeFilePath(
-          options.outputFile ||
-          `/tmp/wifi-sentry-capture-${timestamp}.pcap`
-        );
-
-        // Validate packet count early before building the command
-        let packetCount = 0;
-        if (options.packetCount > 0) {
-          packetCount = parseInt(options.packetCount, 10);
-          if (!Number.isFinite(packetCount) || packetCount <= 0) {
-            throw new Error('Invalid packet count');
-          }
-        }
-
-        // Validate BPF filter early
-        let safeFilter = '';
-        if (options.filter) {
-          safeFilter = sanitizeBpfFilter(options.filter);
-        }
-
-        let tcpdumpCmd = `tcpdump -i ${interfaceName} -P in`;
-
-        if (packetCount > 0) {
-          tcpdumpCmd += ` -c ${packetCount}`;
-        }
-
-        if (safeFilter) {
-          tcpdumpCmd += ` "${safeFilter}"`;
-        }
-
-        // Add output file
-        tcpdumpCmd += ` -w "${outputFile}"`;
+        const { cmd: tcpdumpCmd, outputFile } =
+          this._buildTcpdumpCommand(interfaceName, options, timestamp);
 
         console.log('[Promiscuous] Starting tcpdump capture');
 
