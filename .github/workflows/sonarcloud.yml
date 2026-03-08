@@ -26,10 +26,7 @@
 # Feel free to take a look at our documentation (https://docs.sonarcloud.io/getting-started/github/)
 # or reach out to our community forum if you need some help (https://community.sonarsource.com/c/help/sc/9)
 
-name: Checkout repository
-  uses: actions/checkout@v4
-  with:
-    fetch-depth: 0  # Required for accurate blame/history data in SonarCloud
+name: SonarCloud Analysis
 on:
   push:
     branches: [main]
