@@ -26,19 +26,31 @@
 # Feel free to take a look at our documentation (https://docs.sonarcloud.io/getting-started/github/)
 # or reach out to our community forum if you need some help (https://community.sonarsource.com/c/help/sc/9)
 
-name: SonarCloud analysis
-
+name: Checkout repository
+  uses: actions/checkout@v4
+  with:
+    fetch-depth: 0  # Required for accurate blame/history data in SonarCloud
 on:
-  workflow_dispatch: # manual only — enable push/PR triggers after SONAR_TOKEN secret is configured
-
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+  
 permissions:
   pull-requests: read # allows SonarCloud to decorate PRs with analysis results
 
 jobs:
-  Analysis:
+Analysis:
     runs-on: ubuntu-latest
-
+    
+    
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Required for accurate blame/history data in SonarCloud
     steps:
+    
       - name: Analyze with SonarCloud
 
         # You can pin the exact commit or the version.
