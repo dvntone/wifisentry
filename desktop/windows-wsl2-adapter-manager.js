@@ -11,11 +11,79 @@
  */
 
 const { execSync, spawn } = require('child_process');
-const { promisify } = require('util');
-const { exec } = require('child_process');
-const execAsync = promisify(exec);
 const path = require('path');
 const os = require('os');
+
+/**
+ * Validate a WiFi interface name (e.g. 'wlan0', 'wlp2s0mon').
+ * Only alphanumeric characters, hyphens and underscores are allowed.
+ * @param {string} name
+ * @returns {string} Validated interface name
+ * @throws {Error} If the name contains invalid characters
+ */
+function sanitizeInterfaceName(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9_-]{1,32}$/.test(name)) {
+    throw new Error(`Invalid interface name: ${String(name).substring(0, 40)}`);
+  }
+  return name;
+}
+
+/**
+ * Validate a file-system path used inside WSL2.
+ * Rejects shell metacharacters that could enable injection.
+ * @param {string} filePath
+ * @returns {string} Validated file path
+ * @throws {Error} If the path contains dangerous characters
+ */
+function sanitizeFilePath(filePath) {
+  if (typeof filePath !== 'string' || /[;&|`$!<>\r\n\t\0"'\\]/.test(filePath)) {
+    throw new Error(`Invalid file path: ${String(filePath).substring(0, 80)}`);
+  }
+  return filePath;
+}
+
+/**
+ * Validate a WSL2 distribution name (e.g. 'Ubuntu', 'kali-linux').
+ * @param {string} name
+ * @returns {string} Validated distro name
+ * @throws {Error} If the name contains invalid characters
+ */
+function sanitizeDistroName(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9_.\-]{1,64}$/.test(name)) {
+    throw new Error(`Invalid WSL distro name: ${String(name).substring(0, 40)}`);
+  }
+  return name;
+}
+
+/**
+ * Validate a WSL2 username.
+ * @param {string} name
+ * @returns {string} Validated username
+ * @throws {Error} If the name contains invalid characters
+ */
+function sanitizeUsername(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9_.\-]{1,32}$/.test(name)) {
+    throw new Error(`Invalid username: ${String(name).substring(0, 40)}`);
+  }
+  return name;
+}
+
+/**
+ * Validate a BPF filter expression for shell safety.
+ * Allows alphanumeric characters, spaces, and BPF-specific operators/punctuation
+ * including `!` (negation), `<`/`>` (byte comparisons), and parentheses.
+ * Rejects shell metacharacters: semicolons, pipes, ampersands, dollar signs,
+ * backticks, backslashes, quotes, and control characters.
+ * @param {string} filter - BPF filter expression (e.g., 'tcp port 80', '!arp', 'len > 100')
+ * @returns {string} Validated BPF filter
+ * @throws {Error} If the filter contains dangerous characters
+ */
+function sanitizeBpfFilter(filter) {
+  if (typeof filter !== 'string' || /[;|&$`\\\r\n\t\0"']/.test(filter)) {
+    throw new Error(`Invalid BPF filter: ${String(filter).substring(0, 80)}`);
+  }
+  return filter;
+}
 
 class WindowsWSL2AdapterManager {
   constructor() {
@@ -145,28 +213,30 @@ class WindowsWSL2AdapterManager {
       throw new Error('WSL2 not available for monitor mode');
     }
 
+    const safeInterface = sanitizeInterfaceName(interfaceName);
+
     try {
       if (method === 'aircrack' && this.supportedTools.aircrack) {
         // Using airmon-ng (aircrack-ng suite)
-        console.log(`[Monitor] Enabling monitor mode on ${interfaceName} via airmon-ng`);
+        console.log(`[Monitor] Enabling monitor mode on ${safeInterface} via airmon-ng`);
 
         // Check current status
-        const monStatus = await this._executeWSLCommand(`airmon-ng check ${interfaceName}`);
+        const monStatus = await this._executeWSLCommand(`airmon-ng check ${safeInterface}`);
         console.log('[Monitor] Status check:', monStatus);
 
         // Start monitor mode
         const result = await this._executeWSLCommand(
-          `airmon-ng start ${interfaceName}`,
+          `airmon-ng start ${safeInterface}`,
           true // Requires sudo
         );
 
         // Get monitor interface name (typically interfaceName + 'mon')
-        const monitorInterface = `${interfaceName}mon`;
+        const monitorInterface = `${safeInterface}mon`;
 
         return {
           success: true,
           method: 'aircrack-ng (airmon-ng)',
-          originalInterface: interfaceName,
+          originalInterface: safeInterface,
           monitorInterface,
           capabilities: {
             packetCapture: true,
@@ -179,31 +249,31 @@ class WindowsWSL2AdapterManager {
         };
       } else if (method === 'iw') {
         // Using iw (newer method)
-        console.log(`[Monitor] Enabling monitor mode on ${interfaceName} via iw`);
+        console.log(`[Monitor] Enabling monitor mode on ${safeInterface} via iw`);
 
         // Bring interface down
         await this._executeWSLCommand(
-          `ip link set ${interfaceName} down`,
+          `ip link set ${safeInterface} down`,
           true
         );
 
         // Set to monitor mode
         await this._executeWSLCommand(
-          `iw dev ${interfaceName} set type monitor`,
+          `iw dev ${safeInterface} set type monitor`,
           true
         );
 
         // Bring interface up
         await this._executeWSLCommand(
-          `ip link set ${interfaceName} up`,
+          `ip link set ${safeInterface} up`,
           true
         );
 
         return {
           success: true,
           method: 'iw',
-          originalInterface: interfaceName,
-          monitorInterface: interfaceName,
+          originalInterface: safeInterface,
+          monitorInterface: safeInterface,
           capabilities: {
             packetCapture: true,
             channelHopping: true,
@@ -211,31 +281,31 @@ class WindowsWSL2AdapterManager {
         };
       } else if (method === 'iwconfig') {
         // Using iwconfig (legacy method, less reliable)
-        console.log(`[Monitor] Enabling monitor mode on ${interfaceName} via iwconfig`);
+        console.log(`[Monitor] Enabling monitor mode on ${safeInterface} via iwconfig`);
 
         // Bring interface down
         await this._executeWSLCommand(
-          `ip link set ${interfaceName} down`,
+          `ip link set ${safeInterface} down`,
           true
         );
 
         // Set to monitor mode
         await this._executeWSLCommand(
-          `iwconfig ${interfaceName} mode Monitor`,
+          `iwconfig ${safeInterface} mode Monitor`,
           true
         );
 
         // Bring interface up
         await this._executeWSLCommand(
-          `ip link set ${interfaceName} up`,
+          `ip link set ${safeInterface} up`,
           true
         );
 
         return {
           success: true,
           method: 'iwconfig (legacy)',
-          originalInterface: interfaceName,
-          monitorInterface: interfaceName,
+          originalInterface: safeInterface,
+          monitorInterface: safeInterface,
           capabilities: {
             packetCapture: true,
           },
@@ -261,11 +331,13 @@ class WindowsWSL2AdapterManager {
       throw new Error('WSL2 not available');
     }
 
+    const safeInterface = sanitizeInterfaceName(interfaceName);
+
     try {
       if (method === 'aircrack') {
         // Using airmon-ng stop
         const result = await this._executeWSLCommand(
-          `airmon-ng stop ${interfaceName}`,
+          `airmon-ng stop ${safeInterface}`,
           true
         );
         console.log('[Monitor] Monitor mode disabled via airmon-ng');
@@ -273,15 +345,15 @@ class WindowsWSL2AdapterManager {
       } else if (method === 'iw') {
         // Using iw to set back to managed mode
         await this._executeWSLCommand(
-          `ip link set ${interfaceName} down`,
+          `ip link set ${safeInterface} down`,
           true
         );
         await this._executeWSLCommand(
-          `iw dev ${interfaceName} set type managed`,
+          `iw dev ${safeInterface} set type managed`,
           true
         );
         await this._executeWSLCommand(
-          `ip link set ${interfaceName} up`,
+          `ip link set ${safeInterface} up`,
           true
         );
         console.log('[Monitor] Monitor mode disabled via iw');
@@ -314,38 +386,45 @@ class WindowsWSL2AdapterManager {
     try {
       if (this.supportedTools.tcpdump) {
         const timestamp = Date.now();
-        const outputFile =
-          options.outputFile ||
-          `/tmp/wifi-sentry-capture-${timestamp}.pcap`;
+        const safeInterface = sanitizeInterfaceName(interfaceName);
+        const outputFile = options.outputFile
+          ? sanitizeFilePath(options.outputFile)
+          : `/tmp/wifi-sentry-capture-${timestamp}.pcap`;
 
-        let tcpdumpCmd = `tcpdump -i ${interfaceName} -P in`;
+        // Build tcpdump argument list — no shell string, no sh -c
+        const tcpdumpArgs = ['-i', safeInterface, '-P', 'in'];
 
         // Add packet count if specified
         if (options.packetCount > 0) {
-          tcpdumpCmd += ` -c ${options.packetCount}`;
+          const count = Math.floor(options.packetCount);
+          if (!Number.isFinite(count) || count <= 0) {
+            throw new Error('Invalid packet count');
+          }
+          tcpdumpArgs.push('-c', String(count));
         }
 
-        // Add BPF filter if specified
+        // Add BPF filter if specified (validate BPF syntax characters)
         if (options.filter) {
-          tcpdumpCmd += ` "${options.filter}"`;
+          const safeFilter = sanitizeBpfFilter(options.filter);
+          tcpdumpArgs.push(safeFilter);
         }
 
         // Add output file
-        tcpdumpCmd += ` -w "${outputFile}"`;
+        tcpdumpArgs.push('-w', outputFile);
 
         console.log('[Promiscuous] Starting tcpdump capture');
 
         const processId = `capture-${timestamp}`;
         this.monitoringProcesses.set(processId, {
-          interface: interfaceName,
+          interface: safeInterface,
           tool: 'tcpdump',
           outputFile,
           startTime: new Date(),
           status: 'running',
         });
 
-        // Execute tcpdump in WSL2 (non-blocking)
-        this._executeWSLCommandAsync(tcpdumpCmd, true);
+        // Execute tcpdump in WSL2 directly (non-blocking, no sh -c)
+        this._executeWSLCommandDirectAsync(['tcpdump', ...tcpdumpArgs], true);
 
         return {
           success: true,
@@ -353,7 +432,7 @@ class WindowsWSL2AdapterManager {
           tool: 'tcpdump',
           processId,
           outputFile,
-          interface: interfaceName,
+          interface: safeInterface,
           capabilities: {
             packetCapture: true,
             filtering: true,
@@ -366,24 +445,24 @@ class WindowsWSL2AdapterManager {
 
         const timestamp = Date.now();
         const processId = `capture-${timestamp}`;
+        const safeInterface = sanitizeInterfaceName(interfaceName);
 
         this.monitoringProcesses.set(processId, {
-          interface: interfaceName,
+          interface: safeInterface,
           tool: 'bettercap',
           startTime: new Date(),
           status: 'running',
         });
 
         // Bettercap provides more advanced features
-        const bettercapCmd = `bettercap -iface ${interfaceName}`;
-        this._executeWSLCommandAsync(bettercapCmd, true);
+        this._executeWSLCommandDirectAsync(['bettercap', '-iface', safeInterface], true);
 
         return {
           success: true,
           mode: 'promiscuous',
           tool: 'bettercap',
           processId,
-          interface: interfaceName,
+          interface: safeInterface,
           capabilities: {
             packetCapture: true,
             networkMapping: true,
@@ -442,11 +521,12 @@ class WindowsWSL2AdapterManager {
    * @param {string} captureFile - Path to PCAP file
    */
   async analyzeCaptureFile(captureFile) {
+    const safeFile = sanitizeFilePath(captureFile);
     try {
       // Use tshark to analyze if available
       if (this.supportedTools.tshark) {
         const output = await this._executeWSLCommand(
-          `tshark -r "${captureFile}" -T fields -e frame.protocols -e ip.src -e ip.dst | head -100`
+          `tshark -r "${safeFile}" -T fields -e frame.protocols -e ip.src -e ip.dst | head -100`
         );
         return {
           success: true,
@@ -457,7 +537,7 @@ class WindowsWSL2AdapterManager {
 
       // Fallback to tcpdump analysis
       const output = await this._executeWSLCommand(
-        `tcpdump -r "${captureFile}" | head -50`
+        `tcpdump -r "${safeFile}" | head -50`
       );
       return {
         success: true,
@@ -471,39 +551,121 @@ class WindowsWSL2AdapterManager {
   }
 
   /**
-   * Execute command in WSL2 environment
+   * Execute command in WSL2 environment.
+   * Uses spawn('wsl', args) — no host-shell string exec.
+   * Enforces a 30-second timeout and a 10 MB combined stdout+stderr cap.
    * @private
    */
   async _executeWSLCommand(command, useSudo = false) {
-    try {
-      const sudoPrefix = useSudo ? 'sudo ' : '';
-      const fullCommand = `wsl -d ${this.wslDistro} -u ${this.wslusername} ${sudoPrefix}${command}`;
+    const TIMEOUT_MS = 30000;
+    const MAX_OUTPUT_BYTES = 10 * 1024 * 1024; // 10 MB
 
-      const { stdout, stderr } = await execAsync(fullCommand, {
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000,
+    const distro = sanitizeDistroName(this.wslDistro);
+    const user = sanitizeUsername(this.wslusername);
+    const args = ['-d', distro, '-u', user, '--'];
+    if (useSudo) {
+      args.push('sudo');
+    }
+    args.push('sh', '-c', command);
+
+    return new Promise((resolve, reject) => {
+      const child = spawn('wsl', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '';
+      let stderr = '';
+      let totalBytes = 0;
+      let settled = false;
+
+      const killWith = (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        try { child.kill(); } catch (_) { /* ignore */ }
+        reject(err);
+      };
+
+      const timer = setTimeout(() => {
+        killWith(new Error('WSL2 command timed out after 30 seconds'));
+      }, TIMEOUT_MS);
+
+      child.stdout.on('data', (chunk) => {
+        totalBytes += chunk.length;
+        if (totalBytes > MAX_OUTPUT_BYTES) {
+          killWith(new Error('WSL2 command output exceeded 10 MB limit'));
+          return;
+        }
+        stdout += chunk;
       });
 
-      if (stderr && !stderr.includes('Warning')) {
-        console.warn('[WSL2] stderr:', stderr);
-      }
+      child.stderr.on('data', (chunk) => {
+        totalBytes += chunk.length;
+        if (totalBytes > MAX_OUTPUT_BYTES) {
+          killWith(new Error('WSL2 command output exceeded 10 MB limit'));
+          return;
+        }
+        stderr += chunk;
+      });
 
-      return stdout.trim();
-    } catch (error) {
-      console.error('[WSL2] Command failed:', error.message);
-      throw new Error(`WSL2 command failed: ${error.message}`);
-    }
+      child.on('error', (err) => {
+        killWith(err);
+      });
+
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        if (settled) return;
+        settled = true;
+        if (stderr && !stderr.includes('Warning')) {
+          console.warn('[WSL2] stderr:', stderr);
+        }
+        if (code !== 0) {
+          reject(new Error(`WSL2 command failed with exit code ${code}`));
+          return;
+        }
+        resolve(stdout.trim());
+      });
+    });
   }
 
   /**
-   * Execute command in WSL2 asynchronously (non-blocking)
+   * Execute command in WSL2 asynchronously (non-blocking).
+   * Uses spawn('wsl', args) directly — no cmd.exe /c shell string.
    * @private
    */
   _executeWSLCommandAsync(command, useSudo = false) {
-    const sudoPrefix = useSudo ? 'sudo ' : '';
-    const fullCommand = `wsl -d ${this.wslDistro} -u ${this.wslusername} ${sudoPrefix}${command}`;
+    const distro = sanitizeDistroName(this.wslDistro);
+    const user = sanitizeUsername(this.wslusername);
+    const args = ['-d', distro, '-u', user, '--'];
+    if (useSudo) {
+      args.push('sudo');
+    }
+    args.push('sh', '-c', command);
 
-    const child = spawn('cmd.exe', ['/c', fullCommand], {
+    const child = spawn('wsl', args, {
+      detached: true,
+      stdio: 'ignore',
+    });
+
+    child.unref();
+    return child.pid;
+  }
+
+  /**
+   * Execute an explicit command+args array in WSL2 asynchronously (non-blocking).
+   * Invokes the command directly via `wsl ... -- cmd arg1 arg2 ...` with no shell.
+   * @param {string[]} cmdArgs - Array where cmdArgs[0] is the command and the rest are arguments
+   * @param {boolean} useSudo - Whether to prefix the command with sudo
+   * @returns {number|undefined} The PID of the spawned process (for optional external tracking)
+   * @private
+   */
+  _executeWSLCommandDirectAsync(cmdArgs, useSudo = false) {
+    const distro = sanitizeDistroName(this.wslDistro);
+    const user = sanitizeUsername(this.wslusername);
+    const wslArgs = ['-d', distro, '-u', user, '--'];
+    if (useSudo) {
+      wslArgs.push('sudo');
+    }
+    wslArgs.push(...cmdArgs);
+
+    const child = spawn('wsl', wslArgs, {
       detached: true,
       stdio: 'ignore',
     });
