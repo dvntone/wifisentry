@@ -57,6 +57,9 @@
 
 ## Session Log
 
+### 2026-03-08 — Add root Gradle wrapper shim
+- Added root `gradlew` and `gradlew.bat` shims that delegate to `android-native/gradlew` so CI workflows invoking `./gradlew` from repo root succeed
+
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid semver version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
 - Fixed escaped template literals in `web-app/src/app/playground/page.tsx` (lines 55, 61): `\${...}` → `${...}`; tab buttons were rendering literal `${...}` text instead of active class
