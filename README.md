@@ -7,7 +7,7 @@
     <a href="https://sonarcloud.io/summary/new_code?id=dvntone_wifisentry">
       <img src="https://sonarcloud.io/api/project_badges/measure?project=dvntone_wifisentry&metric=alert_status" alt="Quality Gate Status" />
     </a>
-    <img src="https://img.shields.io/badge/version-1.2.8d-0e7490.svg" alt="Version 1.2.8d" />
+    <img src="https://img.shields.io/badge/version-1.2.9-0e7490.svg" alt="Version 1.2.9" />
     <img src="https://img.shields.io/badge/license-MIT-34d399.svg" alt="License MIT" />
   </p>
 </div>

@@ -79,7 +79,7 @@ The app declares and requests at runtime:
 
 ## Project versioning
 
-`versionCode = 4`, `versionName = "0.2.2"` (set in `app/build.gradle`).
+`versionCode = 26`, `versionName = "1.2.9"` (set in `app/build.gradle`).
 
 ## CI
 

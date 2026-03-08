@@ -6,7 +6,7 @@ This file ensures that Gemini CLI and GitHub Copilot (or any other AI agents) do
 
 ## Current Session Status
 - **Agent:** Gemini CLI
-- **Current Project Version:** 1.2.8b
+- **Current Project Version:** 1.2.9
 - **Last Updated:** 2026-03-05
 
 ## Recent Major Architectural Changes
