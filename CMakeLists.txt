@@ -5,4 +5,4 @@ cmake_minimum_required(VERSION 3.20)
 # This file allows the Microsoft C++ Code Analysis CI workflow to configure
 # CMake successfully (it will find no C++ sources to analyze, producing a
 # clean empty SARIF report).
-project(WifiSentry)
+project(WifiSentry LANGUAGES NONE)
