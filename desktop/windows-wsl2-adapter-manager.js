@@ -11,11 +11,116 @@
  */
 
 const { execSync, spawn } = require('child_process');
-const { promisify } = require('util');
-const { exec } = require('child_process');
-const execAsync = promisify(exec);
 const path = require('path');
 const os = require('os');
+
+/**
+ * Validate a network interface name.
+ * Only alphanumeric characters, hyphens, and underscores are allowed.
+ * @param {string} name - Interface name to validate
+ * @returns {string} - Validated name
+ * @throws {Error} If the name contains invalid characters
+ */
+function sanitizeInterfaceName(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(name)) {
+    throw new Error(`Invalid interface name: ${String(name).substring(0, 50)}`);
+  }
+  return name;
+}
+
+/**
+ * Validate a file path for shell safety.
+ * Rejects paths containing shell metacharacters that could enable injection.
+ * @param {string} filePath - Path to validate
+ * @returns {string} - Validated path
+ * @throws {Error} If the path contains dangerous characters
+ */
+function sanitizeFilePath(filePath) {
+  if (typeof filePath !== 'string' || /[;|&$`\\!><\r\n]/.test(filePath)) {
+    throw new Error(`Invalid file path: ${String(filePath).substring(0, 50)}`);
+  }
+  return filePath;
+}
+
+/**
+ * Validate a WSL distro name.
+ * Only alphanumeric characters, hyphens, underscores, and dots are allowed.
+ * @param {string} name - Distro name to validate
+ * @returns {string} - Validated name
+ * @throws {Error} If the name contains invalid characters
+ */
+function sanitizeDistroName(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(name)) {
+    throw new Error(`Invalid WSL distro name: ${String(name).substring(0, 50)}`);
+  }
+  return name;
+}
+
+/**
+ * Validate a WSL username.
+ * Only alphanumeric characters, hyphens, underscores, and dots are allowed.
+ * @param {string} name - Username to validate
+ * @returns {string} - Validated name
+ * @throws {Error} If the name contains invalid characters
+ */
+function sanitizeUsername(name) {
+  if (typeof name !== 'string' || !/^[a-zA-Z0-9_.-]+$/.test(name)) {
+    throw new Error(`Invalid username: ${String(name).substring(0, 50)}`);
+  }
+  return name;
+}
+
+/**
+ * Validate a BPF filter expression.
+ * Rejects shell metacharacters that could enable injection while
+ * allowing valid BPF syntax (alphanumerics, spaces, parens, comparisons, etc.).
+ * @param {string} filter - BPF filter to validate
+ * @returns {string} - Validated filter
+ * @throws {Error} If the filter contains dangerous characters
+ */
+function sanitizeBpfFilter(filter) {
+  if (typeof filter !== 'string' || /[;|&$`\\!\r\n]/.test(filter)) {
+    throw new Error(`Invalid BPF filter: ${String(filter).substring(0, 50)}`);
+  }
+  return filter;
+}
+
+/**
+ * Execute a command via spawn and return stdout as a promise.
+ * @param {string} command - The executable to run
+ * @param {string[]} args - Arguments array
+ * @param {object} options - Spawn options
+ * @returns {Promise<{stdout: string, stderr: string}>}
+ */
+function spawnAsync(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { ...options, stdio: ['pipe', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (data) => { stdout += data; });
+    child.stderr.on('data', (data) => { stderr += data; });
+
+    child.on('error', (err) => reject(err));
+    child.on('close', (code) => {
+      if (code !== 0) {
+        const err = new Error(`Command failed with exit code ${code}: ${stderr}`);
+        err.code = code;
+        err.stderr = stderr;
+        reject(err);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+
+    if (options.timeout) {
+      setTimeout(() => {
+        child.kill();
+        reject(new Error('Command timed out'));
+      }, options.timeout);
+    }
+  });
+}
 
 class WindowsWSL2AdapterManager {
   constructor() {
@@ -144,6 +249,7 @@ class WindowsWSL2AdapterManager {
     if (!this.wsl2Available) {
       throw new Error('WSL2 not available for monitor mode');
     }
+    interfaceName = sanitizeInterfaceName(interfaceName);
 
     try {
       if (method === 'aircrack' && this.supportedTools.aircrack) {
@@ -260,6 +366,7 @@ class WindowsWSL2AdapterManager {
     if (!this.wsl2Available) {
       throw new Error('WSL2 not available');
     }
+    interfaceName = sanitizeInterfaceName(interfaceName);
 
     try {
       if (method === 'aircrack') {
@@ -294,6 +401,47 @@ class WindowsWSL2AdapterManager {
   }
 
   /**
+   * Build a tcpdump command string with validated options
+   * @param {string} interfaceName - Sanitized network interface name
+   * @param {object} options - Capture options
+   * @param {number} timestamp - Timestamp for output file naming
+   * @returns {{ cmd: string, outputFile: string }} The command and output file path
+   */
+  _buildTcpdumpCommand(interfaceName, options, timestamp) {
+    const outputFile = sanitizeFilePath(
+      options.outputFile ||
+      `/tmp/wifi-sentry-capture-${timestamp}.pcap`
+    );
+
+    let packetCount = 0;
+    if (options.packetCount > 0) {
+      packetCount = parseInt(options.packetCount, 10);
+      if (!Number.isFinite(packetCount) || packetCount <= 0) {
+        throw new Error('Invalid packet count');
+      }
+    }
+
+    let safeFilter = '';
+    if (options.filter) {
+      safeFilter = sanitizeBpfFilter(options.filter);
+    }
+
+    let cmd = `tcpdump -i ${interfaceName} -P in`;
+
+    if (packetCount > 0) {
+      cmd += ` -c ${packetCount}`;
+    }
+
+    if (safeFilter) {
+      cmd += ` "${safeFilter}"`;
+    }
+
+    cmd += ` -w "${outputFile}"`;
+
+    return { cmd, outputFile };
+  }
+
+  /**
    * Start packet capture in promiscuous mode
    * @param {string} interfaceName - Network interface name
    * @param {object} options - Capture options
@@ -310,28 +458,13 @@ class WindowsWSL2AdapterManager {
     if (!this.wsl2Available) {
       throw new Error('WSL2 not available for promiscuous mode');
     }
+    interfaceName = sanitizeInterfaceName(interfaceName);
 
     try {
       if (this.supportedTools.tcpdump) {
         const timestamp = Date.now();
-        const outputFile =
-          options.outputFile ||
-          `/tmp/wifi-sentry-capture-${timestamp}.pcap`;
-
-        let tcpdumpCmd = `tcpdump -i ${interfaceName} -P in`;
-
-        // Add packet count if specified
-        if (options.packetCount > 0) {
-          tcpdumpCmd += ` -c ${options.packetCount}`;
-        }
-
-        // Add BPF filter if specified
-        if (options.filter) {
-          tcpdumpCmd += ` "${options.filter}"`;
-        }
-
-        // Add output file
-        tcpdumpCmd += ` -w "${outputFile}"`;
+        const { cmd: tcpdumpCmd, outputFile } =
+          this._buildTcpdumpCommand(interfaceName, options, timestamp);
 
         console.log('[Promiscuous] Starting tcpdump capture');
 
@@ -442,6 +575,7 @@ class WindowsWSL2AdapterManager {
    * @param {string} captureFile - Path to PCAP file
    */
   async analyzeCaptureFile(captureFile) {
+    captureFile = sanitizeFilePath(captureFile);
     try {
       // Use tshark to analyze if available
       if (this.supportedTools.tshark) {
@@ -476,11 +610,15 @@ class WindowsWSL2AdapterManager {
    */
   async _executeWSLCommand(command, useSudo = false) {
     try {
-      const sudoPrefix = useSudo ? 'sudo ' : '';
-      const fullCommand = `wsl -d ${this.wslDistro} -u ${this.wslusername} ${sudoPrefix}${command}`;
+      const distro = sanitizeDistroName(this.wslDistro);
+      const user = sanitizeUsername(this.wslusername);
+      const args = ['-d', distro, '-u', user];
+      if (useSudo) {
+        args.push('sudo');
+      }
+      args.push('--', 'sh', '-c', command);
 
-      const { stdout, stderr } = await execAsync(fullCommand, {
-        maxBuffer: 10 * 1024 * 1024,
+      const { stdout, stderr } = await spawnAsync('wsl', args, {
         timeout: 30000,
       });
 
@@ -500,10 +638,15 @@ class WindowsWSL2AdapterManager {
    * @private
    */
   _executeWSLCommandAsync(command, useSudo = false) {
-    const sudoPrefix = useSudo ? 'sudo ' : '';
-    const fullCommand = `wsl -d ${this.wslDistro} -u ${this.wslusername} ${sudoPrefix}${command}`;
+    const distro = sanitizeDistroName(this.wslDistro);
+    const user = sanitizeUsername(this.wslusername);
+    const wslArgs = ['-d', distro, '-u', user];
+    if (useSudo) {
+      wslArgs.push('sudo');
+    }
+    wslArgs.push('--', 'sh', '-c', command);
 
-    const child = spawn('cmd.exe', ['/c', fullCommand], {
+    const child = spawn('wsl', wslArgs, {
       detached: true,
       stdio: 'ignore',
     });
