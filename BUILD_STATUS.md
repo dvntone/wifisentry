@@ -55,6 +55,20 @@
 
 ## Session Log
 
+### 2026-03-08 — Modernise WIPS core (Shizuku + Room/SQLCipher + Compose)
+- Added `gradle/libs.versions.toml` version catalog for new dependencies
+- Added KSP plugin to root `build.gradle`
+- Added JitPack repository to `settings.gradle` for Shizuku
+- Added Shizuku API (`compileOnly` core / `implementation` app), Room 2.6.1 + KSP, SQLCipher 4.5.4, security-crypto to build files
+- Added Jetpack Compose (BOM 2024.12.01) + Material3 to app module
+- Created `ShizukuWifiScanner.kt` — ADB shell UID 2000 Wi-Fi scanner via Shizuku IPC; falls back gracefully
+- Created `OuiDatabase.kt` — AES-256 SQLCipher Room database with Android Keystore key (hardware-backed StrongBox requested)
+- Created `network_security_config.xml` — cleartext blocked, cert pinning for raw.githubusercontent.com
+- Updated `AndroidManifest.xml` — `networkSecurityConfig`, `FOREGROUND_SERVICE` permission, signature-level IPC permission, Shizuku provider, `ComposeDashboardActivity`
+- Created `DashboardViewModel.kt` — MVVM with StateFlow, Shizuku priority scan
+- Created `ComposeDashboardActivity.kt` — Compose dashboard with light/dark mode, threat severity chips
+- ThreatEngine already implements all 8 required heuristics (no changes needed)
+
 ### 2026-03-05 — Initial assessment
 - Reviewed all docs and CI history
 - Identified 22 known issues (see KNOWN_ISSUES.md)

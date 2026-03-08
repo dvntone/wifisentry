@@ -21,8 +21,6 @@ android {
     productFlavors {
         // dev — development build; applicationId gets .dev suffix so it can
         // be installed alongside a production build on the same device.
-        // A `prod` flavor should be added here when production release signing
-        // is configured.
         dev {
             dimension "environment"
             applicationIdSuffix ".dev"
@@ -33,8 +31,6 @@ android {
     signingConfigs {
         debug {
             // Use the default debug keystore that Gradle expects
-            // This is usually at ~/.android/debug.keystore on local machines
-            // but for CI, we can define it or let it use the default.
         }
     }
 
@@ -42,9 +38,6 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // Sign dev release builds with the debug keystore so the APK can be
-            // sideloaded on a test device.  A production signing config should
-            // replace this when a release keystore is available.
             signingConfig signingConfigs.debug
         }
     }
@@ -57,6 +50,10 @@ android {
     }
     buildFeatures {
         viewBinding true
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.15'
     }
 }
 
@@ -72,6 +69,21 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.8.7'
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.biometric:biometric:1.1.0'
+
+    // Shizuku — optional, enables unthrottled Wi-Fi scanning via ADB shell privileges
+    implementation libs.shizuku.api
+    implementation libs.shizuku.provider
+
+    // Jetpack Compose
+    implementation platform(libs.compose.bom)
+    implementation libs.compose.ui
+    implementation libs.compose.ui.graphics
+    implementation libs.compose.ui.tooling.preview
+    implementation libs.compose.material3
+    implementation libs.activity.compose
+
+    debugImplementation libs.compose.ui.tooling
+    debugImplementation libs.compose.ui.test.manifest
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

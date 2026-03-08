@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Configuration for WiFi Sentry
+    ================================================
+    Enforces strict transport security to protect threat telemetry and OUI
+    database update traffic from interception or downgrade attacks.
+
+    Key policies:
+    1. Cleartext (HTTP) traffic is blocked globally — all traffic must use TLS.
+    2. Certificate pinning is applied to the OUI database update endpoint on
+       GitHub (raw.githubusercontent.com) to prevent MitM substitution.
+    3. Debug builds additionally trust user-installed CAs to allow local
+       packet inspection during development.
+
+    OWASP MASTG references:
+    - MSTG-NETWORK-2: App uses TLS for all network communication.
+    - MSTG-NETWORK-4: Certificate pinning is implemented for sensitive endpoints.
+-->
+<network-security-config>
+
+    <!-- Block all cleartext HTTP traffic app-wide -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <!-- Trust only the system CA store (not user-installed CAs) in release builds -->
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!--
+        Certificate pinning for the OUI database update endpoint.
+
+        Pins the GitHub CDN certificate chain root (DigiCert Global Root CA)
+        and an intermediate backup pin.  If GitHub rotates its leaf certificate
+        the pinned intermediates/root remain valid.
+
+        SHA-256 pin values are Base64-encoded SPKI (SubjectPublicKeyInfo) hashes
+        for the DigiCert Global Root CA G2 and the DigiCert TLS RSA4096 Root G5
+        (backup).  Update these when GitHub changes its CA chain.
+    -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        <pin-set expiration="2027-01-01">
+            <!-- DigiCert Global Root CA G2 — primary GitHub CDN root -->
+            <pin digest="SHA-256">r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=</pin>
+            <!-- DigiCert TLS RSA4096 Root G5 — backup pin -->
+            <pin digest="SHA-256">WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=</pin>
+        </pin-set>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Debug builds: also trust user-installed CAs for development proxy inspection -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+
+</network-security-config>
