@@ -1,4 +1,4 @@
-const { exec, execFile } = require('child_process');
+const { execFile } = require('child_process');
 const path = require('path');
 const wifi = require('node-wifi');
 const { v4: uuidv4 } = require('uuid');
