@@ -55,6 +55,16 @@ const SEVERITY_COLOURS: Record<string, string> = {
   Low:      '#16a34a',
 };
 
+/** Escape HTML entities in attacker-controlled strings (SSID/BSSID/threat data) before inserting into Leaflet popup HTML. */
+function escapeHtml(unsafe: string): string {
+  return String(unsafe)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function markerColour(network: Network): string {
   if (!network.isFlagged || !network.threats?.length) return '#3b82f6';
   const order = ['Critical', 'High', 'Medium', 'Low'];
@@ -199,16 +209,16 @@ export default function NetworkMap({ networks = [], useDesktopConfig = false, cl
 
       const threatList = net.threats?.length
         ? `<ul style="margin:4px 0;padding-left:16px">${net.threats.map(t =>
-            `<li><span style="color:${SEVERITY_COLOURS[t.severity] || '#666'}">${t.severity}</span>: ${t.type}</li>`
+            `<li><span style="color:${SEVERITY_COLOURS[escapeHtml(t.severity)] || '#666'}">${escapeHtml(t.severity)}</span>: ${escapeHtml(t.type)}</li>`
           ).join('')}</ul>`
         : '<p style="color:#16a34a;margin:4px 0">No threats detected</p>';
 
       marker.bindPopup(`
         <div style="min-width:200px;font-family:system-ui,sans-serif">
-          <strong style="font-size:14px">${net.ssid || '(Hidden SSID)'}</strong>
-          <p style="color:#666;font-size:11px;margin:2px 0">${net.bssid}</p>
+          <strong style="font-size:14px">${escapeHtml(net.ssid || '(Hidden SSID)')}</strong>
+          <p style="color:#666;font-size:11px;margin:2px 0">${escapeHtml(net.bssid)}</p>
           <hr style="border:0;border-top:1px solid #e5e7eb;margin:6px 0"/>
-          <p style="margin:2px 0"><b>Security:</b> ${net.security || 'Unknown'}</p>
+          <p style="margin:2px 0"><b>Security:</b> ${escapeHtml(net.security || 'Unknown')}</p>
           <p style="margin:2px 0"><b>Signal:</b> ${net.signal ?? '?'} dBm</p>
           <p style="margin:2px 0"><b>Channel:</b> ${net.channel ?? '?'} (${net.frequency ?? '?'} MHz)</p>
           <p style="margin:4px 0"><b>Threats:</b></p>

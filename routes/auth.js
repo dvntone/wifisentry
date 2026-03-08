@@ -1,5 +1,7 @@
 'use strict';
 
+const Joi = require('joi');
+
 /**
  * Auth routes: login, logout, and 2FA setup/verify.
  * Registers as a Fastify plugin so it has access to fastify.config,
@@ -67,7 +69,9 @@ module.exports = async function authRoutes(fastify) {
     preHandler: requireAuth,
     config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
-    const { token } = request.body;
+    const { error: validErr, value: body } = Joi.object({ token: Joi.string().pattern(/^\d{6,8}$/).required() }).validate(request.body);
+    if (validErr) return reply.status(400).send({ success: false, message: 'Invalid token format.' });
+    const { token } = body;
     const secret = request.session.temp2faSecret;
 
     if (!secret) {
@@ -86,7 +90,13 @@ module.exports = async function authRoutes(fastify) {
   fastify.post('/api/auth/login', {
     config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
-    const { username, password } = request.body;
+    const loginSchema = Joi.object({
+      username: Joi.string().max(255).required(),
+      password: Joi.string().max(1024).required(),
+    });
+    const { error: validErr, value: body } = loginSchema.validate(request.body);
+    if (validErr) return reply.status(400).send({ success: false, message: 'Invalid request body.' });
+    const { username, password } = body;
     if (username === config.auth.adminUsername && password === config.auth.adminPassword) {
       if (config.auth.adminTwoFactorSecret) {
         request.session.awaiting2fa = true;
@@ -101,7 +111,9 @@ module.exports = async function authRoutes(fastify) {
   fastify.post('/api/auth/2fa/verify', {
     config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
-    const { token } = request.body;
+    const { error: validErr, value: body } = Joi.object({ token: Joi.string().pattern(/^\d{6,8}$/).required() }).validate(request.body);
+    if (validErr) return reply.status(400).send({ success: false, message: 'Invalid token format.' });
+    const { token } = body;
 
     if (!request.session.awaiting2fa) {
       return reply.status(401).send({ success: false, message: 'Please log in with your password first.' });

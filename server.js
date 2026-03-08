@@ -18,12 +18,18 @@
 
 require('dotenv').config();
 
+const config            = require('./config');
+
+if (!config.auth?.sessionSecret) {
+  console.error('FATAL: SESSION_SECRET is not configured. Add SESSION_SECRET (min 32 chars) to your .env file and restart.');
+  process.exit(1);
+}
+
 const path      = require('path');
 const Fastify   = require('fastify');
 const { authenticator } = require('otplib');
 const qrcode    = require('qrcode');
 
-const config            = require('./config');
 const database          = require('./database');
 const aiService         = require('./aiService');
 const wifiScanner       = require('./wifi-scanner');
@@ -58,7 +64,7 @@ fastify.register(require('@fastify/helmet'), {
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ['\'self\''],
-      scriptSrc:  ['\'self\'', '\'unsafe-inline\''],
+      scriptSrc:  ['\'self\''],
       styleSrc:   ['\'self\'', '\'unsafe-inline\'', 'https://unpkg.com', 'https://fonts.googleapis.com'],
       imgSrc:     ['\'self\'', 'data:', 'https:', 'blob:'],
       connectSrc: ['\'self\'', 'ws:', 'wss:'],
@@ -82,7 +88,7 @@ fastify.register(require('@fastify/cookie'));
 
 // Session
 fastify.register(require('@fastify/session'), {
-  secret:      config.auth.sessionSecret || 'wifi-sentry-dev-secret-key-that-is-at-least-32-chars-long',
+  secret:      config.auth.sessionSecret,
   saveUninitialized: false,
   cookie: {
     secure:   config.environment === 'production',

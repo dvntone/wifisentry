@@ -1,5 +1,9 @@
 'use strict';
 
+const Joi = require('joi');
+
+const toolIdValidator = Joi.string().alphanum().max(64).required();
+
 /**
  * Dependency and platform setup routes.
  * Wraps dependency-checker and platform-installer modules.
@@ -29,6 +33,9 @@ module.exports = async function dependencyRoutes(fastify) {
 
   fastify.get('/api/dependencies/:toolId/install', async (request, reply) => {
     try {
+      if (toolIdValidator.validate(request.params.toolId).error) {
+        return reply.status(400).send({ error: 'Invalid tool ID.' });
+      }
       const instructions = dependencyChecker.getInstallationInstructions(request.params.toolId);
       if (!instructions) return reply.status(404).send({ error: 'Tool not found' });
       return reply.send(instructions);
@@ -39,6 +46,9 @@ module.exports = async function dependencyRoutes(fastify) {
 
   fastify.post('/api/dependencies/:toolId/install', async (request, reply) => {
     try {
+      if (toolIdValidator.validate(request.params.toolId).error) {
+        return reply.status(400).send({ error: 'Invalid tool ID.' });
+      }
       const result = await dependencyChecker.installDependency(request.params.toolId, request.body || {});
       return reply.send(result);
     } catch (err) {
@@ -62,7 +72,13 @@ module.exports = async function dependencyRoutes(fastify) {
 
   fastify.post('/api/setup/install-script', async (request, reply) => {
     try {
-      const { toolIds = [], update = true } = request.body;
+      const schema = Joi.object({
+        toolIds: Joi.array().items(Joi.string().alphanum().max(64)).default([]),
+        update:  Joi.boolean().default(true),
+      });
+      const { error: validErr, value: body } = schema.validate(request.body || {});
+      if (validErr) return reply.status(400).send({ error: 'Invalid request body.' });
+      const { toolIds, update } = body;
       return reply.send(platformInstaller.generateInstallScript(toolIds, { update }));
     } catch (err) {
       return reply.status(500).send({ error: 'Failed to generate installation script', details: err.message });
