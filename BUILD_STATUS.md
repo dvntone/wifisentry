@@ -55,6 +55,19 @@
 
 ## Session Log
 
+### 2026-03-08 — PR #38 review fault resolution
+- Reviewed PR #38 checklist: Android 14/15+ modernization
+- Created `android-native/gradle/libs.versions.toml` with pinned versions for KSP, Room, SQLCipher, Shizuku, and Compose
+- Updated root `build.gradle` with KSP (`2.1.0-1.0.29`) and Compose compiler (`2.1.0`) plugins
+- Updated `settings.gradle` to add Jitpack repository (required by Shizuku)
+- Updated `core/build.gradle` with Room runtime/KTX/compiler (2.6.1), SQLCipher (4.5.4), sqlite-ktx
+- Updated `app/build.gradle` with Shizuku API/provider (13.1.5, optional via `BuildConfig.SHIZUKU_ENABLED`), Compose BOM (2024.12.01), KSP, Compose compiler plugin, `buildConfig true`
+- Created `ShizukuWifiScanner.kt` (app module) — tier-2 ADB-privileged scanner, gated by `SHIZUKU_ENABLED` flag (false by default, true in `dev` flavor)
+- Created `OuiDatabase.kt` (core module) — encrypted Room/SQLCipher OUI database with Android Keystore AES-256 key (StrongBox-backed with TEE fallback), WAL mode
+- Created `network_security_config.xml` — cleartext traffic blocked globally, certificate pinning for `raw.githubusercontent.com` (DigiCert root CA pins)
+- Updated `AndroidManifest.xml` — added `networkSecurityConfig`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_CONNECTED_DEVICE`, and signature-level `WIFISENTRY_IPC` permission
+- No existing functionality altered; all changes are additive
+
 ### 2026-03-05 — Initial assessment
 - Reviewed all docs and CI history
 - Identified 22 known issues (see KNOWN_ISSUES.md)

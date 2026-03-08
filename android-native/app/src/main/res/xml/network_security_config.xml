@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    WiFi Sentry — Network Security Configuration
+    =============================================
+    Enforces two security controls for all network traffic:
+
+    1. CLEARTEXT RESTRICTION — All HTTP (non-TLS) traffic is blocked globally.
+       Only HTTPS connections are permitted.  This satisfies OWASP MASVS-NETWORK-1.
+
+    2. CERTIFICATE PINNING — The OUI database update endpoint
+       (raw.githubusercontent.com) is pinned to specific DigiCert root CA public
+       keys.  This prevents a MITM attacker from injecting a rogue OUI database
+       via a fraudulent TLS certificate.
+
+    Pin maintenance:
+    - The `expiration` date should be updated before the pin-set expires.
+    - Verify pins are still current by inspecting the server certificate chain:
+        openssl s_client -connect raw.githubusercontent.com:443 -showcerts 2>/dev/null \
+          | openssl x509 -pubkey -noout | openssl pkey -pubin -outform der \
+          | openssl dgst -sha256 -binary | base64
+    - Always include at least ONE backup pin targeting a different CA/intermediate
+      to avoid locking users out during certificate rotation.
+-->
+<network-security-config>
+
+    <!-- Block all cleartext (plain HTTP) traffic for every domain. -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!--
+        Certificate pinning for the OUI database update endpoint.
+        raw.githubusercontent.com is served via Fastly CDN and uses DigiCert CAs.
+
+        Pin 1 (primary)  — DigiCert High Assurance EV Root CA
+        Pin 2 (backup)   — DigiCert Global Root CA
+        Both pins target root CA SPKI hashes so they remain valid across
+        intermediate CA rotations.
+    -->
+    <domain-config>
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+        <pin-set expiration="2027-03-01">
+            <!-- DigiCert High Assurance EV Root CA — primary pin -->
+            <pin digest="SHA-256">WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18=</pin>
+            <!-- DigiCert Global Root CA — backup pin -->
+            <pin digest="SHA-256">r/mIkG3eEpVdm+u/ko/cwxzOMo1bk4TyHIlByibiA5E=</pin>
+        </pin-set>
+    </domain-config>
+
+</network-security-config>

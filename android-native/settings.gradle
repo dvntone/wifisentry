@@ -10,6 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // Jitpack — required for Shizuku (dev.rikka.shizuku) and hidden-api-bypass
+        maven { url 'https://jitpack.io' }
     }
 }
 

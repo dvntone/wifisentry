@@ -1,0 +1,46 @@
+# Version catalog for WiFi Sentry Android.
+# Add all new dependency versions here first, then reference via libs.* in build.gradle files.
+# Pin ALL versions exactly — no ranges, no `latest.release`.
+
+[versions]
+# KSP — must match the Kotlin version used in build.gradle (2.1.0)
+ksp            = "2.1.0-1.0.29"
+# Room — local SQLite ORM (used by OuiDatabase)
+room           = "2.6.1"
+# SQLCipher — AES-256 database encryption (OWASP MASTG M9)
+sqlcipher      = "4.5.4"
+# sqlite-ktx — required by Room when using a custom SupportSQLiteOpenHelper
+sqlite         = "2.4.0"
+# Shizuku — ADB-level privilege scanner tier (OPTIONAL — see BuildConfig.SHIZUKU_ENABLED)
+shizuku        = "13.1.5"
+# Jetpack Compose BOM — pins all compose-* artifacts to a tested, compatible set
+composeBom     = "2024.12.01"
+# activity-compose — ComponentActivity.setContent / rememberLauncherForActivityResult
+activityCompose = "1.9.3"
+
+[libraries]
+# ── Room ──────────────────────────────────────────────────────────────────────
+room-runtime  = { group = "androidx.room",  name = "room-runtime",  version.ref = "room" }
+room-ktx      = { group = "androidx.room",  name = "room-ktx",      version.ref = "room" }
+room-compiler = { group = "androidx.room",  name = "room-compiler", version.ref = "room" }
+
+# ── SQLCipher ─────────────────────────────────────────────────────────────────
+sqlcipher     = { group = "net.zetetic",    name = "android-database-sqlcipher", version.ref = "sqlcipher" }
+sqlite-ktx    = { group = "androidx.sqlite", name = "sqlite-ktx",  version.ref = "sqlite" }
+
+# ── Shizuku (optional scanner tier) ──────────────────────────────────────────
+shizuku-api      = { group = "dev.rikka.shizuku", name = "api",      version.ref = "shizuku" }
+shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref = "shizuku" }
+
+# ── Jetpack Compose ───────────────────────────────────────────────────────────
+compose-bom             = { group = "androidx.compose",           name = "compose-bom",       version.ref = "composeBom" }
+compose-ui              = { group = "androidx.compose.ui",        name = "ui" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui",    name = "ui-tooling-preview" }
+compose-material3       = { group = "androidx.compose.material3", name = "material3" }
+compose-activity        = { group = "androidx.activity",          name = "activity-compose",  version.ref = "activityCompose" }
+
+[plugins]
+# KSP — Kotlin Symbol Processing (required by Room annotation processor)
+ksp            = { id = "com.google.devtools.ksp",               version.ref = "ksp" }
+# Compose compiler plugin — replaces kotlinCompilerExtensionVersion for Kotlin 2.x
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version = "2.1.0" }
