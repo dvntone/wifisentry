@@ -57,13 +57,26 @@
 
 ## Session Log
 
+### 2026-03-08 — Remove inapplicable msvc.yml CMake/C++ workflow (fixes CI run #22819306663)
+- Root cause: `.github/workflows/msvc.yml` was a GitHub-generated Microsoft C++ Code Analysis template that ran `cmake -B <build>` expecting a `CMakeLists.txt` in the repo root
+- This project has zero C++ code (Kotlin/Android + Node.js + Next.js + Electron); the workflow was never applicable
+- Removed `msvc.yml` entirely — resolves the "CMake Error: source directory does not contain CMakeLists.txt" CI failure
+
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid semver version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
 - Fixed escaped template literals in `web-app/src/app/playground/page.tsx` (lines 55, 61): `\${...}` → `${...}`; tab buttons were rendering literal `${...}` text instead of active class
 - Fixed XSS vulnerability in `playground/page.tsx`: replaced `dangerouslySetInnerHTML={{ __html: renderedContent }}` with sandboxed `<iframe sandbox="" srcDoc={...}>` to isolate user-controlled HTML
 - Removed invalid Next.js 16 config option `eslint.ignoreDuringBuilds` from `web-app/next.config.ts` (not in `NextConfig` type — was causing `tsc --noEmit` errors)
 
-### 2026-03-08 — Fix desktop:build-win CI failure (Cannot find module '@tailwindcss/postcss')
+### 2026-03-08 — Fix SonarCloud quality gate: eliminate command injection in WSL2 adapter
+- Root cause: `desktop/windows-wsl2-adapter-manager.js` used `exec()`/`execAsync()` with shell strings containing unsanitized user input, and `spawn('cmd.exe', ['/c', shellString])` — both are OS command injection hotspots
+- Added five input sanitizers: `sanitizeInterfaceName`, `sanitizeFilePath`, `sanitizeDistroName`, `sanitizeUsername`, `sanitizeBpfFilter` (regex also corrected to allow valid BPF operators `!`, `<`, `>`)
+- Replaced `execAsync` with `spawn('wsl', args)` in `_executeWSLCommand`; added 30 s timeout, 10 MB output cap, non-zero exit code rejection
+- Replaced `spawn('cmd.exe', ['/c', ...])` with `spawn('wsl', args)` in `_executeWSLCommandAsync`
+- Added `_executeWSLCommandDirectAsync` for shell-free (`wsl … -- cmd arg1 arg2`) tcpdump/bettercap invocation
+- All user-controlled inputs (`interfaceName`, `captureFile`, BPF filter) now sanitized at entry points; PR fixes SonarCloud PR #58 hotspot
+
+
 - Root cause: `desktop:build-win` script was `npm run web:build && npm run desktop:build`, causing the Windows CI step to re-run the Next.js build without web-app node_modules installed
 - Fixed `desktop:build-win` to `npm run desktop:build` (CI downloads pre-built web artifacts; no rebuild needed)
 - Fixed `build:all` script: was calling `desktop:build-web` which just re-ran `web:build` and never built the Electron app; now correctly calls `desktop:build`
