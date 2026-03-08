@@ -5,12 +5,21 @@
  * all locations, nearby network lookup.
  */
 
+const Joi = require('joi');
+
 module.exports = async function locationRoutes(fastify) {
   const { database, locationTracker } = fastify;
 
+  /** Prehandler hook that enforces an authenticated session. */
+  async function requireAuth(request, reply) {
+    if (!request.session.user) {
+      return reply.status(401).send({ error: 'Unauthorized: Please log in.' });
+    }
+  }
+
   // ── Consent ───────────────────────────────────────────────────────────────
 
-  fastify.post('/api/location-consent', async (request, reply) => {
+  fastify.post('/api/location-consent', { preHandler: requireAuth }, async (request, reply) => {
     try {
       fastify.locationTrackingConsent = request.body.consent === true;
       return reply.send({
@@ -28,7 +37,7 @@ module.exports = async function locationRoutes(fastify) {
 
   // ── Log a network location ────────────────────────────────────────────────
 
-  fastify.post('/api/log-location', async (request, reply) => {
+  fastify.post('/api/log-location', { preHandler: requireAuth }, async (request, reply) => {
     const { bssid, ssid, latitude, longitude, accuracy } = request.body;
     try {
       if (!fastify.locationTrackingConsent) {

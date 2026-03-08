@@ -11,9 +11,6 @@
  */
 
 const { execSync, spawn } = require('child_process');
-const { promisify } = require('util');
-const { exec } = require('child_process');
-const execAsync = promisify(exec);
 const path = require('path');
 const os = require('os');
 
@@ -33,6 +30,66 @@ class WindowsWSL2AdapterManager {
     };
 
     this.initializeWSL2();
+  }
+
+  /**
+   * Sanitize interface name - alphanumeric, hyphens, underscores only
+   * @private
+   */
+  sanitizeInterfaceName(name) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      throw new Error(`Invalid interface name: ${name}`);
+    }
+    return name;
+  }
+
+  /**
+   * Sanitize file path - reject shell metacharacters
+   * @private
+   */
+  sanitizeFilePath(filePath) {
+    if (/[;|&$`~!><'"\n\r]/.test(filePath)) {
+      throw new Error(`Invalid characters in file path: ${filePath}`);
+    }
+    return filePath;
+  }
+
+  /**
+   * Sanitize distro name - alphanumeric, hyphens, underscores, dots
+   * @private
+   */
+  sanitizeDistroName(name) {
+    if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+      throw new Error(`Invalid distro name: ${name}`);
+    }
+    return name;
+  }
+
+  /**
+   * Sanitize username - alphanumeric, hyphens, underscores
+   * @private
+   */
+  sanitizeUsername(name) {
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      throw new Error(`Invalid username: ${name}`);
+    }
+    return name;
+  }
+
+  /**
+   * Sanitize BPF filter - allow valid BPF operators but reject shell metacharacters
+   * Valid BPF operators: !, <, >, =, !=, <=, >=, &&, ||, and, or, not
+   * @private
+   */
+  sanitizeBpfFilter(filter) {
+    if (!filter || filter.trim() === '') {
+      return '';
+    }
+    // Reject shell metacharacters but allow BPF operators !<>
+    if (/[;|&$`~'"\n\r^(){}[\],]/.test(filter)) {
+      throw new Error(`Invalid characters in BPF filter: ${filter}`);
+    }
+    return filter.trim();
   }
 
   /**
@@ -146,6 +203,9 @@ class WindowsWSL2AdapterManager {
     }
 
     try {
+      // Sanitize interface name
+      interfaceName = this.sanitizeInterfaceName(interfaceName);
+
       if (method === 'aircrack' && this.supportedTools.aircrack) {
         // Using airmon-ng (aircrack-ng suite)
         console.log(`[Monitor] Enabling monitor mode on ${interfaceName} via airmon-ng`);
@@ -312,26 +372,39 @@ class WindowsWSL2AdapterManager {
     }
 
     try {
+      // Sanitize inputs
+      interfaceName = this.sanitizeInterfaceName(interfaceName);
+      if (options.packetCount && typeof options.packetCount === 'number') {
+        options.packetCount = Math.max(1, Math.min(500, options.packetCount));
+      }
+      if (options.filter) {
+        options.filter = this.sanitizeBpfFilter(options.filter);
+      }
+
       if (this.supportedTools.tcpdump) {
         const timestamp = Date.now();
         const outputFile =
           options.outputFile ||
           `/tmp/wifi-sentry-capture-${timestamp}.pcap`;
 
-        let tcpdumpCmd = `tcpdump -i ${interfaceName} -P in`;
+        // Validate output file path
+        this.sanitizeFilePath(outputFile);
+
+        // Build tcpdump arguments as array (no shell interpolation)
+        const tcpdumpArgs = ['-i', interfaceName, '-P', 'in'];
 
         // Add packet count if specified
-        if (options.packetCount > 0) {
-          tcpdumpCmd += ` -c ${options.packetCount}`;
+        if (options.packetCount && options.packetCount > 0) {
+          tcpdumpArgs.push('-c', String(options.packetCount));
         }
 
         // Add BPF filter if specified
         if (options.filter) {
-          tcpdumpCmd += ` "${options.filter}"`;
+          tcpdumpArgs.push(options.filter);
         }
 
         // Add output file
-        tcpdumpCmd += ` -w "${outputFile}"`;
+        tcpdumpArgs.push('-w', outputFile);
 
         console.log('[Promiscuous] Starting tcpdump capture');
 
@@ -344,8 +417,8 @@ class WindowsWSL2AdapterManager {
           status: 'running',
         });
 
-        // Execute tcpdump in WSL2 (non-blocking)
-        this._executeWSLCommandAsync(tcpdumpCmd, true);
+        // Execute tcpdump in WSL2 (non-blocking, shell-free)
+        this._executeWSLCommandDirectAsync(tcpdumpArgs, true);
 
         return {
           success: true,
@@ -375,8 +448,8 @@ class WindowsWSL2AdapterManager {
         });
 
         // Bettercap provides more advanced features
-        const bettercapCmd = `bettercap -iface ${interfaceName}`;
-        this._executeWSLCommandAsync(bettercapCmd, true);
+        const bettercapArgs = ['-iface', interfaceName];
+        this._executeWSLCommandDirectAsync(bettercapArgs, true);
 
         return {
           success: true,
@@ -443,11 +516,19 @@ class WindowsWSL2AdapterManager {
    */
   async analyzeCaptureFile(captureFile) {
     try {
+      // Sanitize file path
+      captureFile = this.sanitizeFilePath(captureFile);
+
       // Use tshark to analyze if available
       if (this.supportedTools.tshark) {
-        const output = await this._executeWSLCommand(
-          `tshark -r "${captureFile}" -T fields -e frame.protocols -e ip.src -e ip.dst | head -100`
-        );
+        const tsharkArgs = [
+          '-r', captureFile,
+          '-T', 'fields',
+          '-e', 'frame.protocols',
+          '-e', 'ip.src',
+          '-e', 'ip.dst'
+        ];
+        const output = await this._executeWSLCommand(tsharkArgs);
         return {
           success: true,
           tool: 'tshark',
@@ -456,9 +537,8 @@ class WindowsWSL2AdapterManager {
       }
 
       // Fallback to tcpdump analysis
-      const output = await this._executeWSLCommand(
-        `tcpdump -r "${captureFile}" | head -50`
-      );
+      const tcpdumpArgs = ['-r', captureFile];
+      const output = await this._executeWSLCommand(tcpdumpArgs);
       return {
         success: true,
         tool: 'tcpdump',
@@ -471,45 +551,192 @@ class WindowsWSL2AdapterManager {
   }
 
   /**
-   * Execute command in WSL2 environment
+   * Execute command in WSL2 environment (blocking with timeout and output limits)
+   * Supports both string commands and array arguments
    * @private
    */
-  async _executeWSLCommand(command, useSudo = false) {
+  async _executeWSLCommand(commandOrArgs, useSudo = false) {
+    return new Promise((resolve, reject) => {
+      try {
+        // Validate and sanitize inputs
+        const distro = this.sanitizeDistroName(this.wslDistro);
+        const user = this.sanitizeUsername(this.wslusername);
+
+        // Build arguments array
+        let args = ['-d', distro, '-u', user];
+        if (useSudo) {
+          args.push('sudo');
+        }
+
+        // Handle both string and array command formats
+        if (typeof commandOrArgs === 'string') {
+          args.push('sh', '-c', commandOrArgs);
+        } else if (Array.isArray(commandOrArgs)) {
+          args = args.concat(commandOrArgs);
+        } else {
+          throw new Error('Command must be string or array');
+        }
+
+        let stdout = '';
+        let stderr = '';
+        const maxBuffer = 10 * 1024 * 1024; // 10MB
+        let finished = false;
+
+        const child = spawn('wsl', args);
+
+        // Set timeout
+        const timeout = setTimeout(() => {
+          if (!finished) {
+            finished = true;
+            child.kill();
+            reject(new Error('WSL2 command timeout (30s)'));
+          }
+        }, 30000);
+
+        child.stdout.on('data', (data) => {
+          const str = data.toString();
+          stdout += str;
+          if (stdout.length > maxBuffer) {
+            finished = true;
+            clearTimeout(timeout);
+            child.kill();
+            reject(new Error('WSL2 command output exceeded 10MB limit'));
+          }
+        });
+
+        child.stderr.on('data', (data) => {
+          stderr += data.toString();
+          if ((stdout.length + stderr.length) > maxBuffer) {
+            finished = true;
+            clearTimeout(timeout);
+            child.kill();
+            reject(new Error('WSL2 command output exceeded 10MB limit'));
+          }
+        });
+
+        child.on('close', (code) => {
+          if (!finished) {
+            finished = true;
+            clearTimeout(timeout);
+
+            if (code !== 0) {
+              reject(new Error(`WSL2 command failed with exit code ${code}: ${stderr}`));
+            } else {
+              resolve(stdout.trim());
+            }
+          }
+        });
+
+        child.on('error', (error) => {
+          if (!finished) {
+            finished = true;
+            clearTimeout(timeout);
+            reject(error);
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  /**
+   * Execute command in WSL2 environment (non-blocking via spawn, shell-free)
+   * Prevents shell injection by using wsl ... -- syntax
+   * @private
+   */
+  _executeWSLCommandDirectAsync(commandArgs, useSudo = false) {
     try {
-      const sudoPrefix = useSudo ? 'sudo ' : '';
-      const fullCommand = `wsl -d ${this.wslDistro} -u ${this.wslusername} ${sudoPrefix}${command}`;
+      // Validate and sanitize inputs
+      const distro = this.sanitizeDistroName(this.wslDistro);
+      const user = this.sanitizeUsername(this.wslusername);
 
-      const { stdout, stderr } = await execAsync(fullCommand, {
-        maxBuffer: 10 * 1024 * 1024,
-        timeout: 30000,
-      });
+      // Build arguments: wsl -d DISTRO -u USER [sudo] -- cmd arg1 arg2 ...
+      const args = ['-d', distro, '-u', user];
+      if (useSudo) {
+        args.push('sudo');
+      }
+      args.push('--');
 
-      if (stderr && !stderr.includes('Warning')) {
-        console.warn('[WSL2] stderr:', stderr);
+      // Add command arguments (array form prevents shell interpretation)
+      if (Array.isArray(commandArgs)) {
+        args.push(...commandArgs);
+      } else if (typeof commandArgs === 'string') {
+        args.push(commandArgs);
+      } else {
+        throw new Error('Command must be string or array');
       }
 
-      return stdout.trim();
+      // Spawn with timeout and output limits
+      const child = spawn('wsl', args);
+      let finished = false;
+      let stdout = '';
+      let stderr = '';
+      const maxBuffer = 10 * 1024 * 1024; // 10MB
+
+      const timeout = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          child.kill();
+          console.warn('[WSL2] Async command timeout after 30s');
+        }
+      }, 30000);
+
+      child.stdout.on('data', (data) => {
+        stdout += data.toString();
+        if (stdout.length > maxBuffer) {
+          finished = true;
+          clearTimeout(timeout);
+          child.kill();
+          console.warn('[WSL2] Async command output exceeded 10MB limit');
+        }
+      });
+
+      child.stderr.on('data', (data) => {
+        stderr += data.toString();
+        if ((stdout.length + stderr.length) > maxBuffer) {
+          finished = true;
+          clearTimeout(timeout);
+          child.kill();
+          console.warn('[WSL2] Async command output exceeded 10MB limit');
+        }
+      });
+
+      child.on('close', (code) => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          if (code !== 0) {
+            console.warn(`[WSL2] Async command exited with code ${code}: ${stderr}`);
+          }
+        }
+      });
+
+      child.on('error', (error) => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          console.error('[WSL2] Async command error:', error.message);
+        }
+      });
+
+      child.unref();
+      return child.pid;
     } catch (error) {
-      console.error('[WSL2] Command failed:', error.message);
-      throw new Error(`WSL2 command failed: ${error.message}`);
+      console.error('[WSL2] Failed to execute async command:', error.message);
+      throw error;
     }
   }
 
   /**
-   * Execute command in WSL2 asynchronously (non-blocking)
+   * Execute command in WSL2 asynchronously (non-blocking) - DEPRECATED
+   * Use _executeWSLCommandDirectAsync instead for shell-free execution
    * @private
+   * @deprecated
    */
   _executeWSLCommandAsync(command, useSudo = false) {
-    const sudoPrefix = useSudo ? 'sudo ' : '';
-    const fullCommand = `wsl -d ${this.wslDistro} -u ${this.wslusername} ${sudoPrefix}${command}`;
-
-    const child = spawn('cmd.exe', ['/c', fullCommand], {
-      detached: true,
-      stdio: 'ignore',
-    });
-
-    child.unref();
-    return child.pid;
+    console.warn('[WSL2] _executeWSLCommandAsync is deprecated, use _executeWSLCommandDirectAsync');
+    return this._executeWSLCommandDirectAsync([command], useSudo);
   }
 
   /**

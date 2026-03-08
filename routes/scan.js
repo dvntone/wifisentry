@@ -20,6 +20,13 @@ module.exports = async function scanRoutes(fastify) {
     locationTracker,
   } = fastify;
 
+  /** Prehandler hook that enforces an authenticated session. */
+  async function requireAuth(request, reply) {
+    if (!request.session.user) {
+      return reply.status(401).send({ error: 'Unauthorized: Please log in.' });
+    }
+  }
+
   // ── SSE broadcast helper ─────────────────────────────────────────────────
 
   function broadcast(data) {
@@ -138,7 +145,7 @@ module.exports = async function scanRoutes(fastify) {
 
   // ── Start / stop monitoring ──────────────────────────────────────────────
 
-  fastify.post('/api/start-monitoring', async (request, reply) => {
+  fastify.post('/api/start-monitoring', { preHandler: requireAuth }, async (request, reply) => {
     const { techniques } = request.body;
     if (!techniques || techniques.length === 0) {
       return reply.status(400).send({ error: 'No monitoring techniques selected.' });
@@ -155,7 +162,7 @@ module.exports = async function scanRoutes(fastify) {
     return reply.send({ message: 'Continuous monitoring started.' });
   });
 
-  fastify.post('/api/stop-monitoring', async (_request, reply) => {
+  fastify.post('/api/stop-monitoring', { preHandler: requireAuth }, async (_request, reply) => {
     if (fastify.monitoringInterval) {
       clearInterval(fastify.monitoringInterval);
       fastify.monitoringInterval = null;
@@ -217,7 +224,7 @@ module.exports = async function scanRoutes(fastify) {
 
   // ── WiGLE export ─────────────────────────────────────────────────────────
 
-  fastify.post('/api/export-wigle', async (request, reply) => {
+  fastify.post('/api/export-wigle', { preHandler: requireAuth }, async (request, reply) => {
     try {
       const { startDate, endDate } = request.body;
       const networks = await database.networks.getRecent(1000);

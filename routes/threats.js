@@ -4,6 +4,8 @@
  * Threat routes: AI-catalogued threats, user submissions, threat logs.
  */
 
+const Joi = require('joi');
+
 module.exports = async function threatRoutes(fastify) {
   const { aiService, database } = fastify;
 
@@ -16,13 +18,27 @@ module.exports = async function threatRoutes(fastify) {
 
   // ── Submit new threat technique for AI research ───────────────────────────
 
-  fastify.post('/api/submit-technique', async (request, reply) => {
+  fastify.post('/api/submit-technique', { preHandler: requireAuth }, async (request, reply) => {
     const { name, description } = request.body;
     if (!name || !description) {
       return reply.status(400).send({ error: 'Technique name and description are required.' });
     }
     try {
-      const newThreat = await aiService.researchTechnique({ name, description, source: 'User Submission' });
+      // Sanitize description to prevent prompt injection: remove control characters and limit length
+      const sanitizedDescription = String(description)
+        .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+        .substring(0, 2000)  // Max 2000 chars for descriptions
+        .trim();
+
+      if (!sanitizedDescription) {
+        return reply.status(400).send({ error: 'Description cannot be empty or contain only control characters.' });
+      }
+
+      const newThreat = await aiService.researchTechnique({
+        name: String(name).substring(0, 255),
+        description: sanitizedDescription,
+        source: 'User Submission'
+      });
       return reply.status(201).send(newThreat);
     } catch (err) {
       return reply.status(500).send({ error: 'Failed to submit technique for research.', details: err.message });
