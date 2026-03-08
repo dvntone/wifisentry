@@ -1,6 +1,6 @@
 # WiFi Sentry — Known Issues
 
-> Last updated: 2026-03-05
+> Last updated: 2026-03-08
 > Update this file whenever a new issue is found or an existing issue is resolved.
 
 ---
@@ -15,13 +15,10 @@
 
 ## Critical — Blocking
 
-### KI-001 [OPEN] Release CI Build Failing
-- **Affected:** `.github/workflows/release.yml` on `main` (commit `52f6bf4`)
-- **Symptom:** "Release - Build & Deploy" workflow concludes with `failure`
-- **Root cause:** Unknown — needs log inspection. Likely APK signing or artifact upload step.
-- **History:** This class of failure appeared in v1.1.4 (artifacts never reached Releases page) and v1.1.7 (unsigned APK rejection). Fix was re-applied but may have regressed.
-- **Impact:** No automated release APKs being published. Users cannot sideload latest version.
-- **Fix needed:** Inspect `release.yml` logs. Verify `KEYSTORE_BASE64`, `KEYSTORE_STORE_PASSWORD`, `KEYSTORE_KEY_ALIAS`, `KEYSTORE_KEY_PASSWORD` secrets are set in repo settings.
+### KI-001 [FIXED] Release CI Build Failing
+- **Fixed in:** PR #44 merge (commit `98feab1`) — Release - Build & Deploy workflow now succeeds on main
+- **Previously affected:** `.github/workflows/release.yml` on `main`
+- **Resolution:** Release pipeline passing; Android APK signing and artifact upload working
 
 ### KI-002 [OPEN] SonarCloud Analysis Failing
 - **Affected:** `.github/workflows/sonarcloud.yml` on `main` (commit `52f6bf4`)

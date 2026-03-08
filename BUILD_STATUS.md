@@ -10,52 +10,71 @@
 
 | Component | Status | Last Good Commit | Notes |
 |---|---|---|---|
-| Android APK | BUILDING | `c9416cf` | CI/CD Android build passing; release signing still unverified |
-| Node.js Backend | PASSING | `c9416cf` | Fastify with helmet, CORS, rate-limiting — security controls verified |
-| Next.js Frontend | BUILDING | `c9416cf` | Ubuntu CI build passing; Google Fonts blocked in sandbox env |
-| Electron Desktop | FIXING | current PR | `desktop:build-win` failure fixed (prior PR); remaining code quality fixes in this PR |
-| DB Integration Tests | PASSING | `c9416cf` | `db-integration.yml` — green |
+| Android APK | BUILDING | `4f7e154` | CI/CD Android build passing on main |
+| Node.js Backend | PASSING | `4f7e154` | Fastify with helmet, CORS, rate-limiting — security controls verified |
+| Next.js Frontend | BUILDING | `4f7e154` | Ubuntu CI build passing; Google Fonts blocked in sandbox env |
+| Electron Desktop | BUILDING | `4f7e154` | `desktop:build-win` fixed in prior PR |
+| DB Integration Tests | PASSING | `4f7e154` | `db-integration.yml` — green on main |
+| Release Pipeline | PASSING | `98feab1` | `release.yml` — latest run succeeded (PR #44 merge) |
+| Detekt | PASSING | `6ff81d5` | `detekt.yml` — green; jq path fix merged in PR #49 |
+| Secret Scan (gitleaks) | PASSING | `6ff81d5` | `secret-scan.yml` — green |
+| CodeQL Advanced | PASSING | `88828c0` | `codeql.yml` — last completed run succeeded |
 | SonarCloud | FAILING | last green unknown | `sonarcloud.yml` — verify SONAR_TOKEN secret |
-| Release Pipeline | FAILING | last green unknown | `release.yml` — verify KEYSTORE_* signing secrets |
-| Emergency Rollback | FAILING | last green unknown | `emergency-rollback.yml` — investigate |
+| Emergency Rollback | FAILING | last green unknown | `emergency-rollback.yml` — all runs fail |
+| MSVC Code Analysis | FAILING | never green | `msvc.yml` — new workflow, consistently failing |
 
 ---
 
 ## CI Workflow Status (as of 2026-03-08)
 
-### wifisentry/main @ `c9416cf`
+### wifisentry/main @ `4f7e154`
 
 | Workflow | Result | Action Required |
 |---|---|---|
-| Gemini Scheduled Issue Triage | SUCCESS | None |
+| CI/CD - Build & Test | SUCCESS | None |
 | DB Integration Tests | SUCCESS | None |
-| CI/CD - Build & Test (Ubuntu) | PASSING | None |
-| CI/CD - Build & Test (Windows Desktop) | FIXED | `desktop:build-win` no longer rebuilds web app |
-| Release - Build & Deploy | FAILURE | Verify KEYSTORE_* secrets in repo settings |
+| Release - Build & Deploy | SUCCESS | None (latest run at `98feab1` passed) |
+| Gemini Scheduled Issue Triage | SUCCESS | None |
+| Gemini Dispatch | SUCCESS | None |
+| Detekt | SUCCESS | None (jq path fix merged in PR #49) |
+| Secret Scan (gitleaks) | SUCCESS | None |
+| CodeQL Advanced | SUCCESS | None (last completed run passed) |
 | SonarCloud Analysis | FAILURE | Verify SONAR_TOKEN secret is set |
-| Emergency Rollback | FAILURE | Investigate logs |
+| Emergency Rollback | FAILURE | All runs fail — investigate logs |
+| Microsoft C++ Code Analysis | FAILURE | New workflow — consistently failing, needs investigation |
 
 ---
 
 ## Known Broken Areas (Do Not Build On Top Of)
 
-1. **Release pipeline** — APKs are not being published. Before adding any new features to Android, fix KI-001 first.
-2. **SonarCloud** — Quality gate is dark. Fix KI-002 before any security-sensitive code changes.
-3. **Emergency Rollback** — Safety net is broken. Fix KI-019 before any production deployments.
+1. **SonarCloud** — Quality gate is dark. Fix KI-002 before any security-sensitive code changes.
+2. **Emergency Rollback** — Safety net is broken. Fix KI-019 before any production deployments.
+3. **MSVC Code Analysis** — New workflow, all runs fail. Investigate `msvc.yml` configuration.
 
 ---
 
 ## What Is Safe to Work On Right Now
 
+- Android feature work (CI/CD, release, and Detekt all green)
+- Backend API changes (Node.js backend passing, DB integration tests green)
+- Frontend UI changes (Next.js build passing)
+- Desktop improvements (build-win fixed)
 - `docs/` reorganization (no code changes, zero build risk)
 - Deleting obsolete root files (KI-010) — no code changes
-- Writing new `.md` tracking files
-- Updating `copilot-instructions.md`
-- Reading and analyzing code structure
 
 ---
 
 ## Session Log
+
+### 2026-03-08 — Status PR update: refresh CI/CD statuses
+- Updated BUILD_STATUS.md component table and CI workflow table to reflect current GitHub Actions results
+- Release pipeline now PASSING on main (`98feab1`, PR #44 merge) — updated from FAILURE; KI-001 resolved
+- Added newly tracked workflows: Detekt (PASSING), Secret Scan (PASSING), CodeQL Advanced (PASSING), MSVC Code Analysis (FAILING)
+- Electron Desktop status updated from FIXING to BUILDING (desktop:build-win fix confirmed)
+- Updated last good commit references from `c9416cf` to `4f7e154` (latest main HEAD after PR #49 merge)
+- Updated "Known Broken Areas" section: removed release pipeline, added MSVC Code Analysis
+- Expanded "What Is Safe to Work On" to include Android feature work, backend API changes, and frontend UI changes
+- Updated KNOWN_ISSUES.md: marked KI-001 as FIXED (release pipeline passing)
 
 ### 2026-03-08 — Code audit: fix version strings, template literals, XSS, Next.js config
 - Fixed invalid semver version `"1.2.8m"` → `"1.2.8"` in `package.json` and `android-native/app/build.gradle`
