@@ -79,7 +79,7 @@ function sanitizeUsername(name) {
  * @throws {Error} If the filter contains dangerous characters
  */
 function sanitizeBpfFilter(filter) {
-  if (typeof filter !== 'string' || /[;|&$`\\!><\r\n\t\0"']/.test(filter)) {
+  if (typeof filter !== 'string' || /[;|&$`\\\r\n\t\0"']/.test(filter)) {
     throw new Error(`Invalid BPF filter: ${String(filter).substring(0, 80)}`);
   }
   return filter;
