@@ -79,7 +79,7 @@ if ((process.env.NODE_ENV || 'development') === 'production') {
   if (!process.env.MONGO_URI) missing.push('MONGO_URI');
   if (!process.env.ADMIN_PASSWORD) missing.push('ADMIN_PASSWORD');
   if (missing.length) {
-    /* eslint-disable no-console */
+     
     console.error('Missing required environment variables in production:', missing.join(', '));
     throw new Error('Missing required environment variables: ' + missing.join(', '));
   }
