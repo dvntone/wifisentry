@@ -1,6 +1,13 @@
 const Fastify = require('fastify');
 const authRoutes = require('../routes/auth');
-const config = require('../config');
+
+// Mock config object for testing
+const mockConfig = {
+  auth: {
+    adminUsername: 'admin',
+    adminPassword: 'testpassword',
+  },
+};
 
 // Mock decorators
 const mockAuthenticator = {
@@ -19,7 +26,7 @@ describe('Auth Routes', () => {
     fastify = Fastify();
 
     // Decorate fastify with mocks needed by authRoutes
-    fastify.decorate('config', config);
+    fastify.decorate('config', mockConfig);
     fastify.decorate('authenticator', mockAuthenticator);
     fastify.decorate('qrcode', mockQrcode);    
     // Mock session (simple version for testing)
@@ -44,8 +51,8 @@ describe('Auth Routes', () => {
         method: 'POST',
         url: '/api/auth/login',
         payload: {
-          username: config.auth.adminUsername,
-          password: config.auth.adminPassword,
+          username: mockConfig.auth.adminUsername,
+          password: mockConfig.auth.adminPassword,
         },
       });
 
