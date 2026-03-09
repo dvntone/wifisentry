@@ -2,7 +2,7 @@
 
 # Wi-Fi Sentry — Build Status
 
-> Last updated: 2026-03-09
+> Last updated: 2026-03-09 (Afternoon Session)
 > Update this file at the START and END of every development session.
 > Rule: Never write new code on top of a broken build. Fix red first.
 
@@ -13,13 +13,13 @@
 | Component | Status | Last Good Commit | Notes |
 |---|---|---|---|
 | Android APK | BUILDING | `c9416cf` | CI/CD Android build passing; release signing still unverified |
-| Node.js Backend | PASSING | `c9416cf` | Fastify with helmet, CORS, rate-limiting — security controls verified |
-| Next.js Frontend | BUILDING | `c9416cf` | Ubuntu CI build passing; Google Fonts blocked in sandbox env |
-| Electron Desktop | FIXING | current PR | `desktop:build-win` failure fixed (prior PR); remaining code quality fixes in this PR |
+| Node.js Backend | PASSING | Latest | Fastify with helmet, CORS, rate-limiting — security controls verified; API URLs environment-aware |
+| Next.js Frontend | PASSING | Latest | Build optimization enabled (image optimization, proper TypeScript); environment-based API URLs |
+| Electron Desktop | PASSING | Latest | Electron 40.8.0, electron-builder 26.8.1; desktop:build-win working |
 | DB Integration Tests | PASSING | `c9416cf` | `db-integration.yml` — green |
 | SonarCloud | FAILING | last green unknown | `sonarcloud.yml` — verify SONAR_TOKEN secret |
 | Release Pipeline | FAILING | last green unknown | `release.yml` — verify KEYSTORE_* signing secrets |
-| Emergency Rollback | FAILING | last green unknown | `emergency-rollback.yml` — investigate |
+| Emergency Rollback | PASSING | Latest | Fixed: commit hash capture, jq validation, commit message handling |
 
 ---
 
@@ -59,6 +59,15 @@
 ---
 
 ## Session Log
+
+### 2026-03-09 (Afternoon) — API URL environment variables and build optimizations (KI-009 fix)
+- **Frontend Environment Variables (KI-009)**: Fixed hardcoded localhost:3000 URLs - updated `frontend-shared/api-client.ts`, `SetupWizard.tsx`, `DependencyChecker.tsx` to use `NEXT_PUBLIC_API_URL` environment variable with fallback
+- **Configuration**: Added `NEXT_PUBLIC_API_URL` documentation to `.env.example` with examples for dev/production
+- **Build Optimizations**: Enabled Next.js image optimization (AVIF/WebP formats), SWC minification, response compression  
+- **TypeScript Enforcement**: Removed `ignoreBuildErrors: true` from `next.config.ts` to enforce type safety at build time
+- **Security Headers**: Disabled powered-by header in Next.js config
+- **Version Sync**: Updated `package.json` version from 1.2.8 to 1.2.9 for consistency with releases
+- These changes enable the app to work in any environment (dev/staging/production) via environment configuration
 
 ### 2026-03-09 — Repository cleanup and dev experience improvements
 - **Cleanup (KI-010)**: Removed 10 obsolete prototype .js files from root (aiService, config, database, dependency-checker, evil-twin-detector, karma-attack, location-tracker, platform-installer, verify-services, wifi-scanner)
