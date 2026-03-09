@@ -29,7 +29,11 @@
 name: SonarCloud analysis
 
 on:
-  workflow_dispatch: # manual only — enable push/PR triggers after SONAR_TOKEN secret is configured
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   pull-requests: read # allows SonarCloud to decorate PRs with analysis results
@@ -39,7 +43,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check Sonar token availability
+        id: sonar_token
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "SONAR_TOKEN is not configured; skipping SonarCloud analysis."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Analyze with SonarCloud
+        if: steps.sonar_token.outputs.run == 'true'
 
         # You can pin the exact commit or the version.
         # uses: SonarSource/sonarcloud-github-action@v2.2.0

@@ -92,14 +92,16 @@ jobs:
           # Update package.json version
           jq ".version = \"$VERSION\"" package.json > package.json.tmp
           mv package.json.tmp package.json
+
+          PREVIOUS_COMMIT=$(git rev-parse HEAD~1 | cut -c1-7)
           
           # Create rollback commit
           git add package.json
-          git commit -m "⏮️  Rollback to v$VERSION
-
-Reason: $REASON
-Previous commit: $(git rev-parse HEAD~1 | cut -c1-7)
-Rollback to: $ROLLBACK_COMMIT"
+          git commit \
+            -m "⏮️ Rollback to v$VERSION" \
+            -m "Reason: $REASON" \
+            -m "Previous commit: $PREVIOUS_COMMIT" \
+            -m "Rollback to: $ROLLBACK_COMMIT"
           
           # Tag the rollback
           git tag -a "v${VERSION}-rollback-$(date +%s)" -m "Rollback to $VERSION - Reason: $REASON"

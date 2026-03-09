@@ -125,7 +125,7 @@ module.exports = async function scanRoutes(fastify) {
 
   // ── SSE monitoring stream ────────────────────────────────────────────────
 
-  fastify.get('/api/monitoring-stream', (request, reply) => {
+  fastify.get('/api/monitoring-stream', { preHandler: requireAuth }, (request, reply) => {
     reply.hijack();
     const res = reply.raw;
     res.writeHead(200, {
@@ -145,7 +145,10 @@ module.exports = async function scanRoutes(fastify) {
 
   // ── Start / stop monitoring ──────────────────────────────────────────────
 
-  fastify.post('/api/start-monitoring', { preHandler: requireAuth }, async (request, reply) => {
+  fastify.post('/api/start-monitoring', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 20, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     const { techniques } = request.body;
     if (!techniques || techniques.length === 0) {
       return reply.status(400).send({ error: 'No monitoring techniques selected.' });
@@ -162,7 +165,10 @@ module.exports = async function scanRoutes(fastify) {
     return reply.send({ message: 'Continuous monitoring started.' });
   });
 
-  fastify.post('/api/stop-monitoring', { preHandler: requireAuth }, async (_request, reply) => {
+  fastify.post('/api/stop-monitoring', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 30, timeWindow: '15 minutes' } },
+  }, async (_request, reply) => {
     if (fastify.monitoringInterval) {
       clearInterval(fastify.monitoringInterval);
       fastify.monitoringInterval = null;
@@ -172,7 +178,7 @@ module.exports = async function scanRoutes(fastify) {
 
   // ── Scan history ─────────────────────────────────────────────────────────
 
-  fastify.get('/api/scan-history', async (request, reply) => {
+  fastify.get('/api/scan-history', { preHandler: requireAuth }, async (request, reply) => {
     try {
       const limit = parseInt(request.query.limit) || 50;
       const networks = await wifiScanner.getScanHistory(limit);
@@ -210,7 +216,7 @@ module.exports = async function scanRoutes(fastify) {
     return [headers.join(','), ...rows].join('\n');
   }
 
-  fastify.get('/api/export/threats-csv', async (_request, reply) => {
+  fastify.get('/api/export/threats-csv', { preHandler: requireAuth }, async (_request, reply) => {
     try {
       const allThreats = await database.threats.getAll();
       const csvData = threatsToCsv(allThreats);
@@ -224,7 +230,10 @@ module.exports = async function scanRoutes(fastify) {
 
   // ── WiGLE export ─────────────────────────────────────────────────────────
 
-  fastify.post('/api/export-wigle', { preHandler: requireAuth }, async (request, reply) => {
+  fastify.post('/api/export-wigle', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     try {
       const { startDate, endDate } = request.body;
       const networks = await database.networks.getRecent(1000);

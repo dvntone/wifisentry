@@ -31,7 +31,7 @@ module.exports = async function locationRoutes(fastify) {
     }
   });
 
-  fastify.get('/api/location-consent', async (_request, reply) => {
+  fastify.get('/api/location-consent', { preHandler: requireAuth }, async (_request, reply) => {
     return reply.send({ consent: fastify.locationTrackingConsent });
   });
 
@@ -56,7 +56,7 @@ module.exports = async function locationRoutes(fastify) {
 
   // ── Retrieve locations ────────────────────────────────────────────────────
 
-  fastify.get('/api/locations', async (_request, reply) => {
+  fastify.get('/api/locations', { preHandler: requireAuth }, async (_request, reply) => {
     try {
       if (!fastify.locationTrackingConsent) return reply.send([]);
       const locations = await locationTracker.getAllLocations(true);
@@ -66,7 +66,7 @@ module.exports = async function locationRoutes(fastify) {
     }
   });
 
-  fastify.get('/api/nearby-networks', async (request, reply) => {
+  fastify.get('/api/nearby-networks', { preHandler: requireAuth }, async (request, reply) => {
     try {
       const { latitude, longitude, radius } = request.query;
       if (!latitude || !longitude) {

@@ -30,6 +30,11 @@ const Fastify   = require('fastify');
 const { authenticator } = require('otplib');
 const qrcode    = require('qrcode');
 
+const configuredAllowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const database          = require('./database');
 const aiService         = require('./aiService');
 const wifiScanner       = require('./wifi-scanner');
@@ -54,7 +59,20 @@ const fastify = Fastify({
 
 // CORS
 fastify.register(require('@fastify/cors'), {
-  origin:      process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : ['http://localhost:3000'],
+  origin: (origin, cb) => {
+    // Allow non-browser clients (no Origin header).
+    if (!origin) {
+      cb(null, true);
+      return;
+    }
+
+    if (configuredAllowedOrigins.includes(origin)) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error('CORS origin denied'), false);
+  },
   credentials: true,
   methods:     ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 });

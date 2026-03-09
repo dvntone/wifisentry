@@ -1,4 +1,4 @@
-const { execSync, exec } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const os = require('os');
 const path = require('path');
 
@@ -389,21 +389,55 @@ function installDependency(toolId, options = {}) {
       return;
     }
 
-    exec(installCmd, (error, stdout, stderr) => {
-      if (error) {
+    // Commands are selected from the static DEPENDENCIES map only.
+    // This guard blocks shell metacharacters often used in injection chains.
+    if (!/^[a-zA-Z0-9\s_:\/\.\-\|&=]+$/.test(installCmd)) {
+      reject(new Error('Installation command failed safety validation'));
+      return;
+    }
+
+    const shell = PLATFORM === 'win32' ? 'powershell.exe' : '/bin/bash';
+    const shellArgs = PLATFORM === 'win32'
+      ? ['-NoProfile', '-NonInteractive', '-Command', installCmd]
+      : ['-lc', installCmd];
+
+    const child = spawn(shell, shellArgs, { shell: false });
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk.toString();
+    });
+
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    child.on('error', (error) => {
+      reject({
+        success: false,
+        error: error.message,
+        stderr,
+        hint: `Installation failed. You may need to run manually: ${installCmd}`
+      });
+    });
+
+    child.on('close', (code) => {
+      if (code !== 0) {
         reject({
           success: false,
-          error: error.message,
-          stderr: stderr,
-          hint: `Installation failed. You may need to run: ${installCmd}`
+          error: `Installer exited with code ${code}`,
+          stderr,
+          hint: `Installation failed. You may need to run manually: ${installCmd}`
         });
-      } else {
-        resolve({
-          success: true,
-          message: `${dep.name} installed successfully`,
-          stdout: stdout
-        });
+        return;
       }
+
+      resolve({
+        success: true,
+        message: `${dep.name} installed successfully`,
+        stdout
+      });
     });
   });
 }

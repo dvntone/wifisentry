@@ -18,7 +18,10 @@ module.exports = async function threatRoutes(fastify) {
 
   // ── Submit new threat technique for AI research ───────────────────────────
 
-  fastify.post('/api/submit-technique', { preHandler: requireAuth }, async (request, reply) => {
+  fastify.post('/api/submit-technique', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     const { name, description } = request.body;
     if (!name || !description) {
       return reply.status(400).send({ error: 'Technique name and description are required.' });
@@ -82,7 +85,7 @@ module.exports = async function threatRoutes(fastify) {
 
   // ── User submissions ──────────────────────────────────────────────────────
 
-  fastify.get('/api/submissions', async (request, reply) => {
+  fastify.get('/api/submissions', { preHandler: requireAuth }, async (request, reply) => {
     try {
       const { status } = request.query;
       const submissions = await database.submissions.getAll(status ? { status } : {});
@@ -92,7 +95,7 @@ module.exports = async function threatRoutes(fastify) {
     }
   });
 
-  fastify.get('/api/submissions/:id', async (request, reply) => {
+  fastify.get('/api/submissions/:id', { preHandler: requireAuth }, async (request, reply) => {
     try {
       const submissions = await database.submissions.getAll();
       const submission = submissions.find(s => s.id === request.params.id);

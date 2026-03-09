@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD022 MD032 MD060 -->
+
 # Wi-Fi Sentry — Build Status
 
 > Last updated: 2026-03-08
@@ -34,7 +36,7 @@
 | Release - Build & Deploy | FAILURE | Verify KEYSTORE_* secrets in repository settings |
 | SonarCloud Analysis | FAILURE | Verify SONAR_TOKEN secret is set |
 | Emergency Rollback | FAILURE | Investigate logs |
-| Semgrep | NEW | Add SEMGREP_APP_TOKEN + SEMGREP_DEPLOYMENT_ID secrets; see Secrets Checklist |
+| Semgrep | NEW | No secret required; workflow now runs Semgrep CLI and uploads SARIF |
 
 ---
 
@@ -57,6 +59,14 @@
 ---
 
 ## Session Log
+
+### 2026-03-08 — Workflow reliability fixes (rollback, semgrep, sonar, detekt, linter, android CI)
+- Fixed YAML parsing failure in `.github/workflows/emergency-rollback.yml` by replacing multiline `git commit -m` string with safe multi-flag commit message format
+- Fixed `.github/workflows/semgrep.yml` invalid action inputs by switching to pinned Semgrep CLI execution and SARIF upload
+- Standardized `.github/workflows/android.yml` JDK from 11 to 21
+- Updated `.github/workflows/detekt.yml` to Detekt `v1.23.8` and removed `continue-on-error` from scan step so findings fail CI
+- Updated `.github/workflows/sonarcloud.yml` to trigger on push/PR and skip analysis step when `SONAR_TOKEN` is missing
+- Updated `.github/workflows/super-linter.yml` from `github/super-linter@v4` to `@v7`
 
 ### 2026-03-08 — Security hardening: API auth, WSL2 consolidation, Semgrep workflow
 - Consolidated WSL2 command injection fixes from PRs #51, #58, #62 into single hardened implementation
@@ -158,8 +168,6 @@ Go to: `https://github.com/dvntone/wifisentry/settings/secrets/actions`
 | `SONAR_TOKEN` | SonarCloud analysis | Verify |
 | `GEMINI_API_KEY` | AI features (runtime) | Verify |
 | `MONGODB_URI` | Backend database | Verify |
-| `SEMGREP_APP_TOKEN` | Semgrep static analysis | Add — required for semgrep.yml |
-| `SEMGREP_DEPLOYMENT_ID` | Semgrep deployment tracking | Add — required for semgrep.yml |
 
 Go to: `https://github.com/dvntone/wifisentry/settings/variables/actions`
 

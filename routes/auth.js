@@ -49,6 +49,7 @@ module.exports = async function authRoutes(fastify) {
 
   fastify.get('/api/auth/2fa/generate', {
     preHandler: requireAuth,
+    config: { rateLimit: { max: 5, timeWindow: '15 minutes' } },
   }, async (request, reply) => {
     const secret = authenticator.generateSecret();
     const otpauthUrl = authenticator.keyuri(config.auth.adminUsername, 'WiFi Sentry', secret);
@@ -129,7 +130,10 @@ module.exports = async function authRoutes(fastify) {
     return reply.status(401).send({ success: false, message: 'Invalid 2FA token.' });
   });
 
-  fastify.post('/api/auth/logout', async (request, reply) => {
+  fastify.post('/api/auth/logout', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 10, timeWindow: '15 minutes' } },
+  }, async (request, reply) => {
     return new Promise((resolve) => {
       request.session.destroy((err) => {
         if (err) {

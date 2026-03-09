@@ -25,7 +25,7 @@
     "mobile:compile": "cd android-native && ./gradlew assembleRelease && cd ..",
     "verify-services": "node verify-services.js",
     "validate-env": "node utils/validate-env.js MONGODB_URI_TEST",
-    "test:integration": "mocha --exit test/integration || echo \"No integration tests configured\""
+    "test:integration": "node -e \"const fs=require('fs'); if (!fs.existsSync('test/integration')) { console.log('No integration tests configured'); process.exit(0); } console.error('No integration test runner configured for test/integration'); process.exit(1);\""
   },
   "dependencies": {
     "@fastify/cookie": "11.0.2",
@@ -54,12 +54,11 @@
   "devDependencies": {
     "@eslint/js": "9.39.4",
     "concurrently": "9.2.1",
-    "electron": "34.5.8",
-    "electron-builder": "25.1.8",
-    "eslint": "10.0.3",
+    "electron": "35.7.5",
+    "electron-builder": "26.8.1",
+    "eslint": "9.39.4",
     "globals": "17.4.0",
     "jest": "30.2.0",
-    "mocha": "11.7.5",
     "nodemon": "3.1.14",
     "typescript": "5.9.3"
   },

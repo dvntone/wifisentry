@@ -12,9 +12,15 @@ const toolIdValidator = Joi.string().alphanum().max(64).required();
 module.exports = async function dependencyRoutes(fastify) {
   const { dependencyChecker, platformInstaller } = fastify;
 
+  async function requireAuth(request, reply) {
+    if (!request.session?.user) {
+      return reply.status(401).send({ error: 'Unauthorized: Please log in.' });
+    }
+  }
+
   // ── Dependency checker ────────────────────────────────────────────────────
 
-  fastify.get('/api/dependencies/check', async (_request, reply) => {
+  fastify.get('/api/dependencies/check', { preHandler: requireAuth }, async (_request, reply) => {
     try {
       return reply.send(dependencyChecker.checkAllDependencies());
     } catch (err) {
@@ -22,7 +28,7 @@ module.exports = async function dependencyRoutes(fastify) {
     }
   });
 
-  fastify.get('/api/dependencies/critical', async (_request, reply) => {
+  fastify.get('/api/dependencies/critical', { preHandler: requireAuth }, async (_request, reply) => {
     try {
       const critical = dependencyChecker.getCriticalMissingDependencies();
       return reply.send({ hasCriticalMissing: critical.length > 0, count: critical.length, dependencies: critical });
@@ -31,7 +37,7 @@ module.exports = async function dependencyRoutes(fastify) {
     }
   });
 
-  fastify.get('/api/dependencies/:toolId/install', async (request, reply) => {
+  fastify.get('/api/dependencies/:toolId/install', { preHandler: requireAuth }, async (request, reply) => {
     try {
       if (toolIdValidator.validate(request.params.toolId).error) {
         return reply.status(400).send({ error: 'Invalid tool ID.' });
@@ -44,7 +50,7 @@ module.exports = async function dependencyRoutes(fastify) {
     }
   });
 
-  fastify.post('/api/dependencies/:toolId/install', async (request, reply) => {
+  fastify.post('/api/dependencies/:toolId/install', { preHandler: requireAuth }, async (request, reply) => {
     try {
       if (toolIdValidator.validate(request.params.toolId).error) {
         return reply.status(400).send({ error: 'Invalid tool ID.' });
@@ -62,7 +68,7 @@ module.exports = async function dependencyRoutes(fastify) {
 
   // ── Platform setup ────────────────────────────────────────────────────────
 
-  fastify.get('/api/setup/environment', async (_request, reply) => {
+  fastify.get('/api/setup/environment', { preHandler: requireAuth }, async (_request, reply) => {
     try {
       return reply.send(platformInstaller.getSetupGuide());
     } catch (err) {
@@ -70,7 +76,7 @@ module.exports = async function dependencyRoutes(fastify) {
     }
   });
 
-  fastify.post('/api/setup/install-script', async (request, reply) => {
+  fastify.post('/api/setup/install-script', { preHandler: requireAuth }, async (request, reply) => {
     try {
       const schema = Joi.object({
         toolIds: Joi.array().items(Joi.string().alphanum().max(64)).default([]),
@@ -85,7 +91,7 @@ module.exports = async function dependencyRoutes(fastify) {
     }
   });
 
-  fastify.get('/api/setup/check-critical', async (_request, reply) => {
+  fastify.get('/api/setup/check-critical', { preHandler: requireAuth }, async (_request, reply) => {
     try {
       return reply.send(platformInstaller.checkCriticalTools());
     } catch (err) {

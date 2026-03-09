@@ -55,6 +55,13 @@ const SEVERITY_COLOURS: Record<string, string> = {
   Low:      '#16a34a',
 };
 
+const SEVERITY_DOT_CLASSES: Record<string, string> = {
+  Critical: 'bg-red-600',
+  High: 'bg-orange-600',
+  Medium: 'bg-yellow-600',
+  Low: 'bg-green-600',
+};
+
 /** Escape HTML entities in attacker-controlled strings (SSID/BSSID/threat data) before inserting into Leaflet popup HTML. */
 function escapeHtml(unsafe: string): string {
   return String(unsafe)
@@ -247,7 +254,7 @@ export default function NetworkMap({ networks = [], useDesktopConfig = false, cl
   const geoCount     = networks.filter(n => n.latitude && n.longitude).length;
 
   return (
-    <div className={`relative flex flex-col ${className}`} style={{ minHeight: 400 }}>
+    <div className={`relative flex flex-col min-h-[400px] ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-3 bg-gray-900 border-b border-gray-700">
         <div className="flex items-center gap-2">
@@ -258,9 +265,9 @@ export default function NetworkMap({ networks = [], useDesktopConfig = false, cl
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs text-gray-400">
-          {Object.entries(SEVERITY_COLOURS).map(([sev, col]) => (
+          {Object.keys(SEVERITY_COLOURS).map((sev) => (
             <span key={sev} className="flex items-center gap-1">
-              <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col }} />
+              <span className={`inline-block w-2.5 h-2.5 rounded-full ${SEVERITY_DOT_CLASSES[sev] || 'bg-gray-500'}`} />
               {sev}
             </span>
           ))}
@@ -281,7 +288,7 @@ export default function NetworkMap({ networks = [], useDesktopConfig = false, cl
           </div>
         </div>
       ) : (
-        <div ref={mapContainerRef} className="flex-1" style={{ minHeight: 360, zIndex: 0 }}>
+        <div ref={mapContainerRef} className="flex-1 min-h-[360px] z-0">
           {!leafletLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-800 text-gray-400 z-10">
               <div className="text-center">
