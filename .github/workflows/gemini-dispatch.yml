@@ -25,7 +25,7 @@ defaults:
 jobs:
   debugger:
     if: |-
-      ${{ fromJSON(vars.GEMINI_DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}
+      ${{ vars.GEMINI_DEBUG == 'true' || vars.ACTIONS_STEP_DEBUG == 'true' }}
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'
@@ -72,11 +72,11 @@ jobs:
       - name: 'Mint identity token'
         id: 'mint_identity_token'
         if: |-
-          ${{ vars.APP_ID }}
+          ${{ vars.APP_ID != '' }}
         uses: 'actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf' # ratchet:actions/create-github-app-token@v2
         with:
-          app-id: '${{ vars.APP_ID }}'
-          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          app-id: "${{ vars.APP_ID }}"
+          private-key: "${{ secrets.APP_PRIVATE_KEY }}"
           permission-contents: 'read'
           permission-issues: 'write'
           permission-pull-requests: 'write'
@@ -185,11 +185,11 @@ jobs:
       - name: 'Mint identity token'
         id: 'mint_identity_token'
         if: |-
-          ${{ vars.APP_ID }}
+          ${{ vars.APP_ID != '' }}
         uses: 'actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf' # ratchet:actions/create-github-app-token@v2
         with:
-          app-id: '${{ vars.APP_ID }}'
-          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+          app-id: "${{ vars.APP_ID }}"
+          private-key: "${{ secrets.APP_PRIVATE_KEY }}"
           permission-contents: 'read'
           permission-issues: 'write'
           permission-pull-requests: 'write'
