@@ -2,7 +2,7 @@
 
 # Wi-Fi Sentry — Build Status
 
-> Last updated: 2026-03-08
+> Last updated: 2026-03-09
 > Update this file at the START and END of every development session.
 > Rule: Never write new code on top of a broken build. Fix red first.
 
@@ -59,6 +59,12 @@
 ---
 
 ## Session Log
+
+### 2026-03-09 — Repository cleanup and dev experience improvements
+- **Cleanup (KI-010)**: Removed 10 obsolete prototype .js files from root (aiService, config, database, dependency-checker, evil-twin-detector, karma-attack, location-tracker, platform-installer, verify-services, wifi-scanner)
+- **Infrastructure (KI-012)**: Removed `dataconnect/` directory and `web-app/src/dataconnect-generated/` (Firebase Data Connect replaced by MongoDB)
+- **Dev Experience (KI-013)**: Made `npm run dev` start full backend+frontend stack concurrently instead of backend-only
+- **Workflow Fixes**: Fixed `emergency-rollback.yml` to capture commit before reset and add jq validation
 
 ### 2026-03-08 — Workflow reliability fixes (rollback, semgrep, sonar, detekt, linter, android CI)
 - Fixed YAML parsing failure in `.github/workflows/emergency-rollback.yml` by replacing multiline `git commit -m` string with safe multi-flag commit message format
