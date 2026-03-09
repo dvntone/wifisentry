@@ -1,0 +1,23 @@
+Package                Current  Wanted  Latest  Location  Depended by
+@fastify/cookie        MISSING  11.0.2  11.0.2  -         wifisentry
+@fastify/cors          MISSING  11.2.0  11.2.0  -         wifisentry
+@fastify/helmet        MISSING  13.0.2  13.0.2  -         wifisentry
+@fastify/rate-limit    MISSING  10.3.0  10.3.0  -         wifisentry
+@fastify/session       MISSING  11.1.1  11.1.1  -         wifisentry
+@fastify/static        MISSING   9.0.0   9.0.0  -         wifisentry
+@fastify/websocket     MISSING  11.2.0  11.2.0  -         wifisentry
+@google/generative-ai  MISSING  0.24.1  0.24.1  -         wifisentry
+axios                  MISSING  1.13.6  1.13.6  -         wifisentry
+dotenv                 MISSING  17.3.1  17.3.1  -         wifisentry
+electron-updater       MISSING   6.8.3   6.8.3  -         wifisentry
+fastify                MISSING   5.8.2   5.8.2  -         wifisentry
+iw                     MISSING   0.0.1   0.0.1  -         wifisentry
+joi                    MISSING  18.0.2  18.0.2  -         wifisentry
+mongoose               MISSING   9.2.4   9.2.4  -         wifisentry
+next                   MISSING  16.1.6  16.1.6  -         wifisentry
+node-wifi              MISSING  2.0.16  2.0.16  -         wifisentry
+otplib                 MISSING  13.3.0  13.3.0  -         wifisentry
+pino-pretty            MISSING  13.1.3  13.1.3  -         wifisentry
+qrcode                 MISSING   1.5.4   1.5.4  -         wifisentry
+tcpdump                MISSING   0.0.1   0.0.1  -         wifisentry
+uuid                   MISSING  13.0.0  13.0.0  -         wifisentry
