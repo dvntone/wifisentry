@@ -82,25 +82,32 @@ jobs:
           echo "Reason: $REASON"
           echo ""
           
-          # Get commit hash of the tag
+          # Get commit hash of the tag before any resets
           ROLLBACK_COMMIT=$(git rev-list -n 1 $TAG)
+          CURRENT_COMMIT=$(git rev-parse HEAD | cut -c1-7)
+          echo "Current commit: $CURRENT_COMMIT"
           echo "Rollback commit: $ROLLBACK_COMMIT"
           
           # Reset to tag (soft reset to preserve files)
           git reset --soft $TAG
           
-          # Update package.json version
-          jq ".version = \"$VERSION\"" package.json > package.json.tmp
-          mv package.json.tmp package.json
-
-          PREVIOUS_COMMIT=$(git rev-parse HEAD~1 | cut -c1-7)
+          # Update package.json version if it exists
+          if [ -f package.json ]; then
+            if command -v jq &> /dev/null; then
+              jq ".version = \"$VERSION\"" package.json > package.json.tmp
+              mv package.json.tmp package.json
+              git add package.json
+            else
+              echo "⚠️  jq not found, skipping package.json version update"
+            fi
+          fi
           
           # Create rollback commit
           git add package.json
           git commit \
             -m "⏮️ Rollback to v$VERSION" \
             -m "Reason: $REASON" \
-            -m "Previous commit: $PREVIOUS_COMMIT" \
+            -m "Previous commit: $CURRENT_COMMIT" \
             -m "Rollback to: $ROLLBACK_COMMIT"
           
           # Tag the rollback
