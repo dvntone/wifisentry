@@ -39,7 +39,9 @@ class WiFiSentryAPI {
   private headers: Record<string, string>;
 
   constructor(options: APIOptions = {}) {
-    this.baseURL = options.baseURL || 'http://localhost:3000';
+    // Use environment variable if available, otherwise fall back to localhost
+    const envBaseURL = typeof window !== 'undefined' && (window as any).__ENV__ ? (window as any).__ENV__.NEXT_PUBLIC_API_URL : undefined;
+    this.baseURL = options.baseURL || envBaseURL || 'http://localhost:3000';
     this.timeout = options.timeout || 30000;
     this.headers = {
       'Content-Type': 'application/json',

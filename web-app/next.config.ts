@@ -3,11 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "export",
   images: {
-    unoptimized: true,
+    unoptimized: false,
+    formats: ['image/avif', 'image/webp'],
   },
   typescript: {
-    ignoreBuildErrors: true,
+    tsconfigPath: './tsconfig.json',
   },
+  swcMinify: true,
+  poweredByHeader: false,
+  compress: true,
 };
 
 export default nextConfig;

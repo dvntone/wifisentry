@@ -37,7 +37,7 @@ interface DependencyCheckerProps {
 }
 
 const DependencyChecker: React.FC<DependencyCheckerProps> = ({ 
-  apiBase = 'http://localhost:3000/api',
+  apiBase = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api`,
   onComplete 
 }) => {
   const [report, setReport] = useState<DependencyReport | null>(null);

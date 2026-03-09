@@ -14,7 +14,7 @@ interface SetupWizardProps {
 }
 
 const SetupWizard: React.FC<SetupWizardProps> = ({ 
-  apiBase = 'http://localhost:3000/api',
+  apiBase = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api`,
   onSetupComplete 
 }) => {
   const [step, setStep] = useState<'environment' | 'tools' | 'guide' | 'complete'>('environment');
