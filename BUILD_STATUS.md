@@ -17,7 +17,7 @@
 | Next.js Frontend | PASSING | Latest | Build optimization enabled (image optimization, proper TypeScript); environment-based API URLs |
 | Electron Desktop | PASSING | Latest | Electron 40.8.0, electron-builder 26.8.1; desktop:build-win working |
 | DB Integration Tests | PASSING | `c9416cf` | `db-integration.yml` — green |
-| SonarCloud | FAILING | last green unknown | `sonarcloud.yml` — verify SONAR_TOKEN secret |
+| SonarCloud | READY | Latest | `sonarcloud.yml` — SONAR_TOKEN secret added; next run will analyze |
 | Release Pipeline | FAILING | last green unknown | `release.yml` — verify KEYSTORE_* signing secrets |
 | Emergency Rollback | PASSING | Latest | Fixed: commit hash capture, jq validation, commit message handling |
 
@@ -34,7 +34,7 @@
 | CI/CD - Build & Test (Ubuntu) | PASSING | None |
 | CI/CD - Build & Test (Windows Desktop) | FIXED | `desktop:build-win` no longer rebuilds web app |
 | Release - Build & Deploy | FAILURE | Verify KEYSTORE_* secrets in repository settings |
-| SonarCloud Analysis | FAILURE | Verify SONAR_TOKEN secret is set |
+| SonarCloud Analysis | READY | SONAR_TOKEN secret now configured; will run on next push/PR |
 | Emergency Rollback | FAILURE | Investigate logs |
 | Semgrep | NEW | No secret required; workflow now runs Semgrep CLI and uploads SARIF |
 
@@ -180,7 +180,7 @@ Go to: `https://github.com/dvntone/wifisentry/settings/secrets/actions`
 | `KEYSTORE_STORE_PASSWORD` | Android release signing | Verify |
 | `KEYSTORE_KEY_ALIAS` | Android release signing | Verify |
 | `KEYSTORE_KEY_PASSWORD` | Android release signing | Verify |
-| `SONAR_TOKEN` | SonarCloud analysis | Verify |
+| `SONAR_TOKEN` | SonarCloud analysis | ✅ ADDED |
 | `GEMINI_API_KEY` | AI features (runtime) | Verify |
 | `MONGODB_URI` | Backend database | Verify |
 
